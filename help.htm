@@ -1,0 +1,1336 @@
+<!DOCTYPE HTML>
+<html><head><meta charset="utf-8">
+<title>NppCppMSVS: Visual Studio Project Template for a Notepad++ C++ Plugin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+html, body                   {margin: 0; padding: 0; width: 100%; height: 100%;}
+body                         {display: flex; flex-direction: column; font: 1em Calibri, Tahoma, sans-serif;}
+
+@media (max-height: 27rem) {
+    body {display: block;}
+}
+
+header                       {padding: 0 1em; text-align: center;}
+header                       {border-style: none none solid none; border-width: 0 0 2px 0;}
+header                       {font-size: min(5vw,10vh,1.75rem); font-weight: bold;}
+
+footer                       {padding: 4px 0; width: 100%; display: flex; flex-direction: row; align-items: center; font-size: medium;}
+footer                       {border-style: solid none none none; border-width: 2px 0 0 0;}
+footer a[rel=license]        {padding: 0 8px; text-decoration: none;}
+footer a[rel=license] img    {border: none;}
+
+#foottext                    {flex: 1; margin: 0 1em; text-align: center;}
+#foottext a                  {white-space: nowrap; text-decoration: none; color: inherit; }
+#foottext a:hover            {text-decoration: underline;}
+#foottext.linklist a:link    {color: #00c;}
+#foottext.linklist a:visited {color: #900;}
+
+#fontdown, #fontup           {margin: 0 8px; padding: 0; height: 28px; width: 48px; text-align: center; display: none;}
+#fontdown, #fontup           {color: #000; border: none; border-radius: 15%/20%; cursor: pointer;}
+#fontdown, #fontup           {background: transparent;}
+#fontdown:hover,
+#fontup:hover                {background: #333; color: #fff;}
+#fontdown                    {font: inherit; font-size: 13px;}
+#fontup                      {font: inherit; font-size: 19px; line-height: 1.0;}
+
+main                         {flex: 1; overflow: auto;}
+article                      {padding: 0 1em; line-height: 1.4;}
+p                            {margin: 0; padding: 0;}
+p + p                        {margin: .5em 0 0 0;}
+h1                           {line-height: 1.25; margin: .5em 0 0 0;}
+h1                           {font-size: 1.5rem; text-align: center; font-weight: bold; font-style: normal; padding: 0;}
+h2                           {font-size: 1.2rem; text-align: left;   font-weight: bold; font-style: normal; padding: 0; margin: 0;}
+h3                           {font-size: 1rem;   text-align: left;   font-weight: bold; font-style: normal; padding: 0; margin: 0;}
+
+main a                       {white-space: nowrap; text-decoration: none;}
+main a:link                  {color: #00c;}
+main a:visited               {color: #900;}
+main a:hover                 {text-decoration: underline;}
+
+main a.wrappable {white-space: normal;}
+main a.wrappable > span {display: inline-block;}
+
+@media (max-width: 30rem)   {
+    main      a {white-space: normal;}
+    #foottext a {white-space: normal;}
+    .canhide    {display: none;}
+}
+
+main article section         {border-style: none; border-width: 0; padding: 0 1em .3em 1em; background: #eee;}
+main article section         {margin: 1.25rem 0 .4rem 0;}
+main article section h2      {border-style: none none solid none; border-width: 0 0 1px 0;}
+main article section h2      {margin: 0 0 .3em -6px; padding: .2em 0 .2em 6px;}
+main article section h3      {border-style: none none solid none; border-width: 0 0 1px 0;}
+main article section h3      {margin: .75em 0 .2em 0; padding: .2em 0 .1em 0; line-height: 1.2;}
+main article h1+section      {margin-top: .75rem;}
+main article h1+p            {margin-top: .6em;}
+main article section+p       {margin-top: .75em;}
+main article section >
+             p:first-child   {margin-top: .3em;}
+
+main article section.note    {font-size: .85em; border-style: solid; border-width: 3px 1px 1px 6px; padding: 0 6px;}
+
+body h1              {margin: 0;}
+body .pagenav        {font-weight: bold; text-align: center; margin: .5em 1em 0 1em; line-height: 1; background: #eee;}
+body .pagenav a      {margin: .25em .5em; white-space: normal; display: inline-block}
+
+@media (min-width: 36rem) {
+   body main         {display: flex; flex-direction: row; padding: 0;}
+   body .pagenav     {padding: .5em 0 0 0; margin: 1.25em 1em .4em;}
+   body .pagenav     {white-space: pre;}
+   body .pagenav     {width: 9em; margin-left: calc(max(1em, (100% - (9em + 48em + 4em)) / 2));}
+   body article      {flex: 1; overflow: auto; padding: 0 1em 0 0;}
+   body h1           {margin-top: .5em;}
+}
+
+body article h1        {max-width: calc(32em + 12px);}
+body article section   {max-width: 48em;}
+
+table        {border: none; margin: 1em 0 1em 1em; width: calc(100% - 1em - 2px); border-collapse: collapse;}
+table th     {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
+table td     {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
+table .group {text-align: center; background: #d0d0d0; }
+
+div.hscroll  {overflow-x: auto;}
+
+ul    {margin: 0 0 .5em 0;}
+ul li {margin: .25em 0;}
+
+pre {font-size: .9em; line-height: 1.1; background: #ddd; padding: .5em; overflow: auto;}
+
+div.boxed                 {margin: 1em 0; padding: 0 0 1em 0; border: 1px solid #000;}
+div.boxed > *:first-child {margin-top: 0; margin-left: 0; margin-right: 0; background: #ddd; padding: .5em;}
+div.boxed pre             {font-size: inherit; margin-top: 0;}
+div.boxed p               {margin-left: 1em; margin-right: 1em;}
+div.boxed p + p           {margin-left: 2.5em;}
+div.boxed ul              {margin-right: 1em;}
+div.boxed li > code:first-child {font-weight: bold;}
+
+body {color: #000; background: #d0d0d0;}
+*    {border-color: #999;}
+
+</style>
+<script>
+function doPageLoad() {
+    if (document.getElementById("fontdown")) {
+        document.getElementById("fontdown").style.display = "inline-block";
+        document.getElementById("fontup").style.display = "inline-block";
+        if (window.localStorage) {
+            var n = localStorage.getItem("DocumentationFontSize");
+            if (!isNaN(n) && n >= 9 && n <= 40) document.documentElement.style.fontSize = n + "px";
+        }
+    }
+}
+
+function setFontDown() {
+    var n = parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+    if (n > 9) --n;
+    document.documentElement.style.fontSize = n + "px";
+    if (window.localStorage) localStorage.setItem("DocumentationFontSize", n);
+}
+
+function setFontUp() {
+    var n = parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+    if (n < 40) ++n;
+    document.documentElement.style.fontSize = n + "px";
+    if (window.localStorage) localStorage.setItem("DocumentationFontSize", n);
+    if (window.getComputedStyle(document.body).display == "block") window.scrollBy(0,10000);
+}
+
+window.addEventListener("load", doPageLoad);
+</script>
+</head>
+<body>
+
+<header>NppCppMSVS: Visual Studio Project Template for a Notepad++ C++ Plugin</header>
+
+<main>
+
+<nav class=pagenav><a href="#introduction">Introduction</a>
+<a href="#purpose"       >Purpose and use</a>
+<a href="#project"       >Project layout</a>
+<a href="#scintilla"     >Using Scintilla</a>
+<a href="#utility"       >Utility functions</a>
+<a href="#configuration" >Configuration</a>
+<a href="#plugin"        >Plugin.cpp</a>
+<a href="#about"         >About.cpp</a>
+<a href="#examples"      >Example files</a>
+<hr><a href="#config"    ><code>config</code></a>
+<a href="#config_history"><code>config_history</code></a>
+<a href="#config_rect"   ><code>config_rect</code></a>
+<a href="#dialogstretch" ><code>DialogStretch</code></a></nav>
+
+<article>
+
+<section id=introduction><h2>Introduction</h2>
+
+<p><strong>NppCppMSVS</strong> is a template for <a href="https://visualstudio.microsoft.com/vs/">Microsoft Visual Studio</a> which you can use to build C++ plugins for <a href="https://notepad-plus-plus.org/">Notepad++</a>. Like Notepad++, this template is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version).</p>
+
+<p>This template uses <a href="https://github.com/nlohmann/json">JSON for Modern C++</a> by <a href="https://nlohmann.me">Niels Lohmann</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>.</p>
+
+<p>This documentation, copyright ©2025 by Randy Fellmy, is provided under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> license. The author waives attribution and notice of modification requirements when this document is used as a model for the purpose of creating help for your own projects.</p>
+
+</section>
+
+<section id=purpose><h2>Purpose and use</h2>
+
+<p><i>This project is not a part of Notepad++ and is not endorsed by the author of Notepad++.</i></p>
+
+<p>This template includes framework code for making a Notepad++ plugin in C++, along with various utility functions and examples.</p>
+
+<p>I have constructed it to give myself and others a useful starting point when developing a Notepad++ plugin in C++.</p>
+
+<p>It necessarily reflects my own idiosyncrasies as a programmer. I hope it may prove useful to others, and I welcome comments, suggestions and problem reports in the Issues; however, I make no apologies for its incorporation of my personal choices and styles — which might not meet with universal approval — and I do not promise to make changes to accommodate all plausible programming styles and use cases. So be it.</p>
+
+<p>To use this template, place the zip file for the <a href="https://github.com/Coises/NppCppMSVS/releases/latest/">latest release</a> in the <strong>Visual Studio 2022\Templates\ProjectTemplates</strong> folder within your <strong>Documents</strong> folder; you’ll probably want to rename it to something like <strong>NppCppMSVS-<em>version</em>.zip</strong>. The next time you start Visual Studio and choose <strong>Create a new project</strong>, you’ll find <strong>Notepad++ C++ Plugin</strong> available as a C++ project template.</p>
+
+<p>When you create a project from this template, the initial Visual Studio project settings make it possible to test the plugin with an installed copy of Notepad++ (x86, x64 or both). After a successful build, the plugin dll and documentation files will be copied to your Notepad++ plugin directory if Notepad++ is installed in the default location. <em>This only works if you set permissions on the directory to allow copying without elevated permissions.</em> You can modify the Post-Build Event in the Configuration Properties for the project if you want to deploy the plugin to a different copy of Notepad++ for testing, or disable the Post-Build Event if you want to copy it manually.</p>
+
+<p>You will still have to set the debugging path manually. Right-click your project in the Solution Explorer in Visual Studio and select <strong>Properties</strong> from the menu. In the <strong>Configuration Properties</strong> section, select <strong>Debugging</strong>; then click <strong>Command</strong>, click the drop-down arrow at the right, select <strong>Browse...</strong>, then navigate to and select the copy of Notepad++ you will use for debugging. You will have to do this separately for 32-bit and 64-bit targets (pay attention to the selections at the top of the Properties dialog).</p>
+
+</section>
+
+<section id=project><h2>Project layout</h2>
+
+<p>A project created from this template begins with five sections in the Microsoft Visual Studio Solution Explorer: Documentation, Header Files, Resource Files, Source Files and Support Files. The standard categories of References and External Dependencies will also be present.</p>
+
+<h3>Documentation</h3>
+
+<p>Documentation contains <strong>CHANGLOG.md</strong>, <strong>help.htm</strong>, <strong>LICENSE.txt</strong> and <strong>README.md</strong>. These files are in the root directory of the project. They are copied to the output directory when you build the project. The sample About box gives the user the option to view these files. If you add or remove documentation files, you’ll want to modify the code in About.cpp and the IDD_ABOUT dialog to work properly with your changes.</p>
+
+<p>You should change these files to correspond to your plugin. As supplied, they describe the template.</p>
+
+<h3>Header Files</h3>
+
+<p><strong>CommonData.h</strong>, found in the <strong>src</strong> directory of the project, defines data used by the example Source Files included in this template. This file is not required; if you keep it, you will replace nearly everything in it as appropriate for your project, but you might want to use it as a model. It includes examples of how you can use the <code>config</code> template and the <code>config_history</code> structure to define persistent data stored in your project’s configuration file.</p>
+
+<h3>Resource Files</h3>
+
+<p>These files are in the <strong>src</strong> directory of the project.</p>
+
+<p>The <strong>resource.h</strong> file is maintained by the resource editor in Visual Studio. Include it in any cpp files that need to reference dialogs or controls. You usually don’t want to edit this file directly; however, there is one common situation in which doing so may be necessary. The <a href="https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-checkradiobutton">CheckRadioButton</a> function from the Windows API only works properly if the resource identifiers of all the radio buttons in a mutually-exclusive group span a numeric range that does not include any other resource identifiers (in practice, you usually just want them to be sequential numbers). The resource editor doesn’t take that into consideration when assigning control identifiers (counterintuitively, the tab order you set in the resource editor isn’t reflected in the control identifiers); so you might need to reassign control identifiers by editing this file.</p>
+
+<p>The <strong>resource.rc</strong> file contains definitions of dialogs and version information. You ordinarily use the Resource View in Visual Studio to view and edit this file. IDD_ABOUT (the sample About dialog template), IDD_SETTINGS (the sample Settings dialog template) and VS_VERSION_INFO (version information) are contained in this file. You will need to modify all of these.</p>
+
+<h3>Source Files</h3>
+
+<p>These files are in the <strong>src</strong> directory of the project.</p>
+
+<p><strong>About.cpp</strong> contains sample code to display a Help/About dialog. You will want to modify the dialog (IDD_ABOUT in the Resource View) to describe your plugin. Depending on what changes you make in the dialog, you might need to modify this file, or it might be OK as it is.</p>
+
+<p><strong>Configuration.cpp</strong> reads and writes a configuration file in the folder Notepad++ reserves for plugin configuration files. The configuration file is in JSON format. See the <a href="#configuration">Configuration</a> section of this help for more information. You might not need to modify <strong>Configuration.cpp</strong>.</p>
+
+<p><strong>Plugin.cpp</strong> contains code which implements the required structure of a Notepad++ plugin and routes notifications and menu commands to your routines. You will need to modify this to define your menu commands and reference the routines which process them, and to select notifications you want to process and route them to your routines.</p>
+
+<p>The remaining Source Files show examples of routines that perform simple tasks. They are not required. If you keep them, you will need to replace nearly everything in them as appropriate for your project; but you might want to use them as models:</p>
+
+<ul>
+<li><strong>ProcessCommands.cpp</strong> contains an example of a routine to process a command.
+<li><strong>ProcessNotifications.cpp</strong> contains some examples of routines that process notifications.
+<li><strong>Settings.cpp</strong> contains code to support the sample Settings dialog. It includes examples of how to use variables defined with the <code>config</code> template and the <code>configHistory</code> structure (described in the <a href="#configuration">Configuration</a> section of this help) to expose settings to the user which your plugin can save in its configuration file.
+<li><strong>Status.cpp</strong> displays a non-modal dialog.
+<li><strong>Watcher.cpp</strong> displays a dockable dialog.
+</ul>
+
+<h3>Support Files</h3>
+
+<p>These files are in the <strong>src\Framework</strong>, <strong>src\Host</strong> and <strong>src\nlohmann</strong> directories of the project. Ordinarily you should not change these files, other than possibly to replace them with updated copies of their upstream sources if and when newer versions become available.</p>
+
+<div class=hscroll>
+<table>
+<tr><th>File</th><th>Purpose</th><th>Source</th></tr>
+<tr><td>src\Framework\ConfigFramework.h</td>    <td>declares config template and config_history and config_rect structs for JSON-backed configuration data</td>                                 <td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/ConfigFramework.h"                                    >part of this framework</a    ></td></tr>
+<tr><td>src\Framework\PluginFramework.cpp</td>  <td>contains the DLL entry point and some plugin implementation code required by Notepad++</td>                                                 <td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/PluginFramework.cpp"                                  >part of this framework</a    ></td></tr>
+<tr><td>src\Framework\PluginFramework.h</td>    <td>declares PluginData struct which holds information needed to communicate with Notepad++ and Scintilla</td>                                  <td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/PluginFramework.h"                                    >part of this framework</a    ></td></tr>
+<tr><td>src\Framework\ScintillaCallEx.cpp</td>  <td rowspan=2>preprocessor modification of ScintillaCall to make exception derive from std::exception, which is handled better by Notepad++</td><td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/ScintillaCallEx.cpp"                                  >part of this framework</a    ></td></tr>
+<tr><td>src\Framework\ScintillaCallEx.h</td>                                                                                                                                                    <td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/ScintillaCallEx.h"                                    >part of this framework</a    ></td></tr>
+<tr><td>src\Framework\UtilityFramework.h</td>   <td rowspan=2>define a few helpful functions as described in the <a href="#utility">Utility functions</a> section of this help</td>             <td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/UtilityFramework.h"                                   >part of this framework</a    ></td></tr>
+<tr><td>src\Framework\UtilityFrameworkMIT.h</td>                                                                                                                                                <td><a href="https://github.com/Coises/NppCppMSVS/blob/master/src/Framework/UtilityFrameworkMIT.h"                                >part of this framework</a    ></td></tr>
+<tr><td>src\Host\BoostRegexSearch.h</td>        <td>defines constants used for communicating Boost search options to Scintilla</td>                                                             <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/BoostRegexSearch.h"                   >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\Docking.h</td>                 <td>defines the docking window interface</td>                                                                                                   <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/WinControls/DockingWnd/Docking.h"       >Notepad++</a                 ></td></tr>
+<tr><td>src\Host\menuCmdID.h</td>               <td>defines Notepad++ menu commands</td>                                                                                                        <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/menuCmdID.h"                            >Notepad++</a                 ></td></tr>
+<tr><td>src\Host\Notepad_plus_msgs.h</td>       <td>defines <a href="https://npp-user-manual.org/docs/plugin-communication/">NPPM_ and NPPN_ messages</a></td>                                  <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/MISC/PluginsManager/Notepad_plus_msgs.h">Notepad++</a                 ></td></tr>
+<tr><td>src\Host\PluginInterface.h</td>         <td>defines the Notepad++ plugin interface</td>                                                                                                 <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/MISC/PluginsManager/PluginInterface.h"  >Notepad++</a                 ></td></tr>
+<tr><td>src\Host\Sci_Position.h</td>            <td rowspan=7>define various structures, functions and constants used in the Scintilla interface</td>                                           <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/Sci_Position.h"                       >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\Scintilla.h</td>                                                                                                                                                               <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/Scintilla.h"                          >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\ScintillaCall.cxx</td>                                                                                                                                                         <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/call/ScintillaCall.cxx"                       >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\ScintillaCall.h</td>                                                                                                                                                           <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/ScintillaCall.h"                      >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\ScintillaMessages.h</td>                                                                                                                                                       <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/ScintillaMessages.h"                  >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\ScintillaStructures.h</td>                                                                                                                                                     <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/ScintillaStructures.h"                >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\Host\ScintillaTypes.h</td>                                                                                                                                                          <td><a href="https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/scintilla/include/ScintillaTypes.h"                     >Scintilla within Notepad++</a></td></tr>
+<tr><td>src\nlohmann\json.hpp</td>              <td>maps a JSON configuration file to a C++ container</td>                                                                                      <td><a class=wrappable href="https://github.com/nlohmann/json/blob/master/single_include/nlohmann/json.hpp"                             ><span>Niels Lohmann’s</span> <span>JSON for Modern C++</span></a></td></tr>
+</table>
+</div>
+
+</section>
+
+<section id=scintilla><h2>Using Scintilla</h2>
+
+<p>Notepad++ uses Scintilla to implement its edit windows. If your plugin does anything with the content of files being edited, it will do that through Scintilla. Scintilla works with “documents” and “controls.” Notepad++ displays either one or two Scintilla controls, the main view and the secondary view. The tabs in each view represent separate documents, but Notepad++ loads just one document at a time into each Scintilla control.</p>
+
+<p>The most basic way of communicating with Scintilla is through Windows messages. That’s a very general C-style interface which makes Scintilla compatible with most anything that can run on Windows, but it’s frustrating (like most C interfaces) to use from C++. The good news is that Scintilla has created a C++ interface which is much less annoying. The bad news is... there’s no explicit documentation for it.</p>
+
+<p>The C++ interface is implemented through a class named <code>ScintillaCall</code>. To work, it needs a bit of setup, for which the setup code needs to know which Scintilla control is being addressed. Since there are two (and, in fact, others which don’t represent edit windows) in Notepad++, it’s important to get the right one. This framework sorts that out for you whenever possible.</p>
+
+<p>When your plugin is called to process a menu command, the situation is simple. There is always an active tab, and the associated document is loaded into the view in which that tab exists. This framework prepares the <code>ScintillaCall</code> interface before calling your command processing routine.</p>
+
+<p>The Notepad++ notification <code>NPPN_BUFFERACTIVATED</code> also occurs only when there is a known active tab, so that is handled in the same way as commands.</p>
+
+<p>Scintilla notifications contain the handle of the Scintilla control from which they emanate, so they, too, can be set up unambiguously. However, it is not guaranteed that Scintilla notifications will come <em>only</em> for the two Scintilla edit controls. If you process Scintilla messages, take care to be sure they really are for a document you want to process.</p>
+
+<p>Notepad++ notifications — <code>NPPN_</code> messages — other than <code>NPPN_BUFFERACTIVATED</code> typically cannot be associated with a Scintilla control. (This template shows, in the <code>modifyAll</code> routine in <strong>ProcessNotifications.cpp</strong>, an example of how it is possible to associate <em>some</em> <code>NPPN_GLOBALMODIFIED</code> messages with one, or both, edit controls, and how to use <code>plugin.getScintillaPointers</code> to enable the <code>ScintillaCall</code> interface.) Nothing will stop your program from compiling if you try to use Scintilla when processing these notifications, but <em>it won’t work as you expect unless you can determine the necessary information and call</em> <code>plugin.getScintillaPointers</code> <em>first.</em>
+
+<p>To call Scintilla, use <code>sci.<em>CommandName</em></code>. (<strong>UtilityFramework.h</strong> defines <code>sci</code> as a reference to the instance of the <code>ScintillaCall</code> class managed by this framework.) Nearly all the Scintilla messages <a href="https://www.scintilla.org/ScintillaDoc.html">described here</a> have corresponding member functions in this class. I know of no specific documentation for the <code>ScintillaCall</code> interface, but you can generally find the message you need in the main Scintilla documentation, then begin typing “sci.” followed by the name of the message and auto-complete will steer you to the function call. When in doubt, examine the code in <strong>src\Host\ScintillaCall.cxx</strong> (in the <strong>Support Files</strong> section in Solution Explorer in Visual Studio) to work out what is happening.</p>
+
+<p>Some examples:<br>
+<code>auto ltext = sci.GetLine(12);</code><br>
+<code>sci.InsertText(-1, newText.data());</code><br>
+<code>auto stext = sci.GetSelText();</code><br>
+<code>auto cpos = sci.CurrentPos();</code><br>
+<code>auto text4 = sci.StringOfRange(Scintilla::Span(cpos, cpos + 4));</code><br>
+</p>
+
+</section>
+
+<section id=utility><h2>Utility functions</h2>
+<p><strong>src\Framework\UtilityFramework.h</strong> includes several convenience functions and a structure you can use.</p>
+
+<div class=boxed>
+<pre>LRESULT npp(UINT Msg, WPARAM wParam, LPARAM lParam)</pre>
+<p>Sends a message to Notepad++. See <a href="https://npp-user-manual.org/docs/plugin-communication/#notepad-messages">this documentation</a> for descriptions of the available messages. Example:<br>
+<code>intptr_t cdi1 = npp(NPPM_GETCURRENTDOCINDEX, 0, 0);</code></p>
+</div>
+
+<div class=boxed>
+<pre>sci.<em>function</em></pre>
+<p>Sends a message to a Scintilla control. Arguments and return values vary depending on the function; see <a href="#scintilla">Using Scintilla</a>.</p>
+</div>
+
+<div class=boxed>
+<pre>std::string fromWide(std::wstring_view s, unsigned int codepage)
+std::string fromWide(std::wstring_view s)</pre>
+<p>Converts a wide string to a byte string. If <code>codepage</code> is omitted, it uses the code page of the active Scintilla (which will be either the system default code page or CP_UTF8; don’t let the code page default when processing a Notepad++ notification other than <code>NPPN_BUFFERACTIVATED</code> unless you have called <code>plugin.getScintillaPointers</code> to establish the correct active Scintilla).</p>
+</div>
+
+<div class=boxed>
+<pre>std::wstring toWide(std::string_view s, unsigned int codepage)
+std::wstring toWide(std::string_view s)</pre>
+<p>Converts a byte string to a wide string. If <code>codepage</code> is omitted, it uses the code page of the active Scintilla (which will be either the system default code page or CP_UTF8; don’t let the code page default when processing a Notepad++ notification other than <code>NPPN_BUFFERACTIVATED</code> unless you have called <code>plugin.getScintillaPointers</code> to establish the correct active Scintilla).</p>
+</div>
+
+<div class=boxed>
+<pre>std::wstring GetWindowString(HWND hWnd)
+std::wstring GetDlgItemString(HWND hwndDlg, int item)</pre>
+<p>Gets the text of a window or a control in a dialog as a wide string. Specify the window handle of the window, or the window handle of the dialog and the control identifier of the control.</p>
+</div>
+
+<div class=boxed>
+<pre>bool ShowBalloonTip(HWND hwndDlg, int item, const std::wstring& text)</pre>
+<p>Shows <code>text</code> as a balloon tip on an edit control in a dialog. Specify the window handle of the dialog as <code>hwndDlg</code>; <code>item</code> specifies the control identifier of an edit control, a combo box or a spin control with an edit control buddy. Returns <code>true</code> if the request is successful.</p>
+</div>
+
+<div class=boxed>
+<pre>std::wstring getFilePath(UINT_PTR buffer)
+std::wstring getFilePath()</pre>
+<p>Gets the full path of a file open in Notepad++ as a <code>std::wstring</code>.</p>
+<ul>
+<li>If an argument is supplied, it is the Notepad++ buffer id to be examined.
+<li>If no argument is given, the current buffer is examined; this only works in commands and NPPN_BUFFERACTIVATED notifications,
+since in Scintilla notifications and most Notepad++ notifications, the "current buffer" is not necessarily meaningful.
+<li>Returns L"" if there is no such buffer id.
+</ul>
+</div>
+
+<div class=boxed>
+<pre>std::wstring getFileExtension(const std::wstring& filepath)
+std::wstring getFileExtension(UINT_PTR buffer)
+std::wstring getFileExtension()</pre>
+<p>Gets the file extension, converted to lower case, from a path, a buffer id or the current buffer.</p>
+<ul>
+<li>If a string is supplied, it is parsed to isolate the file extension.
+<li>If a numeric argument is supplied, it is the Notepad++ buffer id to be examined.
+<li>If no argument is given, the current buffer is examined; this only works in commands and NPPN_BUFFERACTIVATED notifications, since in Scintilla notifications and most Notepad++ notifications, the "current buffer" is not necessarily meaningful.
+<li>Returns L"." for a file with no extension, L"" for a non-path (i.e., without a backslash, e.g., "new 1") or if there is no such buffer id.
+</ul>
+</div>
+
+<div class=boxed>
+<pre>
+DialogStretch <em>name</em>;
+...
+<em>name</em>.setup(<em>dialog-window-handle</em>);
+...
+<em>name</em>.adjust(<em>control-ID</em>, <em>xStretch</em>, <em>yStretch</em>, <em>xMove</em>, <em>yMove</em>)[.adjust(...)...];
+</pre>
+
+<p><strong><code>DialogStretch</code></strong> helps manage the sizing and placement of controls in resizable dialogs. <strong>Settings.cpp</strong> and <strong>Watcher.cpp</strong> include examples of its use. A full description of the structure is in the <a href="#dialogstretch"><code>DialogStretch</code></a> section of this help. To use it:</p>
+
+<ul>
+
+<li>Define an instance of <code>DialogStretch</code> outside your dialog procedure, or as <code>static</code> within your procedure, so that it will persist throughout the life of the dialog.
+
+<li>When you process <code>WM_INITDIALOG</code>, before doing anything that would resize the dialog from the size implied by its template, call the <code>setup</code> function with the handle to the dialog window as argument. This will analyze and record the default size and placement of your dialog and its controls.
+
+<li>Process <code>WM_SIZE</code>. Upon receiving that message, call the <code>adjust</code> function for each control that should be moved or sized when the dialog size changes. Specify the control ID of the control and one to four <code>double</code>s representing the fraction of the change in horizontal and vertical size of the dialog that should be applied to the horizontal and vertical size and position of the control. For example, if IDC_BUTTON1 is meant to stay centered at the bottom of the dialog — so that it should not change size, should move to the right half as far as the dialog increases in width and should move downward as far as the dialog increases in height — write <code>adjust(IDC_BUTTON1, 0, 0, .5, 1)</code>.
+<li>You can chain <code>adjust</code> calls for all the controls in the dialog one after another. This is (slightly) more efficient than calling each one independently on the <code>DialogStretch</code> object.
+
+</ul>
+
+</div>
+
+</section>
+
+<section id=configuration><h2>Configuration</h2>
+
+<p>This Visual Studio template includes a mechanism for loading and saving configuration data using a JSON file, which is created in the folder Notepad++ reserves for plugin configuration files. Three files — <strong>src\nlohmann\json.hpp</strong>, <strong>src\Configuration.cpp</strong> and <strong>src\Framework\ConfigFramework.h</strong> — support this system.</p>
+
+<h3>src\nlohmann\json.hpp</h3>
+
+<p>This file, from the <a href="https://github.com/nlohmann/json">JSON for Modern C++</a> project, implements the <code>json</code> class as a recursive, polymorphic STL-like container, which serves as the basis for the configuration mechanism in this template. The value of a <code>json</code> instance can be nearly any C++ type: <code>std::vector</code> values represent JSON arrays, <code>std::map&lt;std::string, T&gt;</code> values represent JSON objects, and other values represent boolean values, numbers, strings or complex objects. A <code>json</code> value can be read from or written to a file, which makes using it for saving configuration settings straightforward.</p>
+
+<h3>src\Configuration.cpp</h3>
+
+<p>You might need to modify this file, but in many cases it will work just as it is.</p>
+
+<p><strong>Configuration.cpp</strong> contains the routines which load and save configuration data for the plugin as a JSON file. The supplied code sets <strong>configVersion</strong> and <strong>configCompatible</strong> values to 1. If you later change the configuration format and need to differentiate between versions, add code to do that here. Configuration versions are unrelated to your plugin’s version designation; only increment the configuration version if you create an incompatibility that requires you to recognize whether a file is an older or newer version. Change <strong>configCompatible</strong> if you create a version that can’t be processed correctly by a version of your plugin that expects an older configuration file version: set it to the configuration version of the oldest configuration version of your plugin which can read this version. If you never create incompatibilities, you can leave both version values at 1.</p>
+
+<p>The supplied code reads the configuration file into the global <code>json</code> instance <code>configuration</code> during start up and writes it back to the same file during shut down. You can add code to copy specific information between ordinary variables and the JSON structure here; however, you typically won’t need to do that, as the framework provides some handy templates and structures for creating common data types that are reflected in the JSON configuration store automatically.</p>
+
+<h3>src\Framework\ConfigFramework.h</h3>
+
+<p>This file defines templates and structures that make it easy to use JSON-backed variables in your program for settings that can be exposed to the user as checkboxes, edit controls, combo boxes or radio button sets.</p>
+
+<h3>Checkboxes, spin boxes and edit controls</h3>
+
+<p>You can use the <code>config</code> template to manage settings users will choose with checkboxes, spin boxes and edit controls. The following code defines one of each:</p>
+
+<pre>
+config&lt;bool&gt;         checkThis    ("check this"   , false);
+config&lt;int&gt;          pickANumber  ("number picked", 22);
+config&lt;std::wstring&gt; saySomething ("what said"    , L"No comment.");
+</pre>
+
+<p>The names “check this,” “number picked” and “what said” will be used to identify these settings in the JSON configuration file. The values <code>false</code>, <code>22</code> and <code>L"No comment."</code> will be used if these settings are not found in the configuration file (typically, until and unless the user changes them).</p>
+
+<p>In your program code, you can usually access <code>config</code> variables as if they were variables of the template parameter type:</p>
+
+<pre>
+if (checkThis) {
+    for (int i = 0; i &lt; pickANumber; ++i) {
+        std::wstring s = saySomething;
+        // ...
+    }
+}
+checkThis = false;
+pickANumber = 1;
+</pre>
+
+<p>If you need to access them in a context where implicit conversion won’t work, use <code>get()</code>:</p>
+
+<pre>
+SendMessage(0, saySomething.get().data(), L"What did I say?", 0);
+</pre>
+
+<p>To display them to the user in dialog box controls, use <code>put</code>:</p>
+
+<pre>
+put(checkThis, hwndDlg, IDC_CHECKBOX1);
+put(pickANumber, hwndDlg, IDC_SPIN2);
+put(saySomething, hwndDlg, IDC_EDIT4);
+</pre>
+
+<p>and to retrieve changes the user made, use <code>get</code>:</p>
+
+<pre>
+get(checkThis, hwndDlg, IDC_CHECKBOX1);
+get(pickANumber, hwndDlg, IDC_SPIN2);
+get(saySomething, hwndDlg, IDC_EDIT4);
+</pre>
+
+<p>You can use <code>bool</code> with checkboxes; you can use <code>std::wstring</code> and arithmetic types (except <code>bool</code>) with edit boxes. You can also use integral types (except <code>bool</code>) with spin boxes; use the control identifier of the spin control, not its edit control buddy, in <code>get</code> and <code>put</code>.</p>
+
+<h3>Enumerations and radio buttons</h3>
+
+<p>Enumerations go naturally with radio buttons; <code>config</code> supports enumerations, but you have to manage the radio buttons using the ordinary Windows API. In addition, some extra code is necessary to tell the underlying JSON implementation how to represent the enumeration. This code defines an <code>enum</code> class with three possible values and tells the JSON implementation how it is to be represented in a JSON file:</p>
+
+<pre>
+enum class MyPreference {Bacon, IceCream, Pizza};
+NLOHMANN_JSON_SERIALIZE_ENUM(MyPreference, {
+    {MyPreference::Bacon   , "Bacon"},
+    {MyPreference::IceCream, "Ice Cream"},
+    {MyPreference::Pizza   , "Pizza"}
+})
+</pre>
+
+<p>while this:</p>
+
+<pre>
+config&lt;MyPreference&gt; myPref = { "MyPreference", MyPreference::Bacon };
+</pre>
+
+<p>defines a <code>config</code> variable of type <code>MyPreference</code> with a default value of <code>Bacon</code>. Set the corresponding radio button in a dialog:</p>
+
+<pre>
+switch (data.myPref) {
+case MyPreference::Bacon   : CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PREFER_PIZZA, IDC_PREFER_BACON   ); break;
+case MyPreference::IceCream: CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PREFER_PIZZA, IDC_PREFER_ICECREAM); break;
+case MyPreference::Pizza   : CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PREFER_PIZZA, IDC_PREFER_PIZZA   );
+}
+</pre>
+
+<p>and read the user’s choice:</p>
+
+<pre>
+data.myPref = 
+    IsDlgButtonChecked(hwndDlg, IDC_PREFER_ICECREAM) == BST_CHECKED ? MyPreference::IceCream
+  : IsDlgButtonChecked(hwndDlg, IDC_PREFER_PIZZA   ) == BST_CHECKED ? MyPreference::Pizza
+                                                                    : MyPreference::Bacon;   
+</pre>
+
+<p>using standard Windows API functions.</p>
+
+</section>
+
+<section id=plugin><h2>Plugin.cpp</h2>
+
+<p><strong>src\Plugin.cpp</strong> contains code that implements customizable elements of the Notepad++ plugin interface. This is the only file in the template that both must be included and also requires significant modification to accommodate the specific needs of your plugin.</p>
+
+<p>Since <strong>plugin.cpp</strong> is responsible for dispatching commands and notifications, near the beginning there are declarations of all the functions in other source files which handle those. You'll change these to reflect the names you choose for your routines.</p>
+
+<p>Next is the definition of your plugin’s menu, specifying the names of the items on the menu and the routines in your code that handle them. Follow the example in the file.</p>
+
+<p>The exported routines defined in <strong>Plugin.cpp</strong>:<p>
+<pre>
+extern "C" __declspec(dllexport) const wchar_t* getName()
+extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n)
+extern "C" __declspec(dllexport) void beNotified(SCNotification *np)
+extern "C" __declspec(dllexport) LRESULT messageProc(UINT, WPARAM, LPARAM)
+</pre>
+<p>are required; you can’t change their names or signatures. If the name for your plugin that should appear on the Plugins menu is not the same as the name you gave for your project when you created it from this template, correct that in the <code>getName</code> function. Unless the menu you want Notepad++ to display for your plugin is not always the same (there is no support for that in this template), leave <code>getFuncsArray</code> unchanged and define your menu in the section above. The <code>messageProc</code> routine is rarely used, and no example is provided in this template; you probably don’t want to change it.</p>
+
+<p>The <code>beNotified</code> function captures notifications both from Notepad++ and from Scintilla. This means it is called <em>very frequently</em>, and you really want to keep it as efficient as possible to avoid adversely impacting the performance of Notepad++. You will have to determine which notifications you require and adapt this routine to route them accordingly. Notepad++ notifications are also used to trigger some plugin framework functions (like loading and saving the configuration file), so you will need to take care when modifying that section of the routine.</p>
+
+</section>
+
+<section id=about><h2>About.cpp</h2>
+<p>The code in <strong>src\About.cpp</strong> displays a Help/About box. It retrieves version and build time information from the plugin binary and provides buttons to open <strong>help.htm</strong> in a browser and to open <strong>CHANGELOG.md</strong>, <strong>LICENSE.txt</strong> and <strong>README.md</strong> in Notepad++. The dialog is defined in <strong>src\resources.rc</strong> in the Resource Files section of the project; use the Resource View in Visual Studio to examine it. You will want to edit the dialog to provide information about your plugin. If you change available functions in the dialog (such as adding a link to your webpage or repository), implement the changes in <strong>src\About.cpp</strong>; otherwise, you might not need to modify this file.</p>
+</section>
+
+<section id=examples><h2>Example files</h2>
+
+<p>The files <strong>CommonData.h</strong>, <strong>ProcessCommands.cpp</strong>, <strong>ProcessNotifications.cpp</strong>, <strong>Settings.cpp</strong> and <strong>Status.cpp</strong> contain example code. None of these files are required, but you might want to use them as models for your code.</p>
+
+<ul>
+<li><strong>CommonData.h</strong> defines data used by the other example files. If you keep it, you’ll need to replace nearly everything in it as appropriate for your project, but you might want to use it as a model. It includes examples of how you can use the <code>config</code> template and the <code>config_history</code> structure to define persistent data stored in your project’s configuration file.
+<li><strong>ProcessCommands.cpp</strong> contains an example of a routine to process a command.
+<li><strong>ProcessNotifications.cpp</strong> contains some examples of routines that process notifications.
+<li><strong>Settings.cpp</strong> displays a sample dialog box for presenting user settings. If you keep this file you’ll need to change most of its content to fit the needs of your project, but you might want to use it and the associated Settings dialog (accessible using the Resource View in Visual Studio) as a guide for how to construct a settings dialog using the tools described in the <a href="#configuration">Configuration</a> section of this help. It includes examples of how to use variables defined with the <code>config</code> template and the <code>configHistory</code> structure to expose settings to the user which your plugin saves in its configuration file.
+<li><strong>Status.cpp</strong> displays a non-modal dialog in response to a menu command. The <code>scnModified</code> routine in <strong>ProcessNotifications.cpp</strong> calls <code>updateStatusDialog</code> in this file to update the information in the dialog when the user inserts or deletes text.
+<li><strong>Watcher.cpp</strong> displays a docking dialog.
+</ul>
+
+</section>
+
+<section id=config><h2>Detailed specifications for <code>config</code></h2>
+
+<p>Structures defined using the <code>config</code> template wrap an underlying type so that it can be used normally in program code, but can also be easily read from or written to a JSON object defined using <code>nlohmann::json</code>. They can be synchronized automatically with the global <code>configuration</code> variable, which in turn is synchronized with a configuration file at start up and shut down. In addition, there are convenience functions for arithmetic types and <code>std::wstring</code> simplifying their use with common Windows controls.</p>
+
+<pre>
+template&lt;typename T&gt; struct config {
+
+    <a href="#config-name">std::string name;</a>
+    <a href="#config-store">nlohmann::json* store;</a>
+    <a href="#config-value">T value;</a>
+    <a href="#config-loaded">bool loaded = false;</a>
+
+    <a href="#config-peek">static bool peek(T&amp; v, const nlohmann::json&amp; j, std::string_view n);</a>
+    <a href="#config-peek">static bool peek(T&amp; v, HWND w);</a>
+    <a href="#config-peek">static bool peek(T&amp; v, HWND w, int id);</a>
+
+    <a href="#config-peek">T peek(const nlohmann::json&amp; j, std::string_view n) const;</a>
+    <a href="#config-peek">T peek(HWND w)                                      const;</a>
+    <a href="#config-peek">T peek(HWND w, int id)                              const;</a>
+
+    <a href="#config-show">static void show(HWND w, const T&amp; v);</a>
+    <a href="#config-show">static void show(HWND w, int id, const T&amp; v);</a>
+
+    <a href="#config-get">T&amp; get(const nlohmann::json&amp; j, std::string_view n);</a>
+    <a href="#config-get">T&amp; get(HWND w);</a>
+    <a href="#config-get">T&amp; get(HWND w, int id);</a>
+    <a href="#config-get">T&amp; get();</a>
+
+    <a href="#config-put">const T&amp; put(nlohmann::json&amp; j, std::string_view n) const;</a>
+    <a href="#config-put">const T&amp; put(HWND w);</a>
+    <a href="#config-put">const T&amp; put(HWND w, int id);</a>
+
+    <a href="#config-conversion">operator T&amp;();</a>
+    <a href="#config-assignment">config&lt;T&gt;&amp; operator=(const T&amp; v);</a>
+
+    <a href="#config-constructor">config(const T&amp; initial);</a>
+    <a href="#config-constructor">config(const std::string&amp; name, const T&amp; initial, nlohmann::json&amp; store = configuration);</a>
+
+};
+</pre>
+
+<div class=boxed id="config-constructor">
+
+<pre>
+    config&lt;typename T&gt;(const T&amp; initial);
+    config&lt;typename T&gt;(const std::string&amp; name, const T&amp; initial, nlohmann::json&amp; store = configuration);
+</pre>
+
+<p>Constructs a <code>config</code> object.</p>
+
+<ul>
+
+<li><code>T</code> specifies the C++ type on which this configuration item is based. You can use any type supported by <code>nlohmann::json</code>; <strong>src\Framework\ConfigUtility.h</strong> includes a specialization for <code>nlohmann::adl_serializer&lt;std::wstring&gt;</code> which adds support for <code>std::wstring</code>.
+
+<li><code>name</code> (usually given as a character literal) specifies the name used for this variable in <code>json</code> objects. If <code>name</code> is omitted, a <code>json</code> object is never accessed unless explicitly specified in a call to <code>peek</code>, <code>get</code> or <code>put</code>.
+
+<li><code>store</code> specifies the <code>nlohmann::json</code> object in which values are stored. If omitted when <code>name</code> is specified, the global object <code>configuration</code> is used.
+
+<li><code>initial</code> specifies an initial value for the variable.
+
+<li><span>You</span> normally use the <code>get</code> and <code>put</code> functions, assignment, and implicit or explicit conversion to type <code>T</code> to access the value of a <code>config</code> variable. If the first access is through assignment or <code>get</code> with an <code>HWND</code>, the assigned or retrieved value is set and, if <code>name</code> was specified, a copy is written to the <code>json</code> store. If the first access is through conversion, <code>get</code> without arguments or <code>put</code> with an <code>HWND</code> and <code>name</code> was specified, an attempt is made to read the value from the <code>json</code> store; if the attempt fails, or if <code>name</code> was not specified, the <code>initial</code> value is used.
+
+<li><span>When</span> <code>T</code> is <code>bool</code>, functions that take an HWND assume the designated control is a checkbox.
+
+<li><span>When</span> <code>T</code> is an integral type other than <code>bool</code>, functions that take an HWND assume the designated control is either an edit control or a spin control (which can have an edit control buddy).
+
+<li><span>When</span> <code>T</code> is <code>std::wstring</code> or a floating point type, functions that take an HWND assume the designated control is an edit control.
+
+<li><span>When</span> <code>T</code> is not an arithmetic type or <code>std::wstring</code>, functions that take an HWND are not available.
+
+<li>In all cases, functions which include:<br><code>HWND w, int id</code><br>among their parameters are equivalent to the same-named functions with <code>HWND w</code> and no <code>int id</code>, substituting:<br><code>GetDlgItem(w, id)</code><br>for <code>w</code>.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config-name">
+<pre>std::string name</pre>
+<p>The <code>name</code> member contains the name under which the variable is saved in a <code>json</code> store. Normally you should set this using the <code>name</code> argument to the <code>config</code> constructor and never change it.</p>
+</div>
+
+<div class=boxed id="config-store">
+<pre>nlohmann::json* store</pre>
+<p>The <code>store</code> member contains a pointer to the <code>json</code> store in which a copy of this variable is kept, or null if no store is used. Normally you should let the constructor set this to the address of the global <code>configuration</code> object (or to null if <code>name</code> is not specified) and never change it.</p>
+</div>
+
+<div class=boxed id="config-value">
+<pre>T value</pre>
+<p>Ordinarily, you should use implict or explicit conversion to type <code>T</code> or the <code>get()</code> member function without arguments to read the value of a <code>config</code> variable, and assignment or one of the <code>get</code> functions with an <code>HWND</code> to update it, since these will maintain synchronization with the <code>json</code> store. However, you can access the value directly using the <code>value</code> member.</p>
+</div>
+
+<div class=boxed id="config-loaded">
+<pre>bool loaded</pre>
+<p>The <code>loaded</code> member is initially <code>false</code>, and is set to <code>true</code> when any operation (other than direct access to the <code>value</code> member) sets the value of the variable. Its purpose is to control reading from the <code>json</code> store: once a value has been set, whatever value is present is used, and the <code>json</code> store is not read again.</p>
+</div>
+
+<div class=boxed id="config-peek">
+
+<pre>
+static bool peek(T&amp; v, const nlohmann::json&amp; j, std::string_view n);
+static bool peek(T&amp; v, HWND w);
+static bool peek(T&amp; v, HWND w, int id);
+
+T peek(const nlohmann::json&amp; j, std::string_view n) const;
+T peek(HWND w)                                      const;
+T peek(HWND w, int id)                              const;
+</pre>
+
+<p>The <code>peek</code> member functions retrieve a value from either a <code>json</code> object or a Windows control without setting the <code>value</code> member.</p>
+
+<ul>
+<li><span>The versions which return a</span> <code>bool</code> return <code>true</code> if the value was successfully retrieved and <code>false</code> otherwise. The versions which return a value return the current value of <code>value</code> if retrieval was unsuccessful.
+
+<li><code>v</code> is a reference to a variable of the same type as the template parameter type. If retrieval is successful, it is set to the retrieved value; otherwise it is unchanged.
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object the value of which is to be retrieved.
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of the control from which the value is to be retrieved.
+
+<li><code>id</code> specifies the resource identifier of the control from which a value is to be retrieved; <code>w</code> is a handle to the parent of the control to be examined (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the control itself.
+
+<li><span>If</span> a window handle is given and the template type is <code>bool</code>, the control must be a checkbox.
+
+<li><span>If</span> a window handle is given and the template type is an integral type other than <code>bool</code>, the control must be either an edit control or a spin control (which can have an edit control buddy).
+
+<li><span>If</span> a window handle is given and the template type is <code>std::wstring</code> or a floating point type, the control must be an edit control.
+
+<li><span>If</span> the template type is not an arithmetic type or <code>std::wstring</code>, the member functions that take a window handle will not be available.
+
+
+</ul>
+
+</div>
+
+<div class=boxed id="config-show">
+
+<pre>
+static void show(HWND w, const T&amp; v)
+static void show(HWND w, int id, const T&amp; v)
+</pre>
+
+<p>The <code>show</code> member functions display a value in a Windows control. They don’t use any data in the <code>config</code> object, but the template type parameter determines the type of Windows controls they can address.</p>
+
+<ul>
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of the control in which the value is to be displayed.
+
+<li><code>id</code> specifies the resource identifier of the control in which a value is to be displayed; <code>w</code> is a handle to the parent of the control to be updated (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the control itself.
+
+<li><code>v</code> is a <code>const</code> reference to a variable of the same type as the template parameter type.
+
+<li><span>If</span> the template type is <code>bool</code>, the control must be a checkbox.
+
+<li><span>If</span> the template type is an integral type other than <code>bool</code>, the control must be either an edit control or a spin control (which can have an edit control buddy).
+
+<li><span>If</span> the template type is <code>std::wstring</code> or a floating point type, the control must be an edit control.
+
+<li><span>If</span> the template type is not an arithmetic type or <code>std::wstring</code>, the <code>show</code> member functions will not be available.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config-get">
+
+<pre>
+T&amp; get(const nlohmann::json&amp; j, std::string_view n);
+T&amp; get(HWND w)
+T&amp; get(HWND w, int id)
+T&amp; get()
+</pre>
+
+<p>The <code>get</code> member functions retrieve a value from either a <code>json</code> object or a Windows control and set the <code>value</code> member. All versions return a reference to <code>value</code>. If the attempt to retrieve a value is unsuccessful, <code>value</code> is not changed.</p>
+
+<ul>
+
+<li><code>get()</code>, with no arguments, attempts to retrieve the value corresponding to <code>name</code> from the associated <code>json</code> store (usually the global <code>configuration</code> object) if <code>name</code> was specified in the constructor and <code>loaded</code> is <code>false</code>. In all other cases, or if the attempt to retrieve the value fails, <code>get()</code> returns <code>value</code> unchanged.
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object the value of which is to be retrieved.
+
+<li><code>id</code> specifies the resource identifier of the control from which a value is to be retrieved; <code>w</code> is a handle to the parent of the control to be examined (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the control itself.
+
+<li><span>If</span> a window handle is given and the template type is <code>bool</code>, the control must be a checkbox.
+
+<li><span>If</span> a window handle is given and the template type is an integral type other than <code>bool</code>, the control must be either an edit control or a spin control (which can have an edit control buddy).
+
+<li><span>If</span> a window handle is given and the template type is <code>std::wstring</code> or a floating point type, the control must be an edit control.
+
+<li><span>If</span> the template type is not an arithmetic type or <code>std::wstring</code>, the member functions that take a window handle will not be available.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config-put">
+
+<pre>
+const T&amp; put(nlohmann::json&amp; j, std::string_view n) const;
+const T&amp; put(HWND w)
+const T&amp; put(HWND w, int id)
+</pre>
+
+<p>The <code>put</code> member functions copy the value of a <code>config</code> object to a <code>json</code> object or a Windows control. All versions return a constant reference to <code>value</code>.</p>
+
+<ul>
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object the value of which is to be set to <code>value</code>. This form of <code>put</code> never changes <code>value</code>.
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of the control in which the value is to be displayed. This form of <code>put</code> (with or without <code>id</code>) can change <code>value</code>. If <code>name</code> was specified in the constructor and <code>loaded</code> is <code>false</code>, <code>put</code>-to-<code>HWND</code> first attempts to retrieve the value corresponding to <code>name</code> from the <code>json</code> store. In all other cases, or if the attempt to retrieve the value fails, <code>value</code> is unchanged. Regardless of whether retrieval was successful, <code>value</code> is copied to the specified Windows control.
+
+<li><code>id</code> specifies the resource identifier of the control in which a value is to be displayed; <code>w</code> is a handle to the parent of the control to be updated (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the control itself.
+
+<li><span>If</span> a window handle is given and the template type is <code>bool</code>, the control must be a checkbox.
+
+<li><span>If</span> a window handle is given and the template type is an integral type other than <code>bool</code>, the control must be either an edit control or a spin control (which can have an edit control buddy).
+
+<li><span>If</span> a window handle is given and the template type is <code>std::wstring</code> or a floating point type, the control must be an edit control.
+
+<li><span>If</span> the template type is not an arithmetic type or <code>std::wstring</code>, the member functions that take a window handle will not be available.
+
+</ul>
+
+</div>
+
+<div class=boxed  id="config-conversion">
+<pre>operator T&amp;()</pre>
+<p>Conversion to template type is identical to <a href="#config-get"><code>get()</code></a>.</p>
+</div>
+
+<div class=boxed id="config-assignment">
+<pre>config&lt;T&gt;&amp; operator=(const T&amp; v)</pre>
+<p>Assignment assigns the right-side value to <code>value</code> and sets <code>loaded</code> to <code>true</code>. If <code>name</code> was specified in the constructor it then writes the new value to the <code>name</code> member of the associated <code>json</code> store (usually the global <code>configuration</code> object).</p>
+</div>
+
+</section>
+
+<section id=config_history><h2>Detailed specifications for <code>config_history</code></h2>
+
+<p>Variables defined using the <code>config_history</code> structure manage a <code>std::vector&lt;std::wstring&gt;</code> so that it can be used easily with a combo box to maintain and show a history of text the user enters. Its member functions are similar to those in the <code>config</code> template. The vector holds the history in reverse order: that is, the first element is the current value and the last element is the oldest.</p>
+
+<pre>
+struct config_history {
+
+    <a href="#config_history-name">const std::string name;</a>
+    <a href="#config_history-store">nlohmann::json* store;</a>
+    <a href="#config_history-history">std::vector&lt;std::wstring&gt; history;</a>
+    <a href="#config_history-depth">int depth;</a>
+    <a href="#config_history-retain">bool retainBlank;</a>
+    <a href="#config_history-retain">bool retainDuplicate;</a>
+    <a href="#config_history-retain">bool retainEmpty;</a>
+    <a href="#config_history-loaded">bool loaded = false;</a>
+
+    <a href="#config_history-value">std::wstring&amp; value();</a>
+    <a href="#config_history-value">const std::wstring&amp; value() const;</a>
+
+    <a href="#config_history-peek">static bool peek(std::vector&lt;std::wstring&gt;&amp; v, const nlohmann::json&amp; j, std::string_view n);</a>
+    <a href="#config_history-peek">static std::wstring peek(HWND w);</a>
+    <a href="#config_history-peek">static std::wstring peek(HWND w, int id);</a>
+
+    <a href="#config_history-show">static void show(HWND w, const std::wstring&amp; s);</a>
+    <a href="#config_history-show">static void show(HWND w, int id, const std::wstring&amp; s);</a>
+
+    <a href="#config_history-get">std::wstring&amp; get(const nlohmann::json&amp; j, std::string_view n);</a>
+    <a href="#config_history-get">std::wstring&amp; get(HWND w);</a>
+    <a href="#config_history-get">std::wstring&amp; get(HWND w, int id);</a>
+    <a href="#config_history-get">std::wstring&amp; get();</a>
+
+    <a href="#config_history-put">const std::wstring&amp; put(nlohmann::json&amp; j, std::string_view n) const;</a>
+    <a href="#config_history-put">const std::wstring&amp; put(HWND w);</a>
+    <a href="#config_history-put">const std::wstring&amp; put(HWND w, int id);</a>
+
+    <a href="#config_history-conversion">operator std::wstring&amp;();</a>
+    <a href="#config_history-assignment-vector">config_history&amp; operator=(const std::vector&lt;std::wstring&gt;&amp; v);</a>
+    <a href="#config_history-assignment-wstring">config_history&amp; operator=(const std::wstring&amp; v);</a>
+    <a href="#config_history-assignment-plus">config_history&amp; operator+=(const std::wstring&amp; v);</a>
+
+    <a href="#config_history-constructor">constexpr static int Blank     = 1;</a>
+    <a href="#config_history-constructor">constexpr static int Duplicate = 2;</a>
+    <a href="#config_history-constructor">constexpr static int Empty     = 4;</a>
+
+    <a href="#config_history-constructor">config_history(const std::vector&lt;std::wstring&gt;&amp; initial, int depth = 10, int retain = 0);</a>
+
+    <a href="#config_history-constructor">config_history(const std::string&amp; name, const std::vector&lt;std::wstring&gt;&amp; initial = {},
+                   int depth = 10, int retain = 0, nlohmann::json&amp; store = configuration);</a>
+
+};
+</pre>
+
+<div class=boxed id="config_history-constructor">
+
+<pre>
+constexpr static int Blank     = 1;
+constexpr static int Duplicate = 2;
+constexpr static int Empty     = 4;
+
+config_history(const std::vector&lt;std::wstring&gt;&amp; initial, int depth = 10, int retain = 0);
+
+config_history(const std::string&amp; name, const std::vector&lt;std::wstring&gt;&amp; initial = {},
+               int depth = 10, int retain = 0, nlohmann::json&amp; store = configuration);
+</pre>
+
+<p>Constructs a <code>config_history</code> object as wrapper for a vector of wide strings which can be read from or written to an array stored as a member in an <code>nlohmann::json</code> object, and read from or written to a Windows combo box control.</p>
+
+<ul>
+
+<li><code>name</code> (usually given as a character literal) specifies the name used for this array in <code>json</code> objects. If <code>name</code> is omitted, a <code>json</code> object is never accessed unless explicitly specified in a call to <code>peek</code>, <code>get</code> or <code>put</code>.
+
+<li><code>store</code> specifies the <code>nlohmann::json</code> object in which values are stored. If omitted when <code>name</code> is specified, the global object <code>configuration</code> is used.
+
+<li><code>initial</code> specifies an initial value for the vector.
+
+<li><code>depth</code>, when positive, specifies the maximum number of items in the vector. Older items are removed. This constraint is enforced during <code>get</code> functions specifying an HWND and during <code>+=</code> operations. When <code>depth</code> is zero or negative, no constraint is imposed.
+
+<li><code>retain</code> can be zero or a combination of <code>config_history::Blank</code>, <code>config_history::Duplicate</code> and <code>config_history::Empty</code> specifying how items in the history are retained (combine with <code>+</code> or <code>|</code>). By default, empty strings and strings which duplicate the current string (the one in <code>history[0]</code> or the edit control of a combo box) are not retained in history items beyond the first, and for purposes of matching or recognizing the empty string, trailing blanks are removed. This constraint is enforced during <code>get</code> functions specifying an HWND and during <code>+=</code> operations.
+
+<li><code>Blank</code> indicates that trailing blanks are significant for purposes of matching the current string or recognizing the empty string.
+
+<li><code>Duplicate</code> indicates that strings which duplicate the current string (the one in <code>history[0]</code> or the edit control of a combo box) are to be retained in the history.
+
+<li><code>Empty</code> indicates that empty strings are to be retained in the history.
+
+<li><span>You</span> normally use the <code>get</code> and <code>put</code> functions, assignment, and implicit or explicit conversion to <code>std::wstring</code> to access the value of a <code>config_history</code> variable. If the first access is through assignment or <code>get</code> with an <code>HWND</code>, the assigned or retrieved value is set and, if <code>name</code> was specified, a copy is written to the <code>json</code> store. If the first access is through conversion, <code>get</code> without arguments or <code>put</code> with an <code>HWND</code> and <code>name</code> was specified, an attempt is made to read the value from the <code>json</code> store; if the attempt fails, or if <code>name</code> was not specified, the <code>initial</code> value is used.
+
+<li>In all cases, functions which include:<br><code>HWND w, int id</code><br>among their parameters are equivalent to the same-named functions with <code>HWND w</code> and no <code>int id</code>, substituting:<br><code>GetDlgItem(w, id)</code><br>for <code>w</code>.
+
+</ul>
+</div>
+
+<div class=boxed id="config_history-name">
+<pre>std::string name</pre>
+<p>The <code>name</code> member contains the name under which the vector is saved in a <code>json</code> store. Normally you should set this using the <code>name</code> argument to the <code>config_history</code> constructor and never change it.</p>
+</div>
+
+<div class=boxed id="config_history-store">
+<pre>nlohmann::json* store</pre>
+<p>The <code>store</code> member contains a pointer to the <code>json</code> store in which a copy of this vector is kept as an array, or null if no store is used. Normally you should let the constructor set this to the address of the global <code>configuration</code> object (or to null if <code>name</code> is not specified) and never change it.</p>
+</div>
+
+<div class=boxed id="config_history-history">
+<pre>std::vector&lt;std::wstring&gt; history</pre>
+<p>Ordinarily, you should use implicit or explicit conversion to <code>std::wstring</code> or the <code>get()</code> member function without arguments to read the most recent entry in a <code>config_history</code> variable, and assignment or one of the <code>get</code> functions with an <code>HWND</code> to update it, since these will maintain synchronization with the <code>json</code> store. However, you can access the vector directly using the <code>history</code> member.</p>
+</div>
+
+<div class=boxed id="config_history-depth">
+<pre>int depth</pre>
+<p>This member holds the depth setting from the constructor, which determines the maximum number of entries that will be retained in the history.</p>
+</div>
+
+<div class=boxed id="config_history-retain">
+<pre>
+bool retainBlank
+bool retainDuplicate
+bool retainEmpty
+</pre>
+<p>These three members hold the settings from the constructor for retaining blanks, duplicates and empty items in the history.</p>
+</div>
+
+<div class=boxed id="config_history-loaded">
+<pre>bool loaded</pre>
+<p>The <code>loaded</code> member is initially <code>false</code>, and is set to <code>true</code> when any operation (other than direct access to the <code>history</code> member or <code>value()</code> reference) updates <code>history</code>. Its purpose is to control reading from the <code>json</code> store: once a value has been set, whatever value is present is used, and the <code>json</code> store is not read again.</p>
+</div>
+
+<div class=boxed id="config_history-value">
+<pre>
+std::wstring&amp; value()
+const std::wstring&amp; value() const
+</pre>
+<p>Ordinarily, you should use implicit or explicit conversion to <code>std::wstring</code> or the <code>get()</code> member function without arguments to read the most recent entry in a <code>config_history</code> variable, and assignment or one of the <code>get</code> functions with an <code>HWND</code> to update it, since these will maintain synchronization with the <code>json</code> store. However, you can access the most recent entry (element zero) of the vector directly using the <code>value()</code> member function. The <code>const</code> form never modifies <code>history</code>; however, when the history vector is empty, it returns a reference to a static constant empty string. The non-<code>const</code> form always returns a reference to the first (most recent) element in the history, but if <code>history</code> is empty, it inserts an empty string as the only element of the vector and returns a reference to that element.</p>
+</div>
+
+<div class=boxed id="config_history-peek">
+
+<pre>
+static bool peek(std::vector&lt;std::wstring&gt;&amp; v, const nlohmann::json&amp; j, std::string_view n)
+static std::wstring peek(HWND w)
+static std::wstring peek(HWND w, int id)
+</pre>
+
+<p>The <code>peek</code> member functions retrieve a history from a <code>json</code> object or the current text in the edit control of a Windows combo box without setting the <code>history</code> member.</p>
+
+<ul>
+
+<li><code>v</code> is a reference to a vector of wide strings. If retrieval is successful, it is set to the retrieved history and <code>true</code> is returned; otherwise it is unchanged and <code>false</code> is returned.
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object which contains an array that will be copied to <code>v</code>.
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of a combo box control. The return value is retrieved from the edit control of the combo box.
+
+<li><code>id</code> specifies the resource identifier of a combo box; <code>w</code> is a handle to the parent of the control to be examined (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the combo box itself.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config_history-show">
+
+<pre>
+static void show(HWND w, const std::wstring&amp; s)
+static void show(HWND w, int id, const std::wstring&amp; s)
+</pre>
+
+<p>The <code>show</code> member functions display the specified value in the edit control of a combobox. No data from the <code>config_history</code> object is used.
+</p>
+
+<ul>
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of the combo box in which the value is to be displayed.
+
+<li><code>id</code> specifies the resource identifier of the combo box in which a value is to be displayed; <code>w</code> is a handle to the parent of the control to be updated (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the control itself.
+
+<li><code>s</code> specifies the text to be displayed in the edit control of the combobox.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config_history-get">
+
+<pre>
+std::wstring&amp; get(const nlohmann::json&amp; j, std::string_view n)
+std::wstring&amp; get(HWND w)
+std::wstring&amp; get(HWND w, int id)
+std::wstring&amp; get()
+</pre>
+
+<p>The <code>get</code> member functions retrieve a vector of wide strings from either a <code>json</code> object or a Windows combo box and store it in the <code>history</code> member, then return a reference to <code>history[0]</code>. If the attempt to retrieve a vector of wide strings is unsuccessful <code>history</code> is not changed; except that in all cases (successful or not), if an empty vector would otherwise result, <code>{L""}</code> is assigned to <code>history</code>.</p>
+
+<ul>
+
+<li><code>get()</code>, with no arguments, attempts to retrieve the JSON array corresponding to <code>name</code> from the associated <code>json</code> store if <code>name</code> was specified in the constructor and <code>loaded</code> is <code>false</code>, then store it in <code>history</code> as a vector of wide strings. In all other cases, or if the attempt to retrieve the array and convert it to a vector of wide strings fails, <code>history</code> is not changed; except that in all cases (successful or not), if an empty vector would otherwise result, <code>{L""}</code> is assigned to <code>history</code>.
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object which contains an array of strings to be retrieved.
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of the combo box from which a list of strings is to be retrieved. The content of the edit box becomes the first element of <code>history</code> and the remaining elements are the items in the list. Depth and retention constraints, as specified in the constructor, are applied.
+
+<li><code>id</code> specifies the resource identifier of the combo box from which a list of strings is to be retrieved; <code>w</code> is a handle to the parent of the combo box to be examined (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the combo box itself.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config_history-put">
+
+<pre>
+const std::wstring&amp; put(nlohmann::json&amp; j, std::string_view n) const
+const std::wstring&amp; put(HWND w)
+const std::wstring&amp; put(HWND w, int id)
+</pre>
+
+<p>The <code>put</code> member functions copy the value of a <code>config_history</code> object to a <code>json</code> object or a Windows combo box control. All versions return a constant reference to <code>history[0]</code> unless <code>history</code> is empty, in which case they return a reference to <code>L""</code>.</p>
+
+<ul>
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object). This form of <code>put</code> never changes <code>history</code>.
+
+<li><code>n</code> specifies the name of the member of the JSON object to which an array of strings corresponding to <code>history</code> is assigned.
+
+<li><code>w</code> specifies the window handle, or the window handle of the parent window, of the combo box in which the history is to be displayed. This form of <code>put</code> (with or without <code>id</code>) can change <code>history</code>. If <code>name</code> was specified in the constructor and <code>loaded</code> is <code>false</code>, <code>put</code>-to-<code>HWND</code> first attempts to retrieve the history corresponding to <code>name</code> from the JSON store. In all other cases, or if the attempt to retrieve the history fails, <code>history</code> is not changed; except that in all cases (successful or not), if an empty vector would otherwise result, <code>{L""}</code> is assigned to <code>history</code>. Regardless of whether retrieval was successful, the first element of <code>history</code> is copied to the edit control of the combo box and the remaining elements are copied to the drop-down list.
+
+<li><code>id</code> specifies the resource identifier of the combo box in which a list of strings is to be displayed; <code>w</code> is a handle to the parent of the combo box to be updated (e.g., a dialog). When no <code>id</code> is specified, <code>w</code> is the handle of the combo box itself.
+
+
+</ul>
+</div>
+
+<div class=boxed id="config_history-conversion">
+
+<pre>
+operator std::wstring&amp;()
+</pre>
+
+<p>Conversion to <code>std::wstring&amp;</code> is identical to <a href="#config_history-get"><code>get()</code></a>.</p>
+
+</div>
+
+<div class=boxed id="config_history-assignment-vector">
+
+<pre>
+config_history&amp; operator=(const std::vector&lt;std::wstring&gt;&amp; v)
+</pre>
+
+<p>Assignment from a vector assigns the vector to <code>history</code> and sets <code>loaded</code> to <code>true</code>. If <code>name</code> was specified in the constructor it then writes the new history to the <code>name</code> member of the JSON store. Depth and retention constraints are not applied.</p>
+
+</div>
+
+<div class=boxed id="config_history-assignment-wstring">
+
+<pre>
+config_history&amp; operator=(const std::wstring&amp; v)
+</pre>
+
+<p>Assignment from a wide string replaces the first element of <code>history</code> with the wide string and sets <code>loaded</code> to <code>true</code>. If <code>name</code> was specified in the constructor it then writes the new history to the <code>name</code> member of the JSON store. If <code>history</code> is empty before the assignment, a new element is created. Depth and retention constraints are not applied.</p>
+
+</div>
+<div class=boxed id="config_history-assignment-plus">
+
+<pre>
+config_history&amp; operator+=(const std::wstring&amp; v)
+</pre>
+
+<p>The <code>+=</code> operator inserts the right-side string as the first value of <code>history</code> and sets <code>loaded</code> to <code>true</code>. Depth and retention constraints, as specified in the constructor, are applied. If <code>name</code> was specified in the constructor it then writes the new history to the <code>name</code> member of the JSON store.</p>
+
+</div>
+
+</section>
+
+<section id=config_rect><h2>Detailed specifications for <code>config_rect</code></h2>
+
+<p>Variables defined using the <code>config_rect</code> structure help save and restore the size and position of a dialog or other top-level window.</p>
+
+<pre>
+struct config_rect {
+
+    <a href="#config_rect-name">std::string name;</a>
+    <a href="#config_rect-store">nlohmann::json* store;</a>
+    <a href="#config_rect-value">RECT value = { 0, 0, 0, 0 };</a>
+    <a href="#config_rect-loaded">bool loaded = false;</a>
+
+    <a href="#config_rect-peek">static bool peek(RECT&amp; v, const nlohmann::json&amp; j, std::string_view n);</a>
+    <a href="#config_rect-peek">static bool peek(RECT&amp; v, HWND w);</a>
+
+    <a href="#config_rect-peek">RECT peek(const nlohmann::json&amp; j, std::string_view n) const;</a>
+    <a href="#config_rect-peek">RECT peek(HWND w)                                      const;</a>
+
+    <a href="#config_rect-show">static void show(HWND w, const RECT&amp; v = RECT());</a>
+
+    <a href="#config_rect-get">RECT&amp; get(const nlohmann::json&amp; j, std::string_view n);</a>
+    <a href="#config_rect-get">RECT&amp; get(HWND w);</a>
+    <a href="#config_rect-get">RECT&amp; get();</a>
+
+    <a href="#config_rect-put">const RECT&amp; put(nlohmann::json&amp; j, std::string_view n) const;</a>
+    <a href="#config_rect-put">const RECT&amp; put(HWND w);</a>
+
+    <a href="#config_rect-conversion">operator RECT&amp;();</a>
+    <a href="#config_rect-assignment">config_rect&amp; operator=(const RECT&amp; v);</a>
+
+    <a href="#config_rect-constructor">config_rect();</a>
+    <a href="#config_rect-constructor">config_rect(const std::string&amp; name, nlohmann::json&amp; store = configuration);</a>
+
+};
+</pre>
+
+<div class=boxed id="config_rect-constructor">
+
+<pre>
+config_rect()
+config_rect(const std::string&amp; name, nlohmann::json&amp; store = configuration)
+</pre>
+
+<p>Constructs a <code>config_rect</code> object.</p>
+
+<ul>
+
+<li><code>name</code> (usually given as a character literal) specifies the name used for the member that will store this array in a <code>json</code> object. If <code>name</code> is omitted, a <code>json</code> object is never accessed unless explicitly specified in a call to <code>peek</code>, <code>get</code> or <code>put</code>.
+
+<li><code>store</code> specifies the <code>nlohmann::json</code> object containing a member in which this array is stored. If omitted when <code>name</code> is specified, the global object <code>configuration</code> is used.
+
+<li><span>You</span> normally use the <code>get</code> and <code>put</code> functions, assignment, and implicit or explicit conversion to RECT to access the value of a <code>config_rect</code> variable. If the first access is through assignment or <code>get</code> with an <code>HWND</code>, the assigned or retrieved value is set and, if <code>name</code> was specified, a copy is written to the <code>json</code> store. If the first access is through conversion, <code>get</code> without arguments or <code>put</code> with an <code>HWND</code> and <code>name</code> was specified, an attempt is made to read the value from the <code>json</code> store; if the attempt fails, or if <code>name</code> was not specified, the value is set to <code>{0, 0, 0, 0}</code>.
+
+</ul>
+</div>
+
+<div class=boxed id="config_rect-name">
+<pre>std::string name</pre>
+<p>The <code>name</code> member contains the name under which the array is saved in a <code>json</code> store. Normally you should set this using the <code>name</code> argument to the <code>config_rect</code> constructor and never change it.</p>
+</div>
+
+<div class=boxed id="config_rect-store">
+<pre>nlohmann::json* store</pre>
+<p>The <code>store</code> member contains a pointer to the <code>json</code> store in which a copy of this array is kept, or null if no store is used. Normally you should let the constructor set this to the address of the global <code>configuration</code> object (or to null if <code>name</code> is not specified) and never change it.</p>
+</div>
+
+<div class=boxed id="config_rect-value">
+<pre>RECT value</pre>
+<p>Ordinarily, you should use implicit or explicit conversion to <code>RECT</code> or the <code>get()</code> member function without arguments to read the value of a <code>config_rect</code> variable, and assignment or one of the <code>get</code> functions with an <code>HWND</code> to update it, since these will maintain synchronization with the <code>json</code> store. However, you can access the RECT directly using the <code>value</code> member.</p>
+</div>
+
+<div class=boxed id="config_rect-loaded">
+<pre>bool loaded</pre>
+<p>The <code>loaded</code> member is initially <code>false</code>, and is set to <code>true</code> when any operation (other than direct access to the <code>value</code> member) updates <code>value</code>. Its purpose is to control reading from the <code>json</code> store: once a value has been set, whatever value is present is used, and the <code>json</code> store is not read again.</p>
+</div>
+
+<div class=boxed id="config_rect-peek">
+
+<pre>
+static bool peek(RECT&amp; v, const nlohmann::json&amp; j, std::string_view n)
+static bool peek(RECT&amp; v, HWND w)
+RECT peek(const nlohmann::json&amp; j, std::string_view n) const
+RECT peek(HWND w) const
+</pre>
+
+<p>The <code>peek</code> member functions retrieve a value from a <code>json</code> object or from the current bounding rectangle of a dialog or other top-level window without setting the <code>value</code> member.</p>
+
+<ul>
+
+<li><code>v</code> is a reference to a RECT. If retrieval is successful, it is set to the retrieved rectangle and <code>true</code> is returned; otherwise it is unchanged and <code>false</code> is returned.
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object which contains an array that will be copied to <code>v</code>.
+
+<li><code>w</code> specifies the window handle of a dialog or other top-level window.
+
+<li><span>The</span> forms that return a <code>RECT</code> return the retrieved value or the current bounding rectangle of the specified window; if retrieval fails, they return the current value of the <code>value</code> member.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config_rect-show">
+
+<pre>
+static void show(HWND w, const RECT&amp; v = RECT())
+</pre>
+
+<p>The <code>show</code> member function displays the specified dialog or other top-level window at the position and size indicated by the specified <code>RECT</code>. No data from the <code>config_rect</code> object is used. If the <code>RECT</code> is <code>{0, 0, 0, 0}</code> (the default), the size of the dialog or other top-level window is unchanged, and it is centered on its owner window, or on the desktop if it has no owner window.</p>
+
+<ul>
+
+<li><code>w</code> specifies the window handle of a dialog or other top-level window to be positioned.
+
+<li><code>v</code> specifies the RECT containing the desired window bounds.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config_rect-get">
+
+<pre>
+RECT&amp; get(const nlohmann::json&amp; j, std::string_view n)
+RECT&amp; get(HWND w)
+RECT&amp; get()
+</pre>
+
+<p>The <code>get</code> member functions retrieve the RECT structure from either a <code>json</code> object or the current bounds of a dialog or other top-level window and return a reference to the <code>value</code> member.</p>
+
+<ul>
+
+<li><code>get()</code>, with no arguments, attempts to retrieve the JSON array corresponding to <code>name</code> from the associated JSON store if <code>name</code> was specified in the constructor and <code>loaded</code> is <code>false</code>, then store it in <code>value</code>. In all other cases, or if the attempt to retrieve the array fails, <code>value</code> is not changed.
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object).
+
+<li><code>n</code> specifies the name of the member of the JSON object which contains the array to be retrieved.
+
+<li><code>w</code> specifies the window handle of a dialog or other top-level window the bounds of which are to be retrieved.
+
+</ul>
+
+</div>
+
+<div class=boxed id="config_rect-put">
+
+<pre>
+const RECT&amp; put(nlohmann::json&amp; j, std::string_view n) const
+const RECT&amp; put(HWND w)
+</pre>
+
+<p>The <code>put</code> member functions copy the value of a <code>config_rect</code> object to a <code>json</code> object or set the bounds of a dialog or other top-level window to the stored rectangle. If the <code>value</code> is <code>{0, 0, 0, 0}</code>, the size of the dialog or other top-level window is unchanged, and it is centered on its owner window, or on the desktop if it has no owner window. All versions return a constant reference to <code>value</code>.</p>
+
+<ul>
+
+<li><code>j</code> designates a <code>json</code> object (in the C++ sense of object) which contains an object (in the JSON sense of object). This form of <code>put</code> never changes <code>value</code>.
+
+<li><code>n</code> specifies the name of the member of the JSON object to which an array representing the rectangle is assigned.
+
+<li><code>w</code> specifies the window handle of a dialog or other top-level window to be positioned. This form of <code>put</code> can change <code>value</code>. If <code>name</code> was specified in the constructor and <code>loaded</code> is <code>false</code>, <code>put</code>-to-<code>HWND</code> first attempts to retrieve the windows bounds corresponding to <code>name</code> from the JSON store. In all other cases, or if the attempt to retrieve the bounds fails, <code>value</code> is not changed. 
+
+</ul>
+</div>
+
+<div class=boxed id="config_rect-conversion">
+
+<pre>operator RECT&amp;()</pre>
+
+<p>Conversion to <code>RECT&amp;</code> is identical to <a href="#config_rect-get"><code>get()</code></a>.</p>
+
+</div>
+
+<div class=boxed id="config_rect-assignment">
+
+<pre>config_rect&amp; operator=(const RECT&amp; v);</pre>
+
+<p>Assignment from a RECT copies the <code>RECT</code> to <code>value</code> and sets <code>loaded</code> to <code>true</code>. If <code>name</code> was specified in the constructor it then writes the new array to the <code>name</code> member of the JSON store.</p>
+
+</div>
+
+</section>
+
+<section id=dialogstretch><h2>Detailed specifications for <code>DialogStretch</code></h2>
+
+<p><strong><code>DialogStretch</code></strong> helps manage the sizing and placement of controls in resizable dialogs.</p>
+
+<pre>
+struct DialogStretch {
+
+    HWND dialog;
+    RECT original;
+    std::map&lt;HWND, RECT&gt; controls;
+
+    DialogStretch();
+
+    void setup(HWND hwndDlg);
+
+    int originalWidth () const;
+    int originalHeight() const;
+
+    class Stretched {
+    public:
+        Stretched&amp; adjust(HWND h, double xStretch, double yStretch = 0, double xMove = 0, double yMove = 0);
+        Stretched&amp; adjust(int control, double xStretch, double yStretch = 0, double xMove = 0, double yMove = 0);
+    };
+
+    Stretched adjust(HWND h, double xStretch, double yStretch = 0, double xMove = 0, double yMove = 0);
+    Stretched adjust(int control, double xStretch, double yStretch = 0, double xMove = 0, double yMove = 0);
+
+};
+</pre>
+
+<div class=boxed id="dialogstretch-constructor">
+<pre>DialogStretch()</pre>
+<p>Constructs a <code>DialogStretch</code> object. This object must persist throughout the lifetime of the dialog box.</p>
+</div>
+
+<div class=boxed id="dialogstretch-dialog">
+<pre>HWND dialog</pre>
+<p>Holds the handle to the dialog window. The <code>setup</code> member function sets this;  you should not change it.</p>
+</div>
+
+<div class=boxed id="dialogstretch-original">
+<pre>RECT original</pre>
+<p>Holds the bounds of the dialog window at the time <code>setup</code> was called; you should not change this.</p>
+</div>
+
+<div class=boxed id="dialogstretch-controls">
+<pre>std::map&lt;HWND, RECT&gt; controls</pre>
+<p>Maps the IDs of all controls in the dialog to the bounds of their windows at the time <code>setup</code> was called; you should not change this.</p>
+</div>
+
+<div class=boxed id="dialogstretch-setup">
+<pre>void setup(HWND hwndDlg)</pre>
+<p>Saves information about a dialog that will allow the <code>adjust</code> function to adjust the size and position of controls in the dialog. This function must be called during <code>WM_INITDIALOG</code> <em>before</em> there are any changes to the size of the dialog window, so it can record the positions and sizes established by the dialog template.</p>
+<ul>
+<li><code>hwndDlg</code> specifies the handle of the dialog window. 
+</ul>
+</div>
+
+<div class=boxed id="dialogstretch-originalWidth">
+<pre>int originalWidth () const</pre>
+<p>Returns the width of the dialog box at the time <code>setup</code> was called.</p>
+</div>
+
+<div class=boxed id="dialogstretch-originalHeight">
+<pre>int originalHeight() const</pre>
+<p>Returns the height of the dialog box at the time <code>setup</code> was called.</p>
+</div>
+
+<div class=boxed id="dialogstretch-adjust">
+<pre>
+Stretched adjust(HWND h, double xStretch, double yStretch = 0, double xMove = 0, double yMove = 0);
+Stretched adjust(int control, double xStretch, double yStretch = 0, double xMove = 0, double yMove = 0);
+</pre>
+
+<p>Resizes a control in a dialog based on the original size of the dialog and the control, the new size of the dialog, and specified ratios for stretching and moving. This function is normally called when the dialog procedure receives a <code>WM_SIZE</code> message.</p>
+
+<ul>
+
+<li><code>h</code> specifies the window handle of a control in the dialog box.
+ 
+<li><code>control</code> specifies the control ID of a control in the dialog box.
+
+<li><code>xStretch</code> specifies the fraction of change in the width of the dialog box which should be reflected as a change in the width of the control. Typically this will be either <code>0</code>, meaning the width of the control does not change, or <code>1</code>, meaning the control stretches as much as the dialog box stretches; but other values can be used as needed.
+
+<li><code>yStretch</code> specifies the fraction of change in the height of the dialog box which should be reflected as a change in the height of the control. Typically this will be either <code>0</code>, meaning the height of the control does not change, or <code>1</code>, meaning the control stretches as much as the dialog box stretches; but other values can be used as needed.
+
+<li><code>xMove</code> specifies the fraction of change in the width of the dialog box which should be reflected as a change in the horizontal position of the control, as measured from the left edge of the dialog box. Typically this will be either <code>0</code>, meaning the left edge of the control does not move relative to the left edge of the dialog; <code>1</code>, meaning the left edge of the control does not move relative to the right edge of the dialog; or <code>0.5</code>, meaning the left edge of the control does not move relative to the horizontal center of the dialog; but other values can be used as needed.
+
+<li><code>yMove</code> specifies the fraction of change in the height of the dialog box which should be reflected as a change in the vertical position of the control, as measured from the top of the dialog box. Typically this will be either <code>0</code>, meaning the top of the control does not move relative to the top of the dialog; <code>1</code>, meaning the top of the control does not move relative to the bottom of the dialog; or <code>0.5</code>, meaning the top of the control does not move relative to the vertical center of the dialog; but other values can be used as needed.
+
+<li><span>The</span> <code>adjust</code> functions can be applied to either a <code>DialogStretch</code> object or to the object returned by another <code>adjust</code> function. This allows <code>adjust</code> functions to be chained, which is slightly more efficient than repeating the <code>DialogStretch</code> reference for each <code>adjust</code> call, since the first call must retrieve information about the current size of the dialog.
+
+</ul>
+
+</div>
+
+</article>
+
+</main><footer id=footer><a class=canhide rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" src="https://i.creativecommons.org/l/by/4.0/88x31.png"></a><div id=foottext class=linklist>
+
+<a href="https://notepad-plus-plus.org/">Notepad++</a> • <a href="https://github.com/Coises/NppCppMSVS">This project on GitHub</a>
+
+</div><button type=button id=fontdown onclick="setFontDown();">Txt-</button><button type=button id=fontup onclick="setFontUp();">Txt+</button>
+</footer></body></html>

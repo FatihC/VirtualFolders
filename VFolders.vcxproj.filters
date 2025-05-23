@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Documentation">
+      <Extensions>css;htm;html;md;txt</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Source Files">
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Support Files" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Host\BoostRegexSearch.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\menuCmdID.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\Notepad_plus_msgs.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\PluginInterface.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\Scintilla.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\ScintillaCall.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\ScintillaMessages.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\ScintillaStructures.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\ScintillaTypes.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\Sci_Position.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CommonData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\nlohmann\json.hpp">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resource.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Framework\ScintillaCallEx.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Framework\ConfigFramework.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Framework\PluginFramework.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Framework\UtilityFramework.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Host\Docking.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Framework\UtilityFrameworkMIT.h">
+      <Filter>Support Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\About.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Configuration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Plugin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ProcessNotifications.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Settings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ProcessCommands.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Framework\ScintillaCallEx.cpp">
+      <Filter>Support Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Framework\PluginFramework.cpp">
+      <Filter>Support Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Status.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Watcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="src\resource.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="help.htm">
+      <Filter>Documentation</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="CHANGELOG.md">
+      <Filter>Documentation</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="LICENSE.txt">
+      <Filter>Documentation</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="README.md">
+      <Filter>Documentation</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\Host\ScintillaCall.cxx">
+      <Filter>Support Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>
