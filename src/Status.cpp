@@ -70,8 +70,8 @@ INT_PTR CALLBACK statusDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 
 void updateStatusDialog() {
     if (!statusDialog) return;
-    SetDlgItemInt(statusDialog, IDC_STATUS_INSERTS, data.insertsCounted, true);
-    SetDlgItemInt(statusDialog, IDC_STATUS_DELETES, data.deletesCounted, true);
+    SetDlgItemInt(statusDialog, IDC_STATUS_INSERTS, commonData.insertsCounted, true);
+    SetDlgItemInt(statusDialog, IDC_STATUS_DELETES, commonData.deletesCounted, true);
 }
 
 void toggleStatusDialog() {

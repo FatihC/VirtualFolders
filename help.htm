@@ -471,7 +471,7 @@ config&lt;MyPreference&gt; myPref = { "MyPreference", MyPreference::Bacon };
 <p>defines a <code>config</code> variable of type <code>MyPreference</code> with a default value of <code>Bacon</code>. Set the corresponding radio button in a dialog:</p>
 
 <pre>
-switch (data.myPref) {
+switch (commonData.myPref) {
 case MyPreference::Bacon   : CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PREFER_PIZZA, IDC_PREFER_BACON   ); break;
 case MyPreference::IceCream: CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PREFER_PIZZA, IDC_PREFER_ICECREAM); break;
 case MyPreference::Pizza   : CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PREFER_PIZZA, IDC_PREFER_PIZZA   );
@@ -481,7 +481,7 @@ case MyPreference::Pizza   : CheckRadioButton(hwndDlg, IDC_PREFER_BACON, IDC_PRE
 <p>and read the user’s choice:</p>
 
 <pre>
-data.myPref = 
+commonData.myPref = 
     IsDlgButtonChecked(hwndDlg, IDC_PREFER_ICECREAM) == BST_CHECKED ? MyPreference::IceCream
   : IsDlgButtonChecked(hwndDlg, IDC_PREFER_PIZZA   ) == BST_CHECKED ? MyPreference::Pizza
                                                                     : MyPreference::Bacon;   

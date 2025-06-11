@@ -16,15 +16,28 @@
 
 #include "CommonData.h"
 
-void listOpenFiles() {
+
+void printListOpenFiles() {
     Scintilla::EndOfLine eolMode = sci.EOLMode();
     std::wstring eol = eolMode == Scintilla::EndOfLine::Cr ? L"\r"
-                     : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
-                     : L"\r\n";
-    std::wstring filenames = data.heading.get() + eol;
+        : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
+        : L"\r\n";
+    std::wstring filenames = commonData.heading.get() + eol;
     for (int view = 0; view < 2; ++view) if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
         size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
         for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
     }
     sci.InsertText(-1, fromWide(filenames).data());
 }
+
+//std::vector<std::string> listOpenFiles() {
+//    Scintilla::EndOfLine eolMode = sci.EOLMode();
+//    std::wstring eol = eolMode == Scintilla::EndOfLine::Cr ? L"\r"
+//                     : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
+//                     : L"\r\n";
+//    std::wstring filenames = commonData.heading.get() + eol;
+//    for (int view = 0; view < 2; ++view) if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
+//        size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
+//        for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
+//    }
+//}

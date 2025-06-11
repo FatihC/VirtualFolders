@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "Framework/PluginFramework.h"
+#include <iostream>
 using namespace NPP;
 
 
@@ -38,11 +39,13 @@ void modifyAll(const NMHDR*);
 
 // Routines that process menu commands
 
-void listOpenFiles();
+void printListOpenFiles();
+std::vector<std::string> listOpenFiles();
 void showAboutDialog();
 void showSettingsDialog();
 void toggleStatusDialog();
 void toggleWatcherPanel();
+void toggleWatcherPanelWithList();
 
 
 // Name and define any shortcut keys to be assigned as menu item defaults: Ctrl, Alt, Shift and the virtual key code
@@ -66,9 +69,9 @@ void toggleWatcherPanel();
 static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
 
 FuncItem menuDefinition[] = {
-    { L"Insert List of Open Files", []() {plugin.cmd(listOpenFiles     );}, 0, false, 0               },
+    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);}, 0, false, 0               },
     { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);}, 0, false, &SKToggleStatus },
-    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanel);}, 0, false, 0               },
+    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, 0, false, 0               },
     { 0                           , 0                                     , 0, false, 0               },
     { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);}, 0, false, 0               },
     { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );}, 0, false, 0               }

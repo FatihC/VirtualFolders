@@ -73,6 +73,9 @@
     <ClInclude Include="src\Framework\UtilityFrameworkMIT.h">
       <Filter>Support Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\VData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\About.cpp">
@@ -105,6 +108,9 @@
     <ClCompile Include="src\Watcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\VData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\resource.rc">
@@ -129,5 +135,9 @@
     <None Include="src\Host\ScintillaCall.cxx">
       <Filter>Support Files</Filter>
     </None>
+    <None Include="src\html1.htm">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

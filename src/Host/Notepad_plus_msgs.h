@@ -265,7 +265,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// BOOL NPPM_DMMREGASDCKDLG(0, tTbData* pData)
 	// Pass the necessary dockingData to Notepad++ in order to make your dialog dockable.
 	// wParam: 0 (not used)
-	// lParam[in]: pData is the pointer of tTbData. Please check tTbData structure in "Docking.h"
+	// lParam[in]: pData is the pointer of tTbcommonData. Please check tTbData structure in "Docking.h"
 	//             Minimum informations which needs to be filled out are hClient, pszName, dlgID, uMask and pszModuleName.
 	//             Notice that rcFloatand iPrevCont shouldn't be filled. They are used internally.
 	// Return TRUE

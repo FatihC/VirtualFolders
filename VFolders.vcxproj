@@ -38,6 +38,7 @@
     <ClInclude Include="src\Host\ScintillaStructures.h" />
     <ClInclude Include="src\Host\ScintillaTypes.h" />
     <ClInclude Include="src\Host\Sci_Position.h" />
+    <ClInclude Include="src\VData.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\About.cpp" />
@@ -49,8 +50,13 @@
     <ClCompile Include="src\Plugin.cpp" />
     <ClCompile Include="src\ProcessNotifications.cpp" />
     <ClCompile Include="src\Status.cpp" />
+    <ClCompile Include="src\VData.cpp" />
     <ClCompile Include="src\Watcher.cpp" />
+    <None Include="packages.config" />
     <None Include="src\Host\ScintillaCall.cxx" />
+    <None Include="src\html1.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\resource.rc" />
@@ -266,5 +272,12 @@
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\Microsoft.Web.WebView2.1.0.3240.44\build\native\Microsoft.Web.WebView2.targets" Condition="Exists('packages\Microsoft.Web.WebView2.1.0.3240.44\build\native\Microsoft.Web.WebView2.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.Web.WebView2.1.0.3240.44\build\native\Microsoft.Web.WebView2.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Web.WebView2.1.0.3240.44\build\native\Microsoft.Web.WebView2.targets'))" />
+  </Target>
 </Project>

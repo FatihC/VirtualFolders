@@ -46,4 +46,4 @@ inline struct CommonData {
     config<bool>         annoy   = { "Annoy"  , false };
     config<MyPreference> myPref  = { "MyPreference", MyPreference::Bacon };
 
-} data;
+} commonData;

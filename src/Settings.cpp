@@ -37,19 +37,19 @@ INT_PTR CALLBACK settingsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
         // Option 1 is an edit control with a spin box allowing values from 5 - 5000
         SendDlgItemMessage(hwndDlg, IDC_SETTINGS_OPTION1_SPIN, UDM_SETRANGE32, 5, 5000);
-        data.option1.put(hwndDlg, IDC_SETTINGS_OPTION1_SPIN);
+        commonData.option1.put(hwndDlg, IDC_SETTINGS_OPTION1_SPIN);
 
         // Option 2 is a combo box that keeps a history
-        data.option2.put(hwndDlg, IDC_SETTINGS_OPTION2);
+        commonData.option2.put(hwndDlg, IDC_SETTINGS_OPTION2);
 
         // Annoy is a simple check box
-        data.annoy.put(hwndDlg, IDC_SETTINGS_ANNOY);
+        commonData.annoy.put(hwndDlg, IDC_SETTINGS_ANNOY);
 
         // Heading is a simple text box
-        data.heading.put(hwndDlg, IDC_SETTINGS_HEADING);
+        commonData.heading.put(hwndDlg, IDC_SETTINGS_HEADING);
 
-        // data.myPref is an enumeration
-        switch (data.myPref) {
+        // commonData.myPref is an enumeration
+        switch (commonData.myPref) {
         case MyPreference::Bacon   : CheckRadioButton(hwndDlg, IDC_SETTINGS_PREFER_BACON, IDC_SETTINGS_PREFER_PIZZA, IDC_SETTINGS_PREFER_BACON   ); break;
         case MyPreference::IceCream: CheckRadioButton(hwndDlg, IDC_SETTINGS_PREFER_BACON, IDC_SETTINGS_PREFER_PIZZA, IDC_SETTINGS_PREFER_ICECREAM); break;
         case MyPreference::Pizza   : CheckRadioButton(hwndDlg, IDC_SETTINGS_PREFER_BACON, IDC_SETTINGS_PREFER_PIZZA, IDC_SETTINGS_PREFER_PIZZA   ); break;
@@ -69,15 +69,15 @@ INT_PTR CALLBACK settingsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         case IDOK:
         {
             int option1;
-            if (!data.option1.peek(option1, hwndDlg, IDC_SETTINGS_OPTION1_SPIN)) {
+            if (!commonData.option1.peek(option1, hwndDlg, IDC_SETTINGS_OPTION1_SPIN)) {
                 ShowBalloonTip(hwndDlg, IDC_SETTINGS_OPTION1_SPIN, L"Option 1 must be a number between 5 and 5000.");
                 return TRUE;
             }
-            data.option1 = option1;
-            data.option2.get(hwndDlg, IDC_SETTINGS_OPTION2);
-            data.annoy.get(hwndDlg, IDC_SETTINGS_ANNOY);
-            data.heading.get(hwndDlg, IDC_SETTINGS_HEADING);
-            data.myPref = 
+            commonData.option1 = option1;
+            commonData.option2.get(hwndDlg, IDC_SETTINGS_OPTION2);
+            commonData.annoy.get(hwndDlg, IDC_SETTINGS_ANNOY);
+            commonData.heading.get(hwndDlg, IDC_SETTINGS_HEADING);
+            commonData.myPref = 
                 IsDlgButtonChecked(hwndDlg, IDC_SETTINGS_PREFER_ICECREAM) == BST_CHECKED ? MyPreference::IceCream
               : IsDlgButtonChecked(hwndDlg, IDC_SETTINGS_PREFER_PIZZA   ) == BST_CHECKED ? MyPreference::Pizza
                                                                                          : MyPreference::Bacon;   

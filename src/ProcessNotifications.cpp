@@ -22,8 +22,8 @@ extern void updateWatcherPanel();
 
 void scnModified(const Scintilla::NotificationData* scnp) {
     using Scintilla::FlagSet;
-    if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) ++data.insertsCounted;
-    else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::DeleteText)) ++data.deletesCounted;
+    if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) ++commonData.insertsCounted;
+    else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::DeleteText)) ++commonData.deletesCounted;
     else return;
     updateStatusDialog();
     updateWatcherPanel();
@@ -44,7 +44,7 @@ void bufferActivated() {
 
 
 void fileClosed(const NMHDR* nmhdr) {
-    if (!data.annoy) return;
+    if (!commonData.annoy) return;
     // If the file (buffer) is closed in one view but remains open in the other, or is moved from one view to the other,
     // we still get this notification. So we have to check to see if the buffer is still open in either view.
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
@@ -55,7 +55,7 @@ void fileClosed(const NMHDR* nmhdr) {
 
 
 void fileOpened(const NMHDR* nmhdr) {
-    if (!data.annoy) return;
+    if (!commonData.annoy) return;
     UINT_PTR bufferID = nmhdr->idFrom;
     std::wstring filepath = getFilePath(bufferID);
     MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VFolders", 0);

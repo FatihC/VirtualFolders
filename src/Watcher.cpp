@@ -18,6 +18,16 @@
 #include "resource.h"
 #include "Shlwapi.h"
 
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
+
+#include <fstream>
+
+#include <commctrl.h>
+#include "VData.h"
+#pragma comment(lib, "comctl32.lib")
+
+
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 
@@ -113,6 +123,93 @@ void toggleWatcherPanel() {
         dock.pszName       = L"Watcher (VFolders)";  // title bar text (caption in dialog is replaced)
         dock.dlgID         = menuItem_ToggleWatcher;          // zero-based position in menu to recall dialog at next startup
         dock.uMask         = DWS_DF_CONT_RIGHT;               // first time display will be docked at the right
+        dock.pszModuleName = L"VFolders.dll";        // plugin module name
+        npp(NPPM_DMMREGASDCKDLG, 0, &dock);
+    }
+    else if (IsWindowVisible(watcherPanel)) {
+        npp(NPPM_DMMHIDE, 0, watcherPanel);
+    }
+    else {
+        updateWatcherPanelUnconditional();
+        npp(NPPM_DMMSHOW, 0, watcherPanel);
+    }
+}
+
+std::vector<std::string> listOpenFiles() {
+    Scintilla::EndOfLine eolMode = sci.EOLMode();
+    std::wstring eol = eolMode == Scintilla::EndOfLine::Cr ? L"\r"
+        : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
+        : L"\r\n";
+    std::wstring filenames = commonData.heading.get() + eol;
+    for (int view = 0; view < 2; ++view) if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
+        size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
+        for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
+    }
+    return {};
+}
+
+void toggleWatcherPanelWithList() {
+    if (!watcherPanel) {
+        watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(106), plugin.nppData._nppHandle, watcherDialogProc);
+        NPP::tTbData dock;
+        HWND hTree = GetDlgItem(watcherPanel, 1023);
+
+        wchar_t buffer[100];
+
+        TCHAR configDir[MAX_PATH];
+        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
+        std::wstring jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
+
+
+        // Now use configDir for your settings file
+
+
+		// TODO: Read json file and populate the tree view with items from the list of open files.
+        VData vData{};
+        VFolder vFolder{};
+		VFile vFile{"XMLTools.ini", "C:\\Users\\FatihCoskun\\AppData\\Roaming\\Notepad++\\plugins\\config"};
+		vFolder.fileList.push_back(vFile);
+		vData.folderList.push_back(vFolder);
+		vData.fileList.push_back(vFile);
+
+        json vJson = vData;
+		std::ofstream(jsonFilePath) << vJson.dump(4); // Write JSON to file
+
+        // Example: create and write JSON
+        //json j;
+        //j["name"] = "VFolders";
+        //j["version"] = 1;
+        //std::ofstream(jsonFilePath) << j.dump(4);
+
+        //// Example: read JSON
+        //json j2;
+        //std::ifstream(jsonFilePath) >> j2;
+        //std::string name = j2["name"];
+        
+
+        // Example: Add root and child items
+        TVINSERTSTRUCT tvis = { 0 };
+        tvis.hParent = TVI_ROOT; // Add to root
+        tvis.hInsertAfter = TVI_LAST;
+        tvis.item.mask = TVIF_TEXT;
+        wcscpy_s(buffer, 100, L"Dosyalar");
+        tvis.item.pszText = buffer;
+        HTREEITEM hRoot = TreeView_InsertItem(hTree, &tvis);
+
+        // Add a child to the root
+        tvis.hParent = hRoot;
+        wcscpy_s(buffer, 100, L"Child Item");
+        tvis.item.pszText = buffer;
+        TreeView_InsertItem(hTree, &tvis);
+
+
+        
+        std::vector<std::string> openFileList = listOpenFiles();
+
+        dock.hClient = watcherPanel;
+        dock.pszName = L"Watcher (VFolders)";  // title bar text (caption in dialog is replaced)
+        dock.dlgID = menuItem_ToggleWatcher;          // zero-based position in menu to recall dialog at next startup
+        dock.uMask = DWS_DF_CONT_RIGHT;               // first time display will be docked at the right
         dock.pszModuleName = L"VFolders.dll";        // plugin module name
         npp(NPPM_DMMREGASDCKDLG, 0, &dock);
     }
