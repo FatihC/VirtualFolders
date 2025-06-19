@@ -31,6 +31,11 @@ using json = nlohmann::json;
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 
+void writeJsonFile();
+wchar_t* toWchar(const std::string& str);
+void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
+void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
+
 
 namespace {
 
@@ -40,6 +45,16 @@ Scintilla::Position location = -1;
 Scintilla::Position terminal = -1;
 
 DialogStretch stretch;
+
+std::wstring jsonFilePath;
+VData vData;
+
+static HTREEITEM hDragItem = nullptr;
+static HTREEITEM hDropTarget = nullptr;
+static HIMAGELIST hDragImage = nullptr;
+static bool isDragging = false;
+
+
 
 void updateWatcherPanelUnconditional() {
     std::wstring text = GetDlgItemString(watcherPanel, IDC_WATCHER_TEXT);
@@ -104,7 +119,7 @@ INT_PTR CALLBACK watcherDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
     case WM_SIZE:
         stretch.adjust(IDC_WATCHER_TEXT, 1).adjust(IDC_WATCHER_RESULT, 1);
         return FALSE;
-
+    
     }
 
     return FALSE;
@@ -145,6 +160,8 @@ std::vector<std::string> listOpenFiles() {
         size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
         for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
     }
+
+	// TODO: get real files and associate them with the open `files`. Return this list.
     return {};
 }
 
@@ -154,53 +171,41 @@ void toggleWatcherPanelWithList() {
         NPP::tTbData dock;
         HWND hTree = GetDlgItem(watcherPanel, 1023);
 
-        wchar_t buffer[100];
-
+        
         TCHAR configDir[MAX_PATH];
         ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
-        std::wstring jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
+        jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
 
-
-        // Now use configDir for your settings file
-
-
-		// TODO: Read json file and populate the tree view with items from the list of open files.
-        VData vData{};
-        VFolder vFolder{};
-		VFile vFile{"XMLTools.ini", "C:\\Users\\FatihCoskun\\AppData\\Roaming\\Notepad++\\plugins\\config"};
-		vFolder.fileList.push_back(vFile);
-		vData.folderList.push_back(vFolder);
-		vData.fileList.push_back(vFile);
-
-        json vJson = vData;
-		std::ofstream(jsonFilePath) << vJson.dump(4); // Write JSON to file
-
-        // Example: create and write JSON
-        //json j;
-        //j["name"] = "VFolders";
-        //j["version"] = 1;
-        //std::ofstream(jsonFilePath) << j.dump(4);
-
-        //// Example: read JSON
-        //json j2;
-        //std::ifstream(jsonFilePath) >> j2;
-        //std::string name = j2["name"];
+        // read JSON
+        json vDataJson;
+        std::ifstream(jsonFilePath) >> vDataJson;
+        
+        vData = vDataJson.get<VData>();
         
 
-        // Example: Add root and child items
-        TVINSERTSTRUCT tvis = { 0 };
-        tvis.hParent = TVI_ROOT; // Add to root
-        tvis.hInsertAfter = TVI_LAST;
-        tvis.item.mask = TVIF_TEXT;
-        wcscpy_s(buffer, 100, L"Dosyalar");
-        tvis.item.pszText = buffer;
-        HTREEITEM hRoot = TreeView_InsertItem(hTree, &tvis);
+		
+        //writeJsonFile();
+        
 
-        // Add a child to the root
-        tvis.hParent = hRoot;
-        wcscpy_s(buffer, 100, L"Child Item");
-        tvis.item.pszText = buffer;
-        TreeView_InsertItem(hTree, &tvis);
+		vDataSort(vData);
+		int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
+		lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
+
+        for (int i = 0; i <= lastOrder; i++) {
+			auto vFile = findFileByOrder(vData.fileList, i);
+            if (!vFile) {
+                auto vFolder = findFolderByOrder(vData.folderList, i);
+                if (vFolder) {
+                    addFolderToTree(*vFolder, hTree, TVI_ROOT);
+                }
+            }
+            else {
+                addFileToTree(*vFile, hTree, TVI_ROOT);
+            }
+
+        }
+
+
 
 
         
@@ -219,5 +224,63 @@ void toggleWatcherPanelWithList() {
     else {
         updateWatcherPanelUnconditional();
         npp(NPPM_DMMSHOW, 0, watcherPanel);
+    }
+}
+
+void writeJsonFile() {
+    json vDataJson = vData;
+    std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
+}
+
+wchar_t* toWchar(const std::string& str) {
+	static wchar_t buffer[256];
+	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, 256);
+	return buffer;
+}
+
+void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
+{
+    wchar_t buffer[100];
+
+    TVINSERTSTRUCT tvis = { 0 };
+    tvis.hParent = hParent;
+    tvis.hInsertAfter = TVI_LAST;
+    tvis.item.mask = TVIF_TEXT;
+    wcscpy_s(buffer, 100, toWchar(vFile.name));
+    tvis.item.pszText = buffer;
+    TreeView_InsertItem(hTree, &tvis);
+}
+
+void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
+{
+    wchar_t buffer[100];
+
+    TVINSERTSTRUCT tvis = { 0 };
+    tvis.hParent = hParent;
+    tvis.hInsertAfter = TVI_LAST;
+    tvis.item.mask = TVIF_TEXT;
+    wcscpy_s(buffer, 100, toWchar(vFolder.name));
+    tvis.item.pszText = buffer;
+    HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
+
+	
+    int lastOrder = vFolder.fileList.empty() ? 0 : vFolder.fileList.back().order;
+	lastOrder = std::max(lastOrder, vFolder.folderList.empty() ? 0 : vFolder.folderList.back().order);
+    for (int i = 0; i <= lastOrder; i++) {
+        auto vFile = findFileByOrder(vFolder.fileList, i);
+        if (vFile) {
+            addFileToTree(*vFile, hTree, hFolder);
+        }
+        else {
+			auto vSubFolder = findFolderByOrder(vFolder.folderList, i);
+			if (vSubFolder) {
+				addFolderToTree(*vSubFolder, hTree, hFolder);
+			}
+        }
+    }
+
+
+    if (vFolder.isExpanded) {
+        TreeView_Expand(hTree, hFolder, TVE_EXPAND);
     }
 }
