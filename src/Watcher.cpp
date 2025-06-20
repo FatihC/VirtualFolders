@@ -61,7 +61,18 @@ static bool isDragging = false;
 int idxFolder;
 int idxFile;
 
+std::string new_line = "\n";
 
+struct InsertionMark {
+    HTREEITEM hItem = nullptr;
+    bool above = false;
+    RECT rect = {0,0,0,0};
+    bool valid = false;
+    // Store actual line coordinates for reliable erasing
+    int lineY = 0;
+    int lineLeft = 0;
+    int lineRight = 0;
+};
 
 void updateWatcherPanelUnconditional() {
     std::wstring text = GetDlgItemString(watcherPanel, IDC_WATCHER_TEXT);
@@ -188,6 +199,7 @@ INT_PTR CALLBACK watcherDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
 INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hTree = nullptr;
     static HMENU hContextMenu = nullptr;
+    static InsertionMark lastMark = {};
     switch (uMsg) {
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
@@ -196,12 +208,19 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         hContextMenu = CreatePopupMenu();
         AppendMenu(hContextMenu, MF_STRING, ID_TREE_DELETE, L"Delete");
         HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
-        // Add icons to the image list (use LoadIcon, LoadImage, or your own icons)
-        HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION); // Or your own resource
-        HICON hIconFile = LoadIcon(NULL, IDI_APPLICATION); // Or your own resource
+        HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
+        HICON hIconFile = LoadIcon(NULL, IDI_APPLICATION);
         idxFolder = ImageList_AddIcon(hImages, hIconFolder);
         idxFile = ImageList_AddIcon(hImages, hIconFile);
         TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
+        
+        // Increase item height and indent for better spacing
+        // TODO: make this dynamic based on the font size of the UI
+        TreeView_SetItemHeight(hTree, 20);  // Default is usually around 16-18 pixels
+        TreeView_SetIndent(hTree, 18);      // Default is usually around 16-20 pixels
+        TreeView_SetBkColor(hTree, RGB(255, 255, 255));
+        
+        lastMark = {};
         return TRUE;
     }
     case WM_NOTIFY: {
@@ -260,9 +279,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     }
     case WM_MOUSEMOVE: {
         if (isDragging && hDragImage) {
-            std::cout << "WM_MOUSEMOVE isDragging: " << isDragging << std::endl;
             POINT pt;
-            GetCursorPos(&pt);
+            GetCursorPos(&pt); // screen coordinates
             ImageList_DragMove(pt.x, pt.y);
 
             // For hit-testing, convert to TreeView client coordinates
@@ -270,22 +288,122 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             ScreenToClient(hTree, &ptClient);
             TVHITTESTINFO hitTest = { 0 };
             hitTest.pt = ptClient;
-            hDropTarget = TreeView_HitTest(hTree, &hitTest);
-            TreeView_SelectDropTarget(hTree, hDropTarget);
+            HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
+            
+            // Only show drop target if it's a valid target (not the dragged item)
+            if (hItem && hItem != hDragItem) {
+                TreeView_SelectDropTarget(hTree, hItem);
+            } else {
+                TreeView_SelectDropTarget(hTree, nullptr);
+            }
+
+            // --- Insertion line logic ---
+            InsertionMark newMark = {};
+            if (hItem && hItem != hDragItem) { // Don't show line over the dragged item itself
+                RECT rc;
+                TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
+                if (hitTest.flags & TVHT_ABOVE) {
+                    newMark = {hItem, true, rc, true};
+                } else if (hitTest.flags & TVHT_BELOW) {
+                    newMark = {hItem, false, rc, true};
+                } else {
+                    // If on item, check if near top or bottom
+                    int y = ptClient.y;
+                    int mid = (rc.top + rc.bottom) / 2;
+                    if (y < mid - 4) {
+                        newMark = {hItem, true, rc, true};
+                    } else if (y > mid + 4) {
+                        newMark = {hItem, false, rc, true};
+                    }
+                }
+            }
+            
+            // Erase previous line if needed
+            if (lastMark.valid && (!newMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
+	    		std::string debugMsg = "Erasing last mark: " + std::to_string(lastMark.rect.top) + new_line;
+                OutputDebugStringA(debugMsg.c_str());
+                HDC hdc = GetDC(hTree);
+                // Erase by drawing with background color
+                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+                Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+                SelectObject(hdc, hOldPen);
+                SelectObject(hdc, hOldBrush);
+                ReleaseDC(hTree, hdc);
+                // Clear the entire lastMark structure, not just valid flag
+                lastMark = {};
+            }
+            
+            // Draw new line if needed
+            if (newMark.valid && (!lastMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
+                OutputDebugStringA("Draw new line\n");
+                HDC hdc = GetDC(hTree);
+                RECT rc = newMark.rect;
+                int y = newMark.above ? rc.top : rc.bottom;
+                // Calculate line coordinates
+                int lineLeft = rc.left - 4;
+                int lineRight = rc.right + 4;
+                int lineY = y - 2;
+                // Store coordinates for reliable erasing
+                newMark.lineY = lineY;
+                newMark.lineLeft = lineLeft;
+                newMark.lineRight = lineRight;
+                // Draw the line with solid color
+                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(BLACK_PEN));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(BLACK_BRUSH));
+                Rectangle(hdc, lineLeft, lineY, lineRight, lineY + 4);
+                SelectObject(hdc, hOldPen);
+                SelectObject(hdc, hOldBrush);
+                ReleaseDC(hTree, hdc);
+                lastMark = newMark;
+            }
+            
+            // Remove the redundant update - it's causing the issue
+            // if (!newMark.valid && lastMark.valid) {
+            //     lastMark = newMark; // This sets valid = false and clears other fields
+            // }
             return TRUE;
+        } else {
+            // Not dragging - clear any lingering insertion line
+            if (lastMark.valid) {
+                OutputDebugStringA("Not dragging - clearing lingering line\n");
+                HDC hdc = GetDC(hTree);
+                // Erase by drawing with background color
+                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+                Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+                SelectObject(hdc, hOldPen);
+                SelectObject(hdc, hOldBrush);
+                ReleaseDC(hTree, hdc);
+                lastMark = {};
+            }
         }
         break;
     }
     case WM_LBUTTONUP: {
         if (isDragging) {
-            std::cout << "WM_LBUTTONUP isDragging: " << isDragging << std::endl;
+            // Erase insertion line if present
+            if (lastMark.valid) {
+                HDC hdc = GetDC(hTree);
+                // Erase by drawing with background color
+                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+                Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+                SelectObject(hdc, hOldPen);
+                SelectObject(hdc, hOldBrush);
+                ReleaseDC(hTree, hdc);
+                lastMark.valid = false;
+            }
             ReleaseCapture();
             ImageList_EndDrag();
             ImageList_Destroy(hDragImage);
             hDragImage = nullptr;
             isDragging = false;
+            
+            // Clear drop target selection and restore normal selection
+            TreeView_SelectDropTarget(hTree, nullptr);
+            
             if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
-                TreeView_SelectDropTarget(hTree, nullptr);
                 // TODO: Move the item in vData, update JSON, and refresh tree
             }
             hDragItem = nullptr;
@@ -294,6 +412,19 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         }
         break;
     }
+    case WM_CANCELMODE: // In case drag is canceled
+        if (lastMark.valid) {
+            HDC hdc = GetDC(hTree);
+            // Erase by drawing with background color
+            HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
+            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+            Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+            SelectObject(hdc, hOldPen);
+            SelectObject(hdc, hOldBrush);
+            ReleaseDC(hTree, hdc);
+            lastMark.valid = false;
+        }
+        break;
     }
     return FALSE;
 }
