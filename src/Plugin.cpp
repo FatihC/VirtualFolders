@@ -53,7 +53,7 @@ void toggleWatcherPanelWithList();
 extern HWND watcherPanel;
 
 // External functions
-extern void updateTreeColors(HWND hTree);
+extern void updateTreeColorsExternal(HWND hTree);
 
 // Name and define any shortcut keys to be assigned as menu item defaults: Ctrl, Alt, Shift and the virtual key code
 //
@@ -161,7 +161,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
                 // Update tree colors
                 HWND hTree = GetDlgItem(watcherPanel, 1023);
                 if (hTree) {
-                    updateTreeColors(hTree);
+                    updateTreeColorsExternal(hTree);
                 }
             }
             break;

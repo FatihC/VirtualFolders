@@ -40,11 +40,11 @@ void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
 
 #define ID_TREE_DELETE 40001
 
-void updateTreeColors1(HWND hTree);
-
-namespace {
+void updateTreeColorsExternal(HWND hTree);
 
 HWND watcherPanel = 0;
+
+namespace {
 
 Scintilla::Position location = -1;
 Scintilla::Position terminal = -1;
@@ -222,7 +222,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         TreeView_SetIndent(hTree, 18);      // Default is usually around 16-20 pixels
 
         // Set colors based on current theme
-        updateTreeColors1(hTree);
+        updateTreeColorsExternal(hTree);
 
         lastMark = {};
 
@@ -481,7 +481,8 @@ void updateTreeColors(HWND hTree) {
 
 }
 
-void updateTreeColors1(HWND hTree) {
+void updateTreeColorsExternal(HWND hTree) {
+    updateTreeColors(hTree);
 }
 
 void updateWatcherPanel() { if (watcherPanel && IsWindowVisible(watcherPanel)) updateWatcherPanelUnconditional(); }
