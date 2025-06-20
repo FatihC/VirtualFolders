@@ -40,6 +40,8 @@ void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
 
 #define ID_TREE_DELETE 40001
 
+void updateTreeColors1(HWND hTree);
+
 namespace {
 
 HWND watcherPanel = 0;
@@ -213,14 +215,20 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         idxFolder = ImageList_AddIcon(hImages, hIconFolder);
         idxFile = ImageList_AddIcon(hImages, hIconFile);
         TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
-        
+
         // Increase item height and indent for better spacing
         // TODO: make this dynamic based on the font size of the UI
         TreeView_SetItemHeight(hTree, 20);  // Default is usually around 16-18 pixels
         TreeView_SetIndent(hTree, 18);      // Default is usually around 16-20 pixels
-        TreeView_SetBkColor(hTree, RGB(255, 255, 255));
-        
+
+        // Set colors based on current theme
+        updateTreeColors1(hTree);
+
         lastMark = {};
+
+        // Enable dark mode support
+        npp(NPPM_DARKMODESUBCLASSANDTHEME, NPP::NppDarkMode::dmfInit, hwndDlg);
+
         return TRUE;
     }
     case WM_NOTIFY: {
@@ -289,11 +297,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             TVHITTESTINFO hitTest = { 0 };
             hitTest.pt = ptClient;
             HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
-            
+
             // Only show drop target if it's a valid target (not the dragged item)
             if (hItem && hItem != hDragItem) {
                 TreeView_SelectDropTarget(hTree, hItem);
-            } else {
+            }
+            else {
                 TreeView_SelectDropTarget(hTree, nullptr);
             }
 
@@ -303,37 +312,44 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 RECT rc;
                 TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
                 if (hitTest.flags & TVHT_ABOVE) {
-                    newMark = {hItem, true, rc, true};
-                } else if (hitTest.flags & TVHT_BELOW) {
-                    newMark = {hItem, false, rc, true};
-                } else {
+                    newMark = { hItem, true, rc, true };
+                }
+                else if (hitTest.flags & TVHT_BELOW) {
+                    newMark = { hItem, false, rc, true };
+                }
+                else {
                     // If on item, check if near top or bottom
                     int y = ptClient.y;
                     int mid = (rc.top + rc.bottom) / 2;
                     if (y < mid - 4) {
-                        newMark = {hItem, true, rc, true};
-                    } else if (y > mid + 4) {
-                        newMark = {hItem, false, rc, true};
+                        newMark = { hItem, true, rc, true };
+                    }
+                    else if (y > mid + 4) {
+                        newMark = { hItem, false, rc, true };
                     }
                 }
             }
-            
+
             // Erase previous line if needed
             if (lastMark.valid && (!newMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
-	    		std::string debugMsg = "Erasing last mark: " + std::to_string(lastMark.rect.top) + new_line;
+                std::string debugMsg = "Erasing last mark: " + std::to_string(lastMark.rect.top) + new_line;
                 OutputDebugStringA(debugMsg.c_str());
                 HDC hdc = GetDC(hTree);
                 // Erase by drawing with background color
-                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+                COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
                 Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
                 SelectObject(hdc, hOldPen);
                 SelectObject(hdc, hOldBrush);
+                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
                 // Clear the entire lastMark structure, not just valid flag
                 lastMark = {};
             }
-            
+
             // Draw new line if needed
             if (newMark.valid && (!lastMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
                 OutputDebugStringA("Draw new line\n");
@@ -348,32 +364,41 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 newMark.lineY = lineY;
                 newMark.lineLeft = lineLeft;
                 newMark.lineRight = lineRight;
-                // Draw the line with solid color
-                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(BLACK_PEN));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(BLACK_BRUSH));
+                // Draw the line with theme-appropriate color
+                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+                COLORREF lineColor = isDarkMode ? RGB(100, 150, 255) : RGB(0, 0, 255);  // Blue line
+                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, lineColor));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(lineColor));
                 Rectangle(hdc, lineLeft, lineY, lineRight, lineY + 4);
                 SelectObject(hdc, hOldPen);
                 SelectObject(hdc, hOldBrush);
+                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
                 lastMark = newMark;
             }
-            
+
             // Remove the redundant update - it's causing the issue
             // if (!newMark.valid && lastMark.valid) {
             //     lastMark = newMark; // This sets valid = false and clears other fields
             // }
             return TRUE;
-        } else {
+        }
+        else {
             // Not dragging - clear any lingering insertion line
             if (lastMark.valid) {
                 OutputDebugStringA("Not dragging - clearing lingering line\n");
                 HDC hdc = GetDC(hTree);
                 // Erase by drawing with background color
-                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+                COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
                 Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
                 SelectObject(hdc, hOldPen);
                 SelectObject(hdc, hOldBrush);
+                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
                 lastMark = {};
             }
@@ -386,11 +411,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             if (lastMark.valid) {
                 HDC hdc = GetDC(hTree);
                 // Erase by drawing with background color
-                HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+                COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
                 Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
                 SelectObject(hdc, hOldPen);
                 SelectObject(hdc, hOldBrush);
+                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
                 lastMark.valid = false;
             }
@@ -399,10 +428,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             ImageList_Destroy(hDragImage);
             hDragImage = nullptr;
             isDragging = false;
-            
+
             // Clear drop target selection and restore normal selection
             TreeView_SelectDropTarget(hTree, nullptr);
-            
+
             if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
                 // TODO: Move the item in vData, update JSON, and refresh tree
             }
@@ -412,25 +441,48 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         }
         break;
     }
-    case WM_CANCELMODE: // In case drag is canceled
+    case WM_CANCELMODE: { // In case drag is canceled
         if (lastMark.valid) {
             HDC hdc = GetDC(hTree);
             // Erase by drawing with background color
-            HPEN hOldPen = (HPEN)SelectObject(hdc, GetStockObject(WHITE_PEN));
-            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+            BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+            COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+            HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
             Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
             SelectObject(hdc, hOldPen);
             SelectObject(hdc, hOldBrush);
+            DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+            DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
             ReleaseDC(hTree, hdc);
             lastMark.valid = false;
+            return TRUE;
         }
         break;
+    }
     }
     return FALSE;
 }
 
+void updateTreeColors(HWND hTree) {
+    // Check if dark mode is enabled
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+    
+    if (isDarkMode) {
+        // Dark mode colors
+        TreeView_SetBkColor(hTree, RGB(30, 30, 30));  // Dark background
+        TreeView_SetTextColor(hTree, RGB(220, 220, 220));  // Light text
+    } else {
+        // Light mode colors
+        TreeView_SetBkColor(hTree, RGB(255, 255, 255));  // White background
+        TreeView_SetTextColor(hTree, RGB(0, 0, 0));  // Black text
+    }
 }
 
+}
+
+void updateTreeColors1(HWND hTree) {
+}
 
 void updateWatcherPanel() { if (watcherPanel && IsWindowVisible(watcherPanel)) updateWatcherPanelUnconditional(); }
 

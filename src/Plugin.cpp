@@ -16,6 +16,8 @@
 
 #include "Framework/PluginFramework.h"
 #include <iostream>
+#include "CommonData.h"
+
 using namespace NPP;
 
 
@@ -47,6 +49,11 @@ void toggleStatusDialog();
 void toggleWatcherPanel();
 void toggleWatcherPanelWithList();
 
+// External variables
+extern HWND watcherPanel;
+
+// External functions
+extern void updateTreeColors(HWND hTree);
 
 // Name and define any shortcut keys to be assigned as menu item defaults: Ctrl, Alt, Shift and the virtual key code
 //
@@ -143,6 +150,20 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
         case NPPN_GLOBALMODIFIED:
             modifyAll(nmhdr);
+            break;
+
+        case NPPN_DARKMODECHANGED:
+            // Handle dark mode change - update any open dialogs
+            if (watcherPanel && IsWindow(watcherPanel)) {
+                npp(NPPM_DARKMODESUBCLASSANDTHEME, NPP::NppDarkMode::dmfHandleChange, watcherPanel);
+                SetWindowPos(watcherPanel, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+                
+                // Update tree colors
+                HWND hTree = GetDlgItem(watcherPanel, 1023);
+                if (hTree) {
+                    updateTreeColors(hTree);
+                }
+            }
             break;
 
         case NPPN_READY:
