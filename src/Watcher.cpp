@@ -22,11 +22,13 @@
 using json = nlohmann::json;
 
 #include <fstream>
+#include <iostream>
 
 #include <commctrl.h>
 #include "VData.h"
 #pragma comment(lib, "comctl32.lib")
 
+#include <windowsx.h>
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
@@ -36,6 +38,7 @@ wchar_t* toWchar(const std::string& str);
 void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
 void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
 
+#define ID_TREE_DELETE 40001
 
 namespace {
 
@@ -53,6 +56,10 @@ static HTREEITEM hDragItem = nullptr;
 static HTREEITEM hDropTarget = nullptr;
 static HIMAGELIST hDragImage = nullptr;
 static bool isDragging = false;
+
+
+int idxFolder;
+int idxFile;
 
 
 
@@ -78,17 +85,17 @@ void updateWatcherPanelUnconditional() {
 }
 
 
-INT_PTR CALLBACK watcherDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
-
+INT_PTR CALLBACK watcherDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    static HWND hTree = nullptr;
     switch (uMsg) {
-
     case WM_DESTROY:
         watcherPanel = 0;
         return TRUE;
 
     case WM_INITDIALOG:
         stretch.setup(hwndDlg);
-        npp(NPPM_MODELESSDIALOG, MODELESSDIALOGADD, hwndDlg);   // a docking dialog must be a modeless dialog
+        npp(NPPM_MODELESSDIALOG, MODELESSDIALOGADD, hwndDlg);
+        hTree = GetDlgItem(hwndDlg, IDC_TREE1);
         return TRUE;
 
     case WM_COMMAND:
@@ -119,9 +126,175 @@ INT_PTR CALLBACK watcherDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
     case WM_SIZE:
         stretch.adjust(IDC_WATCHER_TEXT, 1).adjust(IDC_WATCHER_RESULT, 1);
         return FALSE;
-    
-    }
 
+    case WM_NOTIFY: {
+        LPNMHDR nmhdr = (LPNMHDR)lParam;
+        if (nmhdr->idFrom == IDC_TREE1) {
+            LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
+            switch (pnmtv->hdr.code) {
+            case TVN_BEGINDRAG: {
+                hDragItem = pnmtv->itemNew.hItem;
+                hDragImage = TreeView_CreateDragImage(hTree, hDragItem);
+                if (hDragImage) {
+                    POINT pt = pnmtv->ptDrag;
+                    ClientToScreen(hTree, &pt);
+                    ImageList_BeginDrag(hDragImage, 0, 0, 0);
+                    ImageList_DragEnter(NULL, pt.x, pt.y);
+                    SetCapture(hwndDlg);
+                    isDragging = true;
+                }
+                return TRUE;
+            }
+            }
+        }
+        break;
+    }
+    case WM_MOUSEMOVE: {
+        if (isDragging && hDragImage) {
+            POINT pt;
+            GetCursorPos(&pt);
+            ImageList_DragMove(pt.x, pt.y);
+            TVHITTESTINFO hitTest = { 0 };
+            hitTest.pt = pt;
+            ScreenToClient(hTree, &hitTest.pt);
+            hDropTarget = TreeView_HitTest(hTree, &hitTest);
+            TreeView_SelectDropTarget(hTree, hDropTarget);
+            return TRUE;
+        }
+        break;
+    }
+    case WM_LBUTTONUP: {
+        if (isDragging) {
+            ReleaseCapture();
+            ImageList_EndDrag();
+            ImageList_Destroy(hDragImage);
+            hDragImage = nullptr;
+            isDragging = false;
+            if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
+                TreeView_SelectDropTarget(hTree, nullptr);
+                // TODO: Move the item in vData, update JSON, and refresh tree
+            }
+            hDragItem = nullptr;
+            hDropTarget = nullptr;
+            return TRUE;
+        }
+        break;
+    }
+    }
+    return FALSE;
+}
+
+// Add a new dialog procedure for the file view dialog (IDD_FILEVIEW)
+INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    static HWND hTree = nullptr;
+    static HMENU hContextMenu = nullptr;
+    switch (uMsg) {
+    case WM_INITDIALOG: {
+        stretch.setup(hwndDlg);
+        hTree = GetDlgItem(hwndDlg, IDC_TREE1);
+        // Create context menu
+        hContextMenu = CreatePopupMenu();
+        AppendMenu(hContextMenu, MF_STRING, ID_TREE_DELETE, L"Delete");
+        HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
+        // Add icons to the image list (use LoadIcon, LoadImage, or your own icons)
+        HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION); // Or your own resource
+        HICON hIconFile = LoadIcon(NULL, IDI_APPLICATION); // Or your own resource
+        idxFolder = ImageList_AddIcon(hImages, hIconFolder);
+        idxFile = ImageList_AddIcon(hImages, hIconFile);
+        TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
+        return TRUE;
+    }
+    case WM_NOTIFY: {
+        LPNMHDR nmhdr = (LPNMHDR)lParam;
+        if (nmhdr->idFrom == IDC_TREE1) {
+            LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
+            switch (pnmtv->hdr.code) {
+            case TVN_BEGINDRAG: {
+                std::cout << "TVN_BEGINDRAG" << std::endl;
+                hDragItem = pnmtv->itemNew.hItem;
+                hDragImage = TreeView_CreateDragImage(hTree, hDragItem);
+                if (hDragImage) {
+                    POINT pt = pnmtv->ptDrag;
+                    ClientToScreen(hTree, &pt);
+                    ImageList_BeginDrag(hDragImage, 0, 0, 0);
+                    ImageList_DragEnter(NULL, pt.x, pt.y);
+                    SetCapture(hwndDlg);
+                    isDragging = true;
+                }
+                return TRUE;
+            }
+            }
+        }
+        break;
+    }
+    case WM_CONTEXTMENU: {
+        HWND hwndFrom = (HWND)wParam;
+        if (hwndFrom == hTree) {
+            POINT pt;
+            pt.x = GET_X_LPARAM(lParam);
+            pt.y = GET_Y_LPARAM(lParam);
+            // Select the item under the cursor
+            TVHITTESTINFO hitTest = { 0 };
+            hitTest.pt = pt;
+            ScreenToClient(hTree, &hitTest.pt);
+            HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
+            if (hItem) {
+                TreeView_SelectItem(hTree, hItem);
+            }
+            // Show context menu
+            TrackPopupMenu(hContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+            return TRUE;
+        }
+        break;
+    }
+    case WM_COMMAND: {
+        if (LOWORD(wParam) == ID_TREE_DELETE) {
+            HTREEITEM hSel = TreeView_GetSelection(hTree);
+            if (hSel) {
+                // TODO: Remove from vData as well
+                TreeView_DeleteItem(hTree, hSel);
+            }
+            return TRUE;
+        }
+        break;
+    }
+    case WM_MOUSEMOVE: {
+        if (isDragging && hDragImage) {
+            std::cout << "WM_MOUSEMOVE isDragging: " << isDragging << std::endl;
+            POINT pt;
+            GetCursorPos(&pt);
+            ImageList_DragMove(pt.x, pt.y);
+
+            // For hit-testing, convert to TreeView client coordinates
+            POINT ptClient = pt;
+            ScreenToClient(hTree, &ptClient);
+            TVHITTESTINFO hitTest = { 0 };
+            hitTest.pt = ptClient;
+            hDropTarget = TreeView_HitTest(hTree, &hitTest);
+            TreeView_SelectDropTarget(hTree, hDropTarget);
+            return TRUE;
+        }
+        break;
+    }
+    case WM_LBUTTONUP: {
+        if (isDragging) {
+            std::cout << "WM_LBUTTONUP isDragging: " << isDragging << std::endl;
+            ReleaseCapture();
+            ImageList_EndDrag();
+            ImageList_Destroy(hDragImage);
+            hDragImage = nullptr;
+            isDragging = false;
+            if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
+                TreeView_SelectDropTarget(hTree, nullptr);
+                // TODO: Move the item in vData, update JSON, and refresh tree
+            }
+            hDragItem = nullptr;
+            hDropTarget = nullptr;
+            return TRUE;
+        }
+        break;
+    }
+    }
     return FALSE;
 }
 
@@ -167,9 +340,9 @@ std::vector<std::string> listOpenFiles() {
 
 void toggleWatcherPanelWithList() {
     if (!watcherPanel) {
-        watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(106), plugin.nppData._nppHandle, watcherDialogProc);
+        watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
         NPP::tTbData dock;
-        HWND hTree = GetDlgItem(watcherPanel, 1023);
+        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
 
         
         TCHAR configDir[MAX_PATH];
@@ -245,9 +418,11 @@ void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = TVI_LAST;
-    tvis.item.mask = TVIF_TEXT;
+    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
     wcscpy_s(buffer, 100, toWchar(vFile.name));
     tvis.item.pszText = buffer;
+    tvis.item.iImage = idxFile; // or idxFile
+    tvis.item.iSelectedImage = idxFile; // or idxFile
     TreeView_InsertItem(hTree, &tvis);
 }
 
@@ -258,9 +433,11 @@ void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = TVI_LAST;
-    tvis.item.mask = TVIF_TEXT;
+    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
     wcscpy_s(buffer, 100, toWchar(vFolder.name));
     tvis.item.pszText = buffer;
+    tvis.item.iImage = idxFolder; // or idxFile
+    tvis.item.iSelectedImage = idxFolder; // or idxFile
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
 
 	

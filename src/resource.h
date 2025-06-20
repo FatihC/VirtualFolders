@@ -26,6 +26,8 @@
 #define IDC_WATCHER_TEXT                1017
 #define IDC_TREE1                       1023
 
+#define IDI_FOLDER 201 // Assign a unique integer value
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
