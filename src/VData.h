@@ -3,6 +3,9 @@
 #include <vector>
 #include <optional>
 #include "nlohmann/json.hpp"
+#include <windows.h>
+#include "DateUtil.h"
+
 using json = nlohmann::json;
 
 
@@ -14,6 +17,9 @@ public:
 	int order;
 	string name;
 	string path;
+	int view;
+	wstring id;
+    FILETIME creationTime;
 };
 
 class VFolder
@@ -34,15 +40,18 @@ public:
 	vector<VFile> fileList; // Optional: if you want to keep a list of files at the root level
 };
 
-void to_json(json& j, const VFile& f) {
+inline void to_json(json& j, const VFile& f) {
 	j = json{ 
 		{"order", f.order},
 		{"name", f.name}, 
-		{"path", f.path} 
+		{"path", f.path},
+		{"view", f.view},
+		{"id", f.id},
+		{"creationTime", filetimeToInteger(f.creationTime)}
 	};
 }
 
-void to_json(json& j, const VFolder& folder) {
+inline void to_json(json& j, const VFolder& folder) {
 	j = json{ 
 		{"order", folder.order},
 		{"name", folder.name},
@@ -53,7 +62,7 @@ void to_json(json& j, const VFolder& folder) {
 	};
 }
 
-void to_json(json& j, const VData& data) {
+inline void to_json(json& j, const VData& data) {
 	j = json{ 
 		{"folderList", data.folderList},
 		{"fileList", data.fileList}
@@ -66,6 +75,17 @@ inline void from_json(const json& j, VFile& f) {
 	j.at("order").get_to(f.order);
 	j.at("name").get_to(f.name);
 	j.at("path").get_to(f.path);
+	j.at("view").get_to(f.view);
+	
+	// Convert string to wstring for id
+	string idStr;
+	j.at("id").get_to(idStr);
+	f.id = wstring(idStr.begin(), idStr.end());
+	
+	// Convert ULONGLONG to FILETIME for creationTime
+	ULONGLONG timeValue;
+	j.at("creationTime").get_to(timeValue);
+	f.creationTime = ULongLongToFileTime(timeValue);
 }
 
 inline void from_json(const json& j, VFolder& folder) {
@@ -78,6 +98,7 @@ inline void from_json(const json& j, VFolder& folder) {
 }
 
 inline void from_json(const json& j, VData& data) {
+	
 	if (j.contains("folderList")) {
 		j.at("folderList").get_to(data.folderList);
 	}
@@ -88,7 +109,7 @@ inline void from_json(const json& j, VData& data) {
 }
 
 
-void vFolderSort(VFolder& vFolder)
+inline void vFolderSort(VFolder& vFolder)
 {
 	// Sort files in the folder by order
 	std::sort(vFolder.fileList.begin(), vFolder.fileList.end(), [](const VFile& a, const VFile& b) {
@@ -104,7 +125,7 @@ void vFolderSort(VFolder& vFolder)
 	}
 }
 
-void vDataSort(VData vData) {
+inline void vDataSort(VData vData) {
 	// Sort folders by order
 	std::sort(vData.folderList.begin(), vData.folderList.end(), [](const VFolder& a, const VFolder& b) {
 		return a.order > b.order;

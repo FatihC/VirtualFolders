@@ -15,6 +15,71 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "CommonData.h"
+#include "VData.h"
+#include <filesystem>
+#include <vector>
+#include <iostream>
+#include <windows.h>
+#include <winioctl.h>
+
+
+
+std::vector<VFile> listOpenFiles();
+
+void setVFileInfo(VFile& vFile) {
+    // Convert string path to wstring for Windows API
+    std::wstring wPath(vFile.path.begin(), vFile.path.end());
+    
+    // Open file handle
+    HANDLE hFile = CreateFileW(wPath.c_str(), 
+                              GENERIC_READ, 
+                              FILE_SHARE_READ, 
+                              NULL, 
+                              OPEN_EXISTING, 
+                              FILE_ATTRIBUTE_NORMAL, 
+                              NULL);
+    
+    if (hFile != INVALID_HANDLE_VALUE) {
+        // Get creation time
+        FILETIME creationTime, lastAccessTime, lastWriteTime;
+        if (GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
+            vFile.creationTime = creationTime;
+        }
+        
+        // Try File ID first (most reliable)
+        FILE_ID_INFO fileIdInfo;
+        DWORD bytesReturned;
+        
+        if (GetFileInformationByHandleEx(hFile, FileIdInfo, &fileIdInfo, 
+                                        sizeof(fileIdInfo))) {
+            // Convert FILE_ID_128 to string (it's a 16-byte array)
+            std::wstring fileIdStr = L"FILEID_";
+            for (int i = 0; i < 16; i++) {
+                wchar_t hex[3];
+                swprintf_s(hex, 3, L"%02X", fileIdInfo.FileId.Identifier[i]);
+                fileIdStr += hex;
+            }
+            vFile.id = fileIdStr;
+        } else {
+            // Fallback to File Reference Number
+            BY_HANDLE_FILE_INFORMATION fileInfo;
+            if (GetFileInformationByHandle(hFile, &fileInfo)) {
+                ULONGLONG refNum = (static_cast<ULONGLONG>(fileInfo.nFileIndexHigh) << 32) | 
+                                   fileInfo.nFileIndexLow;
+                vFile.id = L"REFNUM_" + std::to_wstring(refNum);
+            } else {
+                // Final fallback: path hash
+                vFile.id = L"HASH_" + std::to_wstring(std::hash<std::wstring>{}(wPath));
+            }
+        }
+        
+        CloseHandle(hFile);
+    } else {
+        // File couldn't be opened, set default values
+        vFile.id = L"";
+        vFile.creationTime = {0, 0};
+    }
+}
 
 
 void printListOpenFiles() {
@@ -23,21 +88,61 @@ void printListOpenFiles() {
         : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
         : L"\r\n";
     std::wstring filenames = commonData.heading.get() + eol;
-    for (int view = 0; view < 2; ++view) if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
-        size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
-        for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
+    for (int view = 0; view < 2; ++view) {
+        if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
+            size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
+            for (size_t i = 0; i < n; ++i) {
+                std::wstring filepath = getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view));
+                if (!filepath.empty()) {
+                    filenames += filepath + eol;
+                }
+            }
+        }
     }
     sci.InsertText(-1, fromWide(filenames).data());
+	listOpenFiles(); // Call the function to list open files
 }
 
-//std::vector<std::string> listOpenFiles() {
-//    Scintilla::EndOfLine eolMode = sci.EOLMode();
-//    std::wstring eol = eolMode == Scintilla::EndOfLine::Cr ? L"\r"
-//                     : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
-//                     : L"\r\n";
-//    std::wstring filenames = commonData.heading.get() + eol;
-//    for (int view = 0; view < 2; ++view) if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
-//        size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
-//        for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
-//    }
-//}
+std::vector<VFile> listOpenFiles() {
+    TCHAR configDir[MAX_PATH];
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
+
+
+    std::vector<VFile> fileList;
+    
+    for (int view = 0; view < 2; ++view) {
+        if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
+            size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
+            for (size_t i = 0; i < n; ++i) {
+                std::wstring filepath = getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view));
+                if (!filepath.empty()) {
+                    std::filesystem::path path(filepath);
+                    if (!(std::filesystem::exists(path))) {
+                        // Prepend configDir to the file path
+                        std::filesystem::path configPath(configDir);
+                        std::filesystem::path newPath = configPath / path.filename();
+                        filepath = newPath.wstring();
+                        path = newPath;
+                    }
+
+                    VFile vFile;
+                    vFile.order = static_cast<int>(i);
+                    vFile.name = fromWide(path.filename().wstring());
+                    vFile.path = fromWide(filepath);
+                    vFile.view = view;
+                    setVFileInfo(vFile);
+                    fileList.push_back(vFile);
+                }
+            }
+        }
+    }
+    
+    
+    return fileList;
+}
+
+
+
+
+
+

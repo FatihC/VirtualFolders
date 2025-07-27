@@ -81,7 +81,7 @@ FuncItem menuDefinition[] = {
     { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, 0, false, 0               },
     { 0                           , 0                                     , 0, false, 0               },
     { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);}, 0, false, 0               },
-    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );}, 0, false, 0               }
+    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );}, 0, false, 0               },
 };
 
 int menuItem_ToggleStatus  = 1;
