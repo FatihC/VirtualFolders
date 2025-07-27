@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <optional>
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
 
@@ -118,20 +119,20 @@ void vDataSort(VData vData) {
 		});
 }
 
-std::optional<VFile> findFileByOrder(vector<VFile> fileList, int order) {
+inline std::optional<VFile> findFileByOrder(vector<VFile> fileList, int order) {
 	for (const auto& file : fileList) {
 		if (file.order == order) {
 			return file;
 		}
 	}
 	return std::nullopt; // Return null if not found
-};
+}
 
-std::optional<VFolder> findFolderByOrder(vector<VFolder> folderList, int order) {
+inline std::optional<VFolder> findFolderByOrder(vector<VFolder> folderList, int order) {
 	for (const auto& folder : folderList) {
 		if (folder.order == order) {
 			return folder;
 		}
 	}
 	return std::nullopt; // Return null if not found
-};
+}

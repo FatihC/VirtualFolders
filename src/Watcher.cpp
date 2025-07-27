@@ -98,105 +98,6 @@ void updateWatcherPanelUnconditional() {
 }
 
 
-INT_PTR CALLBACK watcherDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static HWND hTree = nullptr;
-    switch (uMsg) {
-    case WM_DESTROY:
-        watcherPanel = 0;
-        return TRUE;
-
-    case WM_INITDIALOG:
-        stretch.setup(hwndDlg);
-        npp(NPPM_MODELESSDIALOG, MODELESSDIALOGADD, hwndDlg);
-        hTree = GetDlgItem(hwndDlg, IDC_TREE1);
-        return TRUE;
-
-    case WM_COMMAND:
-        switch (LOWORD(wParam)) {
-        case IDCANCEL:
-            npp(NPPM_DMMHIDE, 0, hwndDlg);                      // make Esc key close the dialog
-            return TRUE;
-        case IDOK:
-            SetFocus(plugin.currentScintilla());                // make Enter key return to active edit window
-            if (location >= 0) {                                // and if the word was found
-                plugin.getScintillaPointers();
-                sci.SetSel(location, terminal);                 // select the first instance
-            }
-            return TRUE;
-        case IDC_WATCHER_TEXT:
-            if (HIWORD(wParam) == EN_CHANGE) {
-                updateWatcherPanelUnconditional();
-                return TRUE;
-            }
-        }
-        return FALSE;
-
-    case WM_SHOWWINDOW:
-        if (wParam) updateWatcherPanelUnconditional();
-        npp(NPPM_SETMENUITEMCHECK, menuDefinition[menuItem_ToggleWatcher]._cmdID, wParam ? 1 : 0);
-        return FALSE;
-
-    case WM_SIZE:
-        stretch.adjust(IDC_WATCHER_TEXT, 1).adjust(IDC_WATCHER_RESULT, 1);
-        return FALSE;
-
-    case WM_NOTIFY: {
-        LPNMHDR nmhdr = (LPNMHDR)lParam;
-        if (nmhdr->idFrom == IDC_TREE1) {
-            LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
-            switch (pnmtv->hdr.code) {
-            case TVN_BEGINDRAG: {
-                hDragItem = pnmtv->itemNew.hItem;
-                hDragImage = TreeView_CreateDragImage(hTree, hDragItem);
-                if (hDragImage) {
-                    POINT pt = pnmtv->ptDrag;
-                    ClientToScreen(hTree, &pt);
-                    ImageList_BeginDrag(hDragImage, 0, 0, 0);
-                    ImageList_DragEnter(NULL, pt.x, pt.y);
-                    SetCapture(hwndDlg);
-                    isDragging = true;
-                }
-                return TRUE;
-            }
-            }
-        }
-        break;
-    }
-    case WM_MOUSEMOVE: {
-        if (isDragging && hDragImage) {
-            POINT pt;
-            GetCursorPos(&pt);
-            ImageList_DragMove(pt.x, pt.y);
-            TVHITTESTINFO hitTest = { 0 };
-            hitTest.pt = pt;
-            ScreenToClient(hTree, &hitTest.pt);
-            hDropTarget = TreeView_HitTest(hTree, &hitTest);
-            TreeView_SelectDropTarget(hTree, hDropTarget);
-            return TRUE;
-        }
-        break;
-    }
-    case WM_LBUTTONUP: {
-        if (isDragging) {
-            ReleaseCapture();
-            ImageList_EndDrag();
-            ImageList_Destroy(hDragImage);
-            hDragImage = nullptr;
-            isDragging = false;
-            if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
-                TreeView_SelectDropTarget(hTree, nullptr);
-                // TODO: Move the item in vData, update JSON, and refresh tree
-            }
-            hDragItem = nullptr;
-            hDropTarget = nullptr;
-            return TRUE;
-        }
-        break;
-    }
-    }
-    return FALSE;
-}
-
 // Add a new dialog procedure for the file view dialog (IDD_FILEVIEW)
 INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hTree = nullptr;
@@ -247,6 +148,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     ImageList_DragEnter(NULL, pt.x, pt.y);
                     SetCapture(hwndDlg);
                     isDragging = true;
+                    
+                    // Start tracking mouse leave events
+                    TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hTree, 0 };
+                    TrackMouseEvent(&tme);
                 }
                 return TRUE;
             }
@@ -298,6 +203,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             hitTest.pt = ptClient;
             HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
 
+            // Check if mouse is outside the tree area
+            RECT treeRect;
+            GetClientRect(hTree, &treeRect);
+            bool mouseOutsideTree = (ptClient.x < 0 || ptClient.x >= treeRect.right || 
+                                   ptClient.y < 0 || ptClient.y >= treeRect.bottom);
+
             // Only show drop target if it's a valid target (not the dragged item)
             if (hItem && hItem != hDragItem) {
                 TreeView_SelectDropTarget(hTree, hItem);
@@ -308,7 +219,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
             // --- Insertion line logic ---
             InsertionMark newMark = {};
-            if (hItem && hItem != hDragItem) { // Don't show line over the dragged item itself
+            if (hItem && hItem != hDragItem && !mouseOutsideTree) { // Don't show line over the dragged item itself or outside tree
                 RECT rc;
                 TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
                 if (hitTest.flags & TVHT_ABOVE) {
@@ -332,20 +243,31 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
             // Erase previous line if needed
             if (lastMark.valid && (!newMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
-                std::string debugMsg = "Erasing last mark: " + std::to_string(lastMark.rect.top) + new_line;
+                std::string debugMsg = "Erasing last mark: left=" + std::to_string(lastMark.lineLeft) + 
+                                     ", right=" + std::to_string(lastMark.lineRight) + 
+                                     ", y=" + std::to_string(lastMark.lineY) + new_line;
                 OutputDebugStringA(debugMsg.c_str());
                 HDC hdc = GetDC(hTree);
-                // Erase by drawing with background color
-                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-                COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+                
+                // Get the actual background color from the tree control
+                COLORREF bgColor = TreeView_GetBkColor(hTree);
+                
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
                 HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-                Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+                
+                // Erase a slightly larger area to ensure complete coverage
+                Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight, lastMark.lineY + 5);
                 SelectObject(hdc, hOldPen);
                 SelectObject(hdc, hOldBrush);
                 DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
                 DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
+                
+                // Force redraw of a larger area to ensure erasure is visible
+                RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight, lastMark.lineY + 5 };
+                InvalidateRect(hTree, &eraseRect, FALSE);
+                UpdateWindow(hTree);
+                
                 // Clear the entire lastMark structure, not just valid flag
                 lastMark = {};
             }
@@ -356,17 +278,20 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 HDC hdc = GetDC(hTree);
                 RECT rc = newMark.rect;
                 int y = newMark.above ? rc.top : rc.bottom;
-                // Calculate line coordinates
+                
+                // Calculate line coordinates - use item bounds with small extension
                 int lineLeft = rc.left - 4;
                 int lineRight = rc.right + 4;
                 int lineY = y - 2;
+                
                 // Store coordinates for reliable erasing
                 newMark.lineY = lineY;
                 newMark.lineLeft = lineLeft;
                 newMark.lineRight = lineRight;
+                
                 // Draw the line with theme-appropriate color
                 BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-                COLORREF lineColor = isDarkMode ? RGB(100, 150, 255) : RGB(0, 0, 255);  // Blue line
+                COLORREF lineColor = isDarkMode ? RGB(255, 255, 255) : RGB(0, 0, 255);  // White line in dark mode, blue in light mode
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, lineColor));
                 HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(lineColor));
                 Rectangle(hdc, lineLeft, lineY, lineRight, lineY + 4);
@@ -389,9 +314,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             if (lastMark.valid) {
                 OutputDebugStringA("Not dragging - clearing lingering line\n");
                 HDC hdc = GetDC(hTree);
-                // Erase by drawing with background color
-                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-                COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+                
+                // Get the actual background color from the tree control
+                COLORREF bgColor = TreeView_GetBkColor(hTree);
+                
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
                 HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
                 Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
@@ -405,22 +331,60 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         }
         break;
     }
+    case WM_MOUSELEAVE: {
+        // Clear insertion line when mouse leaves the tree area during dragging
+        if (isDragging && lastMark.valid) {
+            OutputDebugStringA("Mouse left tree area during drag - clearing line\n");
+            HDC hdc = GetDC(hTree);
+            
+            // Get the actual background color from the tree control
+            COLORREF bgColor = TreeView_GetBkColor(hTree);
+            
+            HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
+            
+            // Erase a slightly larger area to ensure complete coverage
+            Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
+            SelectObject(hdc, hOldPen);
+            SelectObject(hdc, hOldBrush);
+            DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+            DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
+            ReleaseDC(hTree, hdc);
+            
+            // Force redraw of a larger area to ensure erasure is visible
+            RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
+            InvalidateRect(hTree, &eraseRect, FALSE);
+            UpdateWindow(hTree);
+            
+            lastMark = {};
+        }
+        break;
+    }
     case WM_LBUTTONUP: {
         if (isDragging) {
             // Erase insertion line if present
             if (lastMark.valid) {
                 HDC hdc = GetDC(hTree);
-                // Erase by drawing with background color
-                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-                COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+                
+                // Get the actual background color from the tree control
+                COLORREF bgColor = TreeView_GetBkColor(hTree);
+                
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
                 HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-                Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+                
+                // Erase a slightly larger area to ensure complete coverage
+                Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
                 SelectObject(hdc, hOldPen);
                 SelectObject(hdc, hOldBrush);
                 DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
                 DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
+                
+                // Force redraw of a larger area to ensure erasure is visible
+                RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
+                InvalidateRect(hTree, &eraseRect, FALSE);
+                UpdateWindow(hTree);
+                
                 lastMark.valid = false;
             }
             ReleaseCapture();
@@ -443,18 +407,28 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     }
     case WM_CANCELMODE: { // In case drag is canceled
         if (lastMark.valid) {
+            OutputDebugStringA("WM_CANCELMODE\n");
             HDC hdc = GetDC(hTree);
-            // Erase by drawing with background color
-            BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-            COLORREF bgColor = isDarkMode ? RGB(30, 30, 30) : RGB(255, 255, 255);
+            
+            // Get the actual background color from the tree control
+            COLORREF bgColor = TreeView_GetBkColor(hTree);
+            
             HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
             HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-            Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+            
+            // Erase a slightly larger area to ensure complete coverage
+            Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
             SelectObject(hdc, hOldPen);
             SelectObject(hdc, hOldBrush);
             DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
             DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
             ReleaseDC(hTree, hdc);
+            
+            // Force redraw of a larger area to ensure erasure is visible
+            RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
+            InvalidateRect(hTree, &eraseRect, FALSE);
+            UpdateWindow(hTree);
+            
             lastMark.valid = false;
             return TRUE;
         }
@@ -487,25 +461,6 @@ void updateTreeColorsExternal(HWND hTree) {
 
 void updateWatcherPanel() { if (watcherPanel && IsWindowVisible(watcherPanel)) updateWatcherPanelUnconditional(); }
 
-void toggleWatcherPanel() {
-    if (!watcherPanel) {
-        watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_WATCHER), plugin.nppData._nppHandle, watcherDialogProc);
-        NPP::tTbData dock;
-        dock.hClient       = watcherPanel;
-        dock.pszName       = L"Watcher (VFolders)";  // title bar text (caption in dialog is replaced)
-        dock.dlgID         = menuItem_ToggleWatcher;          // zero-based position in menu to recall dialog at next startup
-        dock.uMask         = DWS_DF_CONT_RIGHT;               // first time display will be docked at the right
-        dock.pszModuleName = L"VFolders.dll";        // plugin module name
-        npp(NPPM_DMMREGASDCKDLG, 0, &dock);
-    }
-    else if (IsWindowVisible(watcherPanel)) {
-        npp(NPPM_DMMHIDE, 0, watcherPanel);
-    }
-    else {
-        updateWatcherPanelUnconditional();
-        npp(NPPM_DMMSHOW, 0, watcherPanel);
-    }
-}
 
 std::vector<std::string> listOpenFiles() {
     Scintilla::EndOfLine eolMode = sci.EOLMode();
