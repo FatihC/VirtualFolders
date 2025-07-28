@@ -38,6 +38,7 @@ void bufferActivated();
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
 void modifyAll(const NMHDR*);
+void nppReady();
 
 // Routines that process menu commands
 
@@ -176,6 +177,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             plugin.startupOrShutdown = false;
             plugin.getScintillaPointers();
             bufferActivated();
+            nppReady(); // Sync vData when Notepad++ is ready
             break;
 
         case NPPN_SHUTDOWN:

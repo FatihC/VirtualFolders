@@ -15,12 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "CommonData.h"
-#include "VData.h"
+#include "model/VData.h"
 #include <filesystem>
 #include <vector>
 #include <iostream>
 #include <windows.h>
 #include <winioctl.h>
+#include "ProcessCommands.h"
+#include "model/Session.h"
 
 
 
@@ -107,38 +109,44 @@ std::vector<VFile> listOpenFiles() {
     TCHAR configDir[MAX_PATH];
     ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
 
+    // Session files are typically stored in the same location as plugin config
+    // but in a different subdirectory or as session.xml
+    std::wstring sessionPath = std::wstring(configDir);
+    // Remove "plugins\config" and add session info
+    sessionPath = sessionPath.substr(0, sessionPath.find(L"\\plugins\\Config"));
+    sessionPath += L"\\session.xml"; // This is where Notepad++ stores session info
+
+    Session session = loadSessionFromXMLFile(sessionPath);
 
     std::vector<VFile> fileList;
     
-    for (int view = 0; view < 2; ++view) {
-        if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
-            size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
-            for (size_t i = 0; i < n; ++i) {
-                std::wstring filepath = getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view));
-                if (!filepath.empty()) {
-                    std::filesystem::path path(filepath);
-                    if (!(std::filesystem::exists(path))) {
-                        // Prepend configDir to the file path
-                        std::filesystem::path configPath(configDir);
-                        std::filesystem::path newPath = configPath / path.filename();
-                        filepath = newPath.wstring();
-                        path = newPath;
-                    }
-
-                    VFile vFile;
-                    vFile.order = static_cast<int>(i);
-                    vFile.name = fromWide(path.filename().wstring());
-                    vFile.path = fromWide(filepath);
-                    vFile.view = view;
-                    setVFileInfo(vFile);
-                    fileList.push_back(vFile);
-                }
-            }
-        }
+    // Convert SessionFile objects to VFile objects
+    // Process main view files
+    for (size_t i = 0; i < session.mainView.files.size(); ++i) {
+        const auto& sessionFile = session.mainView.files[i];
+        VFile vFile = sessionFileToVFile(sessionFile);
+        fileList.push_back(vFile);
     }
     
+    // Process sub view files
+    for (size_t i = 0; i < session.subView.files.size(); ++i) {
+        const auto& sessionFile = session.subView.files[i];
+        VFile vFile = sessionFileToVFile(sessionFile);
+        fileList.push_back(vFile);
+    }
     
     return fileList;
+}
+
+VFile sessionFileToVFile(const SessionFile sessionFile) {
+    VFile vFile;
+    vFile.name = sessionFile.filename;
+    vFile.path = sessionFile.backupFilePath.empty() ? sessionFile.filename : sessionFile.backupFilePath;
+    vFile.view = 0; // Main view
+    vFile.session = 0; // Default session index
+    vFile.backupFilePath = sessionFile.backupFilePath;
+
+    return vFile;
 }
 
 

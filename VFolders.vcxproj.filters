@@ -76,6 +76,12 @@
     <ClInclude Include="src\VData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\model\Session.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\model\VData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\About.cpp">
@@ -108,7 +114,7 @@
     <ClCompile Include="src\Watcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\VData.cpp">
+    <ClCompile Include="src\model\VData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

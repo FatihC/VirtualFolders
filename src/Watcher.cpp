@@ -25,15 +25,22 @@ using json = nlohmann::json;
 #include <iostream>
 
 #include <commctrl.h>
-#include "VData.h"
+#include "model/VData.h"
 #pragma comment(lib, "comctl32.lib")
 
 #include <windowsx.h>
+#include "ProcessCommands.h"
+
+
+
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 
 void writeJsonFile();
+void syncVDataWithOpenFilesNotification();
+
+void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
 wchar_t* toWchar(const std::string& str);
 void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
 void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
@@ -462,20 +469,6 @@ void updateTreeColorsExternal(HWND hTree) {
 void updateWatcherPanel() { if (watcherPanel && IsWindowVisible(watcherPanel)) updateWatcherPanelUnconditional(); }
 
 
-std::vector<std::string> listOpenFiles() {
-    Scintilla::EndOfLine eolMode = sci.EOLMode();
-    std::wstring eol = eolMode == Scintilla::EndOfLine::Cr ? L"\r"
-        : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
-        : L"\r\n";
-    std::wstring filenames = commonData.heading.get() + eol;
-    for (int view = 0; view < 2; ++view) if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
-        size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);
-        for (size_t i = 0; i < n; ++i) filenames += getFilePath(npp(NPPM_GETBUFFERIDFROMPOS, i, view)) + eol;
-    }
-
-	// TODO: get real files and associate them with the open `files`. Return this list.
-    return {};
-}
 
 void toggleWatcherPanelWithList() {
     if (!watcherPanel) {
@@ -489,10 +482,13 @@ void toggleWatcherPanelWithList() {
         jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
 
         // read JSON
-        json vDataJson;
-        std::ifstream(jsonFilePath) >> vDataJson;
-        
+        json vDataJson = loadVDataFromFile(jsonFilePath);
         vData = vDataJson.get<VData>();
+
+        std::vector<VFile> openFiles = listOpenFiles();
+        
+        // Sync vData with open files
+        syncVDataWithOpenFiles(vData, openFiles);
         
 
 		
@@ -520,8 +516,7 @@ void toggleWatcherPanelWithList() {
 
 
 
-        
-        std::vector<std::string> openFileList = listOpenFiles();
+
 
         dock.hClient = watcherPanel;
         dock.pszName = L"Watcher (VFolders)";  // title bar text (caption in dialog is replaced)
@@ -542,6 +537,20 @@ void toggleWatcherPanelWithList() {
 void writeJsonFile() {
     json vDataJson = vData;
     std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
+}
+
+void syncVDataWithOpenFilesNotification() {
+    // Get current open files
+    std::vector<VFile> openFiles = listOpenFiles();
+    
+    // Sync vData with current open files
+    syncVDataWithOpenFiles(vData, openFiles);
+    
+    // Update the UI
+    updateWatcherPanel();
+    
+    // Optionally save to JSON
+    // writeJsonFile(); // Uncomment if you want to save immediately
 }
 
 wchar_t* toWchar(const std::string& str) {

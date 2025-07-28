@@ -15,10 +15,26 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "CommonData.h"
+#include "model/VData.h"
+#include "ProcessCommands.h"
 
 extern void updateStatusDialog();
 extern void updateWatcherPanel();
+extern void syncVDataWithOpenFilesNotification();
 
+void syncVDataWithCurrentFiles(VData& vData) {
+    // Get current open files
+    std::vector<VFile> openFiles = listOpenFiles();
+    
+    // Sync vData with current open files
+    syncVDataWithOpenFiles(vData, openFiles);
+    
+    // Update the UI
+    updateWatcherPanel();
+    
+    // Optionally save to JSON
+    // writeJsonFile(); // Uncomment if you want to save immediately
+}
 
 void scnModified(const Scintilla::NotificationData* scnp) {
     using Scintilla::FlagSet;
@@ -50,15 +66,35 @@ void fileClosed(const NMHDR* nmhdr) {
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
     if (position == -1) /* file is no longer open in either view */ {
         MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
+        
+        // Sync vData when a file is closed
+        syncVDataWithOpenFilesNotification();
     }
 }
 
 
 void fileOpened(const NMHDR* nmhdr) {
+    // Sync vData when a new file is opened
+    // syncVDataWithOpenFilesNotification();
+
     if (!commonData.annoy) return;
     UINT_PTR bufferID = nmhdr->idFrom;
     std::wstring filepath = getFilePath(bufferID);
     MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VFolders", 0);
+}
+
+// Add this new notification handler for session loading
+void sessionLoaded() {
+    // This gets called when Notepad++ finishes loading the session
+    // Sync vData with all loaded files
+    //syncVDataWithOpenFilesNotification();
+}
+
+void nppReady() {
+    // This gets called when Notepad++ is fully ready
+    // Wait a bit for files to be loaded, then sync
+    Sleep(100); // Small delay to ensure files are loaded
+    syncVDataWithOpenFilesNotification();
 }
 
 

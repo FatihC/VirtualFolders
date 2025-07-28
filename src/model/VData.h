@@ -2,6 +2,10 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <fstream>
+#include <map>
+#include <set>
+#include <algorithm>
 #include "nlohmann/json.hpp"
 #include <windows.h>
 #include "DateUtil.h"
@@ -20,6 +24,8 @@ public:
 	int view;
 	wstring id;
     FILETIME creationTime;
+	int session;
+	string backupFilePath;
 };
 
 class VFolder
@@ -47,7 +53,9 @@ inline void to_json(json& j, const VFile& f) {
 		{"path", f.path},
 		{"view", f.view},
 		{"id", f.id},
-		{"creationTime", filetimeToInteger(f.creationTime)}
+		{"creationTime", filetimeToInteger(f.creationTime)},
+		{"session", f.session},
+		{"backupFilePath", f.backupFilePath}
 	};
 }
 
@@ -86,6 +94,9 @@ inline void from_json(const json& j, VFile& f) {
 	ULONGLONG timeValue;
 	j.at("creationTime").get_to(timeValue);
 	f.creationTime = ULongLongToFileTime(timeValue);
+
+	if (j.contains("session")) j.at("session").get_to(f.session);
+	if (j.contains("backupFilePath")) j.at("backupFilePath").get_to(f.backupFilePath);
 }
 
 inline void from_json(const json& j, VFolder& folder) {
@@ -98,13 +109,24 @@ inline void from_json(const json& j, VFolder& folder) {
 }
 
 inline void from_json(const json& j, VData& data) {
+	// Check if JSON is null or empty
+	if (j.is_null() || j.empty()) {
+		data.folderList.clear();
+		data.fileList.clear();
+		return;
+	}
 	
 	if (j.contains("folderList")) {
 		j.at("folderList").get_to(data.folderList);
+	} else {
+		data.folderList.clear();
 	}
+	
 	// Only set fileList if it exists in the JSON
 	if (j.contains("fileList")) {
 		j.at("fileList").get_to(data.fileList);
+	} else {
+		data.fileList.clear();
 	}
 }
 
@@ -156,4 +178,68 @@ inline std::optional<VFolder> findFolderByOrder(vector<VFolder> folderList, int 
 		}
 	}
 	return std::nullopt; // Return null if not found
+}
+
+inline json loadVDataFromFile(const std::wstring& filePath) {
+    std::ifstream file(filePath);
+    
+    if (!file.is_open()) {
+        return json::object();
+    }
+    
+    // Check if file is empty
+    file.seekg(0, std::ios::end);
+    if (file.tellg() == 0) {
+        return json::object();
+    }
+    
+    // Reset file pointer and try to parse
+    file.seekg(0, std::ios::beg);
+    try {
+        json vDataJson;
+        file >> vDataJson;
+        return vDataJson;
+    } catch (const json::parse_error& e) {
+        return json::object();
+    }
+}
+
+inline void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles) {
+    // Create a map of existing files in vData for quick lookup
+    std::map<std::wstring, VFile*> existingFiles;
+    for (auto& file : vData.fileList) {
+        existingFiles[file.id] = &file;
+    }
+    
+    // Track which open files we've processed
+    std::set<std::wstring> processedOpenFiles;
+    
+    // Check each open file
+    for (const auto& openFile : openFiles) {
+        processedOpenFiles.insert(openFile.id);
+        
+        // Check if this file exists in vData
+        auto it = existingFiles.find(openFile.id);
+        if (it != existingFiles.end()) {
+            // File exists in vData, check if creationTime matches
+            VFile* existingFile = it->second;
+            if (existingFile->creationTime.dwHighDateTime != openFile.creationTime.dwHighDateTime ||
+                existingFile->creationTime.dwLowDateTime != openFile.creationTime.dwLowDateTime) {
+                // Creation time changed, update the file
+                *existingFile = openFile;
+            }
+        } else {
+            // File doesn't exist in vData, add it
+            vData.fileList.push_back(openFile);
+        }
+    }
+    
+    // Remove files from vData that are no longer in openFiles
+    vData.fileList.erase(
+        std::remove_if(vData.fileList.begin(), vData.fileList.end(),
+            [&processedOpenFiles](const VFile& file) {
+                return processedOpenFiles.find(file.id) == processedOpenFiles.end();
+            }),
+        vData.fileList.end()
+    );
 }

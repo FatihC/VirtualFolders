@@ -26,6 +26,8 @@
     <ClInclude Include="src\Framework\UtilityFramework.h" />
     <ClInclude Include="src\Framework\UtilityFrameworkMIT.h" />
     <ClInclude Include="src\Host\Docking.h" />
+    <ClInclude Include="src\model\Session.h" />
+    <ClInclude Include="src\model\VData.h" />
     <ClInclude Include="src\nlohmann\json.hpp" />
     <ClInclude Include="src\resource.h" />
     <ClInclude Include="src\Host\BoostRegexSearch.h" />
@@ -45,12 +47,12 @@
     <ClCompile Include="src\Configuration.cpp" />
     <ClCompile Include="src\Framework\PluginFramework.cpp" />
     <ClCompile Include="src\Framework\ScintillaCallEx.cpp" />
+    <ClCompile Include="src\model\VData.cpp" />
     <ClCompile Include="src\ProcessCommands.cpp" />
     <ClCompile Include="src\Settings.cpp" />
     <ClCompile Include="src\Plugin.cpp" />
     <ClCompile Include="src\ProcessNotifications.cpp" />
     <ClCompile Include="src\Status.cpp" />
-    <ClCompile Include="src\VData.cpp" />
     <ClCompile Include="src\Watcher.cpp" />
     <None Include="packages.config" />
     <None Include="src\Host\ScintillaCall.cxx" />
