@@ -245,6 +245,15 @@ inline SessionView parseView(const string& xml, const string& viewName, size_t& 
     // Parse activeIndex attribute
     size_t currentPos = viewStart;
     view.activeIndex = parseInt(getAttributeValue(xml, "activeIndex", currentPos));
+
+    // Find the end of the view
+    string endTag = "</" + viewName + ">";
+    size_t viewEnd = xml.find(endTag, viewStart);
+    if (viewEnd != string::npos) {
+        pos = viewEnd + endTag.length();
+    }
+
+
     
     // Find all File elements in this view
     size_t filePos = currentPos;
@@ -256,14 +265,14 @@ inline SessionView parseView(const string& xml, const string& viewName, size_t& 
         if (!file.filename.empty()) {
             view.files.push_back(file);
         }
+
+        if (filePos >= pos) {
+            // If we reached the end of the view, break
+			break;
+        }
     }
     
-    // Find the end of the view
-    string endTag = "</" + viewName + ">";
-    size_t viewEnd = xml.find(endTag, viewStart);
-    if (viewEnd != string::npos) {
-        pos = viewEnd + endTag.length();
-    }
+    
     
     return view;
 }

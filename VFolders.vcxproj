@@ -40,7 +40,6 @@
     <ClInclude Include="src\Host\ScintillaStructures.h" />
     <ClInclude Include="src\Host\ScintillaTypes.h" />
     <ClInclude Include="src\Host\Sci_Position.h" />
-    <ClInclude Include="src\VData.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\About.cpp" />

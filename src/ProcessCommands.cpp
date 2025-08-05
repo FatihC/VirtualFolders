@@ -28,61 +28,6 @@
 
 std::vector<VFile> listOpenFiles();
 
-void setVFileInfo(VFile& vFile) {
-    // Convert string path to wstring for Windows API
-    std::wstring wPath(vFile.path.begin(), vFile.path.end());
-    
-    // Open file handle
-    HANDLE hFile = CreateFileW(wPath.c_str(), 
-                              GENERIC_READ, 
-                              FILE_SHARE_READ, 
-                              NULL, 
-                              OPEN_EXISTING, 
-                              FILE_ATTRIBUTE_NORMAL, 
-                              NULL);
-    
-    if (hFile != INVALID_HANDLE_VALUE) {
-        // Get creation time
-        FILETIME creationTime, lastAccessTime, lastWriteTime;
-        if (GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
-            vFile.creationTime = creationTime;
-        }
-        
-        // Try File ID first (most reliable)
-        FILE_ID_INFO fileIdInfo;
-        DWORD bytesReturned;
-        
-        if (GetFileInformationByHandleEx(hFile, FileIdInfo, &fileIdInfo, 
-                                        sizeof(fileIdInfo))) {
-            // Convert FILE_ID_128 to string (it's a 16-byte array)
-            std::wstring fileIdStr = L"FILEID_";
-            for (int i = 0; i < 16; i++) {
-                wchar_t hex[3];
-                swprintf_s(hex, 3, L"%02X", fileIdInfo.FileId.Identifier[i]);
-                fileIdStr += hex;
-            }
-            vFile.id = fileIdStr;
-        } else {
-            // Fallback to File Reference Number
-            BY_HANDLE_FILE_INFORMATION fileInfo;
-            if (GetFileInformationByHandle(hFile, &fileInfo)) {
-                ULONGLONG refNum = (static_cast<ULONGLONG>(fileInfo.nFileIndexHigh) << 32) | 
-                                   fileInfo.nFileIndexLow;
-                vFile.id = L"REFNUM_" + std::to_wstring(refNum);
-            } else {
-                // Final fallback: path hash
-                vFile.id = L"HASH_" + std::to_wstring(std::hash<std::wstring>{}(wPath));
-            }
-        }
-        
-        CloseHandle(hFile);
-    } else {
-        // File couldn't be opened, set default values
-        vFile.id = L"";
-        vFile.creationTime = {0, 0};
-    }
-}
-
 
 void printListOpenFiles() {
     Scintilla::EndOfLine eolMode = sci.EOLMode();
@@ -102,7 +47,7 @@ void printListOpenFiles() {
         }
     }
     sci.InsertText(-1, fromWide(filenames).data());
-	listOpenFiles(); // Call the function to list open files
+	//listOpenFiles(); // Call the function to list open files
 }
 
 std::vector<VFile> listOpenFiles() {
@@ -124,25 +69,47 @@ std::vector<VFile> listOpenFiles() {
     // Process main view files
     for (size_t i = 0; i < session.mainView.files.size(); ++i) {
         const auto& sessionFile = session.mainView.files[i];
-        VFile vFile = sessionFileToVFile(sessionFile);
+        VFile vFile = sessionFileToVFile(sessionFile, 0); // Main view
+        vFile.order = static_cast<int>(i);
         fileList.push_back(vFile);
     }
     
     // Process sub view files
     for (size_t i = 0; i < session.subView.files.size(); ++i) {
         const auto& sessionFile = session.subView.files[i];
-        VFile vFile = sessionFileToVFile(sessionFile);
+        VFile vFile = sessionFileToVFile(sessionFile, 1); // Sub view
+        vFile.order = static_cast<int>(i);
         fileList.push_back(vFile);
     }
+    
+    // Remove files where session is not 0
+    fileList.erase(
+        std::remove_if(fileList.begin(), fileList.end(),
+            [](const VFile& file) {
+                return file.view != 0;
+            }),
+        fileList.end()
+    );
     
     return fileList;
 }
 
-VFile sessionFileToVFile(const SessionFile sessionFile) {
+VFile sessionFileToVFile(const SessionFile& sessionFile, int view) {
     VFile vFile;
-    vFile.name = sessionFile.filename;
-    vFile.path = sessionFile.backupFilePath.empty() ? sessionFile.filename : sessionFile.backupFilePath;
-    vFile.view = 0; // Main view
+    vFile.order = 0; // Will be set by the caller
+    
+    // If backupFilePath is empty, filename contains the absolute path
+    // Extract just the filename from the path
+    if (sessionFile.backupFilePath.empty()) {
+        std::filesystem::path filePath(sessionFile.filename);
+        vFile.name = filePath.filename().string();
+        vFile.path = sessionFile.filename;
+    } else {
+        vFile.name = sessionFile.filename;
+        vFile.path = sessionFile.backupFilePath;
+    }
+    
+    vFile.view = view; // Use the passed view parameter
     vFile.session = 0; // Default session index
     vFile.backupFilePath = sessionFile.backupFilePath;
 

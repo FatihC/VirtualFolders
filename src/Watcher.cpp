@@ -486,6 +486,10 @@ void toggleWatcherPanelWithList() {
         vData = vDataJson.get<VData>();
 
         std::vector<VFile> openFiles = listOpenFiles();
+
+        // WARNING: This is a hack to simplify the code.
+        // Filter out files that are not in session.mainView.files
+        
         
         // Sync vData with open files
         syncVDataWithOpenFiles(vData, openFiles);

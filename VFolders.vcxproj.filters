@@ -73,9 +73,6 @@
     <ClInclude Include="src\Framework\UtilityFrameworkMIT.h">
       <Filter>Support Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\VData.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\model\Session.h">
       <Filter>Header Files</Filter>
     </ClInclude>

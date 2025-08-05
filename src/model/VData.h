@@ -22,8 +22,6 @@ public:
 	string name;
 	string path;
 	int view;
-	wstring id;
-    FILETIME creationTime;
 	int session;
 	string backupFilePath;
 };
@@ -52,8 +50,6 @@ inline void to_json(json& j, const VFile& f) {
 		{"name", f.name}, 
 		{"path", f.path},
 		{"view", f.view},
-		{"id", f.id},
-		{"creationTime", filetimeToInteger(f.creationTime)},
 		{"session", f.session},
 		{"backupFilePath", f.backupFilePath}
 	};
@@ -84,16 +80,6 @@ inline void from_json(const json& j, VFile& f) {
 	j.at("name").get_to(f.name);
 	j.at("path").get_to(f.path);
 	j.at("view").get_to(f.view);
-	
-	// Convert string to wstring for id
-	string idStr;
-	j.at("id").get_to(idStr);
-	f.id = wstring(idStr.begin(), idStr.end());
-	
-	// Convert ULONGLONG to FILETIME for creationTime
-	ULONGLONG timeValue;
-	j.at("creationTime").get_to(timeValue);
-	f.creationTime = ULongLongToFileTime(timeValue);
 
 	if (j.contains("session")) j.at("session").get_to(f.session);
 	if (j.contains("backupFilePath")) j.at("backupFilePath").get_to(f.backupFilePath);
@@ -205,27 +191,28 @@ inline json loadVDataFromFile(const std::wstring& filePath) {
 }
 
 inline void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles) {
-    // Create a map of existing files in vData for quick lookup
-    std::map<std::wstring, VFile*> existingFiles;
+    // Create a map of existing files in vData for quick lookup using name and backupFilePath
+    std::map<std::string, VFile*> existingFiles;
     for (auto& file : vData.fileList) {
-        existingFiles[file.id] = &file;
+        std::string key = file.name + "|" + file.backupFilePath;
+        existingFiles[key] = &file;
     }
     
     // Track which open files we've processed
-    std::set<std::wstring> processedOpenFiles;
+    std::set<std::string> processedOpenFiles;
     
     // Check each open file
     for (const auto& openFile : openFiles) {
-        processedOpenFiles.insert(openFile.id);
+        std::string key = openFile.name + "|" + openFile.backupFilePath;
+        processedOpenFiles.insert(key);
         
         // Check if this file exists in vData
-        auto it = existingFiles.find(openFile.id);
+        auto it = existingFiles.find(key);
         if (it != existingFiles.end()) {
-            // File exists in vData, check if creationTime matches
+            // File exists in vData, check if backupFilePath matches
             VFile* existingFile = it->second;
-            if (existingFile->creationTime.dwHighDateTime != openFile.creationTime.dwHighDateTime ||
-                existingFile->creationTime.dwLowDateTime != openFile.creationTime.dwLowDateTime) {
-                // Creation time changed, update the file
+            if (existingFile->backupFilePath != openFile.backupFilePath) {
+                // Backup file path changed, update the file
                 *existingFile = openFile;
             }
         } else {
@@ -238,7 +225,8 @@ inline void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openF
     vData.fileList.erase(
         std::remove_if(vData.fileList.begin(), vData.fileList.end(),
             [&processedOpenFiles](const VFile& file) {
-                return processedOpenFiles.find(file.id) == processedOpenFiles.end();
+                std::string key = file.name + "|" + file.backupFilePath;
+                return processedOpenFiles.find(key) == processedOpenFiles.end();
             }),
         vData.fileList.end()
     );
