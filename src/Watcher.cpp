@@ -45,6 +45,7 @@ wchar_t* toWchar(const std::string& str);
 void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
 void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
 
+
 #define ID_TREE_DELETE 40001
 
 void updateTreeColorsExternal(HWND hTree);
@@ -82,6 +83,102 @@ struct InsertionMark {
     int lineLeft = 0;
     int lineRight = 0;
 };
+
+int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem);
+
+// Helper functions for drag and drop reordering
+int calculateNewOrder(int targetOrder, const InsertionMark& mark) {
+    if (mark.above) {
+        return targetOrder;  // Insert at target position
+    } else {
+        return targetOrder + 1;  // Insert after target
+    }
+}
+
+void reorderItems(VData& vData, int oldOrder, int newOrder) {
+    // Find the item to move
+    VFile* movedFile = nullptr;
+    for (auto& file : vData.fileList) {
+        if (file.order == oldOrder) {
+            movedFile = &file;
+            break;
+        }
+    }
+    
+    if (!movedFile) return;
+    
+    // Adjust orders of other items
+    if (oldOrder < newOrder) {
+        // Moving down - decrease orders of items in between
+        for (auto& file : vData.fileList) {
+            if (file.order > oldOrder && file.order <= newOrder) {
+                file.order--;
+            }
+        }
+    } else {
+        // Moving up - increase orders of items in between
+        for (auto& file : vData.fileList) {
+            if (file.order >= newOrder && file.order < oldOrder) {
+                file.order++;
+            }
+        }
+    }
+    
+    // Set new order
+    movedFile->order = newOrder;
+}
+
+void reorderFolders(VData& vData, int oldOrder, int newOrder) {
+    // Similar logic for folders
+    VFolder* movedFolder = nullptr;
+    for (auto& folder : vData.folderList) {
+        if (folder.order == oldOrder) {
+            movedFolder = &folder;
+            break;
+        }
+    }
+    
+    if (!movedFolder) return;
+    
+    if (oldOrder < newOrder) {
+        for (auto& folder : vData.folderList) {
+            if (folder.order > oldOrder && folder.order <= newOrder) {
+                folder.order--;
+            }
+        }
+    } else {
+        for (auto& folder : vData.folderList) {
+            if (folder.order >= newOrder && folder.order < oldOrder) {
+                folder.order++;
+            }
+        }
+    }
+    
+    movedFolder->order = newOrder;
+}
+
+void refreshTree(HWND hTree, const VData& vData) {
+    // Clear existing tree
+    TreeView_DeleteAllItems(hTree);
+    
+    // Rebuild tree with new order
+    vDataSort(vData);
+    
+    int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
+    lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
+    
+    for (int i = 0; i <= lastOrder; i++) {
+        auto vFile = findFileByOrder(vData.fileList, i);
+        if (!vFile) {
+            auto vFolder = findFolderByOrder(vData.folderList, i);
+            if (vFolder) {
+                addFolderToTree(*vFolder, hTree, TVI_ROOT);
+            }
+        } else {
+            addFileToTree(*vFile, hTree, TVI_ROOT);
+        }
+    }
+}
 
 void updateWatcherPanelUnconditional() {
     std::wstring text = GetDlgItemString(watcherPanel, IDC_WATCHER_TEXT);
@@ -219,9 +316,11 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             // Only show drop target if it's a valid target (not the dragged item)
             if (hItem && hItem != hDragItem) {
                 TreeView_SelectDropTarget(hTree, hItem);
+                hDropTarget = hItem;
             }
             else {
                 TreeView_SelectDropTarget(hTree, nullptr);
+                hDropTarget = nullptr;
             }
 
             // --- Insertion line logic ---
@@ -368,6 +467,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     }
     case WM_LBUTTONUP: {
+        bool insertion = lastMark.valid;
         if (isDragging) {
             // Erase insertion line if present
             if (lastMark.valid) {
@@ -403,8 +503,39 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             // Clear drop target selection and restore normal selection
             TreeView_SelectDropTarget(hTree, nullptr);
 
-            if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
-                // TODO: Move the item in vData, update JSON, and refresh tree
+            if (hDragItem && hDropTarget && hDragItem != hDropTarget && insertion) {
+                // Get the dragged and target item orders
+                int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
+				int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
+
+                // Find the dragged item in vData
+                auto draggedFileOpt = findFileByOrder(vData.fileList, dragOrder);
+                auto draggedFolderOpt = findFolderByOrder(vData.folderList, dragOrder);
+                
+                if (draggedFileOpt) {
+                    // Calculate new order based on drop position
+                    int newOrder = calculateNewOrder(targetOrder, lastMark);
+                    
+                    // Update the VFile order
+                    draggedFileOpt->order = newOrder;
+                    
+                    // Reorder other items
+                    reorderItems(vData, dragOrder, newOrder);
+                    
+                    // Refresh the tree
+                    refreshTree(hTree, vData);
+                    
+                    // Save to JSON
+                    writeJsonFile();
+                }
+                else if (draggedFolderOpt) {
+                    // Similar logic for folders
+                    int newOrder = calculateNewOrder(targetOrder, lastMark);
+                    draggedFolderOpt->order = newOrder;
+                    reorderFolders(vData, dragOrder, newOrder);
+                    refreshTree(hTree, vData);
+                    writeJsonFile();
+                }
             }
             hDragItem = nullptr;
             hDropTarget = nullptr;
@@ -443,6 +574,26 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     }
     }
     return FALSE;
+}
+
+int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem) {
+    //TVITEM tvi = { 0 };
+    //tvi.mask = TVIF_PARAM;
+    //tvi.hItem = hItem;
+    //if (TreeView_GetItem(GetDlgItem(watcherPanel, IDC_TREE1), &tvi)) {
+    //    return static_cast<int>(tvi.lParam); // lParam contains the order
+    //}
+
+    TVITEM tvi = { 0 };
+    tvi.mask = TVIF_TEXT | TVIF_PARAM;   // We only care about lParam
+    tvi.hItem = hItem;       // The HTREEITEM you have
+
+    if (TreeView_GetItem(hTree, &tvi)) {
+        int storedNumber = (int)tvi.lParam;
+		return storedNumber; // lParam contains the order
+    }
+
+    return -1; // Not found or error
 }
 
 void updateTreeColors(HWND hTree) {
@@ -570,12 +721,13 @@ void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = TVI_LAST;
-    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFile.name));
     tvis.item.pszText = buffer;
     tvis.item.iImage = idxFile; // or idxFile
     tvis.item.iSelectedImage = idxFile; // or idxFile
-    TreeView_InsertItem(hTree, &tvis);
+	tvis.item.lParam = vFile.order; // Store the order/index directly in lparam
+    HTREEITEM hItem = TreeView_InsertItem(hTree, &tvis);
 }
 
 void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
@@ -590,8 +742,9 @@ void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
     tvis.item.pszText = buffer;
     tvis.item.iImage = idxFolder; // or idxFile
     tvis.item.iSelectedImage = idxFolder; // or idxFile
+	tvis.item.lParam = vFolder.order; // Store the order/index directly in lparam
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
-
+    
 	
     int lastOrder = vFolder.fileList.empty() ? 0 : vFolder.fileList.back().order;
 	lastOrder = std::max(lastOrder, vFolder.folderList.empty() ? 0 : vFolder.folderList.back().order);

@@ -268,7 +268,7 @@ inline SessionView parseView(const string& xml, const string& viewName, size_t& 
 
         if (filePos >= pos) {
             // If we reached the end of the view, break
-			break;
+            break;
         }
     }
     
