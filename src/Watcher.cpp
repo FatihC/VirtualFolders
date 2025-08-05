@@ -36,6 +36,7 @@ using json = nlohmann::json;
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
+extern int menuItem_ToggleWatcher_Left;      // Defined in Plugin.cpp
 
 void writeJsonFile();
 void syncVDataWithOpenFilesNotification();
@@ -674,18 +675,26 @@ void toggleWatcherPanelWithList() {
 
 
         dock.hClient = watcherPanel;
-        dock.pszName = L"Watcher (VFolders)";  // title bar text (caption in dialog is replaced)
-        dock.dlgID = menuItem_ToggleWatcher;          // zero-based position in menu to recall dialog at next startup
-        dock.uMask = DWS_DF_CONT_RIGHT;               // first time display will be docked at the right
+        dock.pszName = L"Virtual Folders";  // title bar text (caption in dialog is replaced)
+        dock.dlgID = menuItem_ToggleWatcher_Left;          // zero-based position in menu to recall dialog at next startup
+        dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
         dock.pszModuleName = L"VFolders.dll";        // plugin module name
+        HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_ICON1));
+        dock.hIconTab = hIcon;
+
+
         npp(NPPM_DMMREGASDCKDLG, 0, &dock);
+
+        OutputDebugStringA("Watch Panel Create\n");
     }
     else if (IsWindowVisible(watcherPanel)) {
         npp(NPPM_DMMHIDE, 0, watcherPanel);
+        OutputDebugStringA("Watch Panel Hide\n");
     }
     else {
         updateWatcherPanelUnconditional();
         npp(NPPM_DMMSHOW, 0, watcherPanel);
+        OutputDebugStringA("Watch Panel Show\n");
     }
 }
 

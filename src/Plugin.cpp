@@ -87,6 +87,7 @@ FuncItem menuDefinition[] = {
 
 int menuItem_ToggleStatus  = 1;
 int menuItem_ToggleWatcher = 2;
+int menuItem_ToggleWatcher_Left = 4;
 
 
 // Tell Notepad++ the plugin name

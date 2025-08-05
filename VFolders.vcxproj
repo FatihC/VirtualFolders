@@ -92,6 +92,9 @@
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</DeploymentContent>
     </CopyFileToFolders>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\Downloads\folder_icon.ico" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{821f38c0-d927-4c4f-a08c-717c485b0f95}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
