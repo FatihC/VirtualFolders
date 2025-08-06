@@ -36,7 +36,6 @@ using json = nlohmann::json;
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
-extern int menuItem_ToggleWatcher_Left;      // Defined in Plugin.cpp
 
 void writeJsonFile();
 void syncVDataWithOpenFilesNotification();
@@ -87,6 +86,27 @@ struct InsertionMark {
 };
 
 int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem);
+
+// Helper function to find VFile by order
+VFile* findVFileByOrder(VData& vData, int order) {
+    // Search in root level files
+    for (auto& file : vData.fileList) {
+        if (file.order == order) {
+            return &file;
+        }
+    }
+    
+    // If not found in root, search in folders
+    for (auto& folder : vData.folderList) {
+        for (auto& file : folder.fileList) {
+            if (file.order == order) {
+                return &file;
+            }
+        }
+    }
+    
+    return nullptr;
+}
 
 // Helper functions for drag and drop reordering
 int calculateNewOrder(int targetOrder, const InsertionMark& mark) {
@@ -243,6 +263,60 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         if (nmhdr->idFrom == IDC_TREE1) {
             LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
             switch (pnmtv->hdr.code) {
+            case TVN_SELCHANGED: {
+                // Only process file clicks if Notepad++ is ready
+                if (!commonData.isNppReady) {
+                    return TRUE;  // Skip processing if Notepad++ isn't ready yet
+                }
+
+                // Handle file selection - open file when user clicks on a file item
+                HTREEITEM hSelectedItem = pnmtv->itemNew.hItem;
+                if (hSelectedItem) {
+                    TVITEM item = { 0 };
+                    item.mask = TVIF_IMAGE | TVIF_PARAM;
+                    item.hItem = hSelectedItem;
+                    if (TreeView_GetItem(hTree, &item)) {
+                        // Check if this is a file (not a folder) by checking the image index
+                        if (item.iImage != idxFile) {
+							return TRUE;  // This is a file item, no need to do anything here
+                        }
+                            
+                        // This is a file item, get the order and find the corresponding VFile
+                        int order = static_cast<int>(item.lParam);
+                            
+                        // Find the VFile using the helper function
+                        VFile* selectedFile = findVFileByOrder(vData, order);
+                            
+                        // If file found and has a valid path, open it
+                        if (selectedFile && !selectedFile->path.empty()) {
+                            // Convert path to wide string
+                            std::wstring widePath(selectedFile->path.begin(), selectedFile->path.end());
+                                
+                            // Debug output
+                            OutputDebugStringA(("Opening file: " + selectedFile->path).c_str());
+                                
+                            // First, try to switch to the file if it's already open
+                            if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(widePath.c_str()))) {
+                                // If file is not open, open it
+                                npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(widePath.c_str()));
+                            }
+                                
+                            // Optionally, switch to the appropriate view if specified
+                            if (selectedFile->view >= 0) {
+                                // Switch to the specified view (0 = main view, 1 = sub view)
+                                npp(NPPM_ACTIVATEDOC, selectedFile->view, order);
+                            }
+                        }
+                        else if (selectedFile && selectedFile->path.empty()) {
+                            OutputDebugStringA("File has empty path, cannot open");
+                        }
+                        else {
+                            OutputDebugStringA("File not found in vData");
+                        }
+                    }
+                }
+                return TRUE;
+            }
             case TVN_BEGINDRAG: {
                 std::cout << "TVN_BEGINDRAG" << std::endl;
                 hDragItem = pnmtv->itemNew.hItem;
@@ -258,6 +332,51 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     // Start tracking mouse leave events
                     TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hTree, 0 };
                     TrackMouseEvent(&tme);
+                }
+                return TRUE;
+            }
+            case NM_DBLCLK: {
+                // Handle double-click on tree items
+                LPNMITEMACTIVATE pnmia = (LPNMITEMACTIVATE)lParam;
+                if (pnmia->iItem != -1) {
+                    // Get the selected item from the tree view
+                    HTREEITEM hSelectedItem = TreeView_GetSelection(hTree);
+                    if (hSelectedItem) {
+                        TVITEM item = { 0 };
+                        item.mask = TVIF_IMAGE | TVIF_PARAM;
+                        item.hItem = hSelectedItem;
+                        if (TreeView_GetItem(hTree, &item)) {
+                            // Check if this is a file (not a folder) by checking the image index
+                            if (item.iImage == idxFile) {
+                                // This is a file item, get the order and find the corresponding VFile
+                                int order = static_cast<int>(item.lParam);
+                                
+                                // Find the VFile using the helper function
+                                VFile* selectedFile = findVFileByOrder(vData, order);
+                                
+                                // If file found and has a valid path, open it
+                                if (selectedFile && !selectedFile->path.empty()) {
+                                    // Convert path to wide string
+                                    std::wstring widePath(selectedFile->path.begin(), selectedFile->path.end());
+                                    
+                                    // Debug output
+                                    OutputDebugStringA(("Double-click opening file: " + selectedFile->path).c_str());
+                                    
+                                    // First, try to switch to the file if it's already open
+                                    if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(widePath.c_str()))) {
+                                        // If file is not open, open it
+                                        npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(widePath.c_str()));
+                                    }
+                                    
+                                    // Optionally, switch to the appropriate view if specified
+                                    if (selectedFile->view >= 0) {
+                                        // Switch to the specified view (0 = main view, 1 = sub view)
+                                        npp(NPPM_ACTIVATEDOC, selectedFile->view, 0);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 return TRUE;
             }
@@ -714,7 +833,7 @@ void toggleWatcherPanelWithList() {
         
 
 		
-        //writeJsonFile();
+        writeJsonFile();
         
 
 		vDataSort(vData);
@@ -734,15 +853,11 @@ void toggleWatcherPanelWithList() {
             }
 
         }
-
-
-
-
-
+        
 
         dock.hClient = watcherPanel;
         dock.pszName = L"Virtual Folders";  // title bar text (caption in dialog is replaced)
-        dock.dlgID = menuItem_ToggleWatcher_Left;          // zero-based position in menu to recall dialog at next startup
+        dock.dlgID = menuItem_ToggleWatcher;          // zero-based position in menu to recall dialog at next startup
         dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
         dock.pszModuleName = L"VFolders.dll";        // plugin module name
         HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
@@ -803,6 +918,11 @@ void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
     tvis.item.iSelectedImage = idxFile; // or idxFile
 	tvis.item.lParam = vFile.order; // Store the order/index directly in lparam
     HTREEITEM hItem = TreeView_InsertItem(hTree, &tvis);
+
+    if (vFile.isActive) {
+        TreeView_SelectItem(hTree, hItem);
+        TreeView_EnsureVisible(hTree, hItem);
+    }
 }
 
 void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)

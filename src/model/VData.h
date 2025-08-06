@@ -24,6 +24,7 @@ public:
 	int view;
 	int session;
 	string backupFilePath;
+	bool isActive = false;
 };
 
 class VFolder
@@ -51,7 +52,8 @@ inline void to_json(json& j, const VFile& f) {
 		{"path", f.path},
 		{"view", f.view},
 		{"session", f.session},
-		{"backupFilePath", f.backupFilePath}
+		{"backupFilePath", f.backupFilePath},
+		{"isActive", f.isActive}
 	};
 }
 
@@ -83,6 +85,7 @@ inline void from_json(const json& j, VFile& f) {
 
 	if (j.contains("session")) j.at("session").get_to(f.session);
 	if (j.contains("backupFilePath")) j.at("backupFilePath").get_to(f.backupFilePath);
+	if (j.contains("isActive")) j.at("isActive").get_to(f.isActive);
 }
 
 inline void from_json(const json& j, VFolder& folder) {
@@ -192,11 +195,11 @@ inline json loadVDataFromFile(const std::wstring& filePath) {
 
 inline void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles) {
     // Create a map of existing files in vData for quick lookup using name and backupFilePath
-    std::map<std::string, VFile*> existingFiles;
-    for (auto& file : vData.fileList) {
-        std::string key = file.name + "|" + file.backupFilePath;
-        existingFiles[key] = &file;
-    }
+    std::map<std::string, size_t> existingFileIndices;
+	for (size_t i = 0; i < vData.fileList.size(); ++i) {
+		std::string key = vData.fileList[i].name + "|" + vData.fileList[i].backupFilePath;
+		existingFileIndices[key] = i;
+	}
     
     // Track which open files we've processed
     std::set<std::string> processedOpenFiles;
@@ -207,18 +210,22 @@ inline void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openF
         processedOpenFiles.insert(key);
         
         // Check if this file exists in vData
-        auto it = existingFiles.find(key);
-        if (it != existingFiles.end()) {
-            // File exists in vData, check if backupFilePath matches
-            VFile* existingFile = it->second;
-            if (existingFile->backupFilePath != openFile.backupFilePath) {
-                // Backup file path changed, update the file
-                *existingFile = openFile;
-            }
-        } else {
-            // File doesn't exist in vData, add it
-            vData.fileList.push_back(openFile);
-        }
+        auto it = existingFileIndices.find(key);
+		if (it != existingFileIndices.end()) {
+			size_t index = it->second;
+			if (index < vData.fileList.size()) {
+				VFile& existingFile = vData.fileList[index];
+				if (existingFile.backupFilePath != openFile.backupFilePath) {
+					existingFile = openFile;
+				}
+				else {
+					existingFile.isActive = openFile.isActive;
+				}
+			}
+		}
+		else {
+			vData.fileList.push_back(openFile);
+		}
     }
     
     // Remove files from vData that are no longer in openFiles

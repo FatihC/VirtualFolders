@@ -35,6 +35,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MyPreference, {
 
 inline struct CommonData {
 
+    bool isNppReady = false;
     int insertsCounted = 0;
     int deletesCounted = 0;
 

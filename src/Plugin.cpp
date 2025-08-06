@@ -39,6 +39,7 @@ void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
 void modifyAll(const NMHDR*);
 void nppReady();
+void nppShutdown();
 
 // Routines that process menu commands
 
@@ -89,7 +90,6 @@ FuncItem menuDefinition[] = {
 
 int menuItem_ToggleStatus  = 1;
 int menuItem_ToggleWatcher = 2;
-int menuItem_ToggleWatcher_Left = 4;
 
 
 // Tell Notepad++ the plugin name
@@ -188,6 +188,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
         case NPPN_SHUTDOWN:
             saveConfiguration();
+            nppShutdown();
             break;
 
         }

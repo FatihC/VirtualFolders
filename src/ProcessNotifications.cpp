@@ -95,6 +95,13 @@ void nppReady() {
     // Wait a bit for files to be loaded, then sync
     Sleep(100); // Small delay to ensure files are loaded
     syncVDataWithOpenFilesNotification();
+
+    commonData.isNppReady = true;
+}
+
+void nppShutdown() {
+    // This gets called when Notepad++ is shutting down
+    
 }
 
 
