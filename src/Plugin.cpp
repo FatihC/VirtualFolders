@@ -49,6 +49,8 @@ void showSettingsDialog();
 void toggleStatusDialog();
 void toggleWatcherPanel();
 void toggleWatcherPanelWithList();
+void resizeWatcherPanel();
+
 
 // External variables
 extern HWND watcherPanel;
@@ -165,6 +167,9 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
                 if (hTree) {
                     updateTreeColorsExternal(hTree);
                 }
+                
+                // Resize the panel to match the new theme
+                resizeWatcherPanel();
             }
             break;
 

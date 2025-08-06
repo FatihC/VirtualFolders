@@ -9,6 +9,8 @@
 #define IDD_FILEVIEW                    106
 #define IDR_HTML1                       107
 #define IDI_ICON1                       112
+#define IDI_ICON2                       113
+#define IDI_FOLDER_YELLOW               113
 #define IDI_FOLDER                      201
 #define IDC_ABOUT_VERSION               1001
 #define IDC_ABOUT_HELP                  1002
@@ -32,7 +34,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        113
+#define _APS_NEXT_RESOURCE_VALUE        114
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1024
 #define _APS_NEXT_SYMED_VALUE           101

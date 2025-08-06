@@ -45,6 +45,7 @@ void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
 wchar_t* toWchar(const std::string& str);
 void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
 void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
+void resizeWatcherPanel();
 
 
 #define ID_TREE_DELETE 40001
@@ -294,6 +295,22 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             return TRUE;
         }
         break;
+    }
+    case WM_SIZE: {
+        // When the dialog is resized, resize the tree control to fill it
+        if (hTree) {
+            RECT rcClient;
+            GetClientRect(hwndDlg, &rcClient);
+            SetWindowPos(hTree, nullptr, 0, 0, 
+                        rcClient.right - rcClient.left, 
+                        rcClient.bottom - rcClient.top, 
+                        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            
+            // Force the tree control to update its scrollbars
+            InvalidateRect(hTree, nullptr, TRUE);
+            UpdateWindow(hTree);
+        }
+        return TRUE;
     }
     case WM_MOUSEMOVE: {
         if (isDragging && hDragImage) {
@@ -618,6 +635,52 @@ void updateTreeColorsExternal(HWND hTree) {
     updateTreeColors(hTree);
 }
 
+void resizeWatcherPanel() {
+    if (!watcherPanel || !IsWindow(watcherPanel)) return;
+    
+    // Get the current dialog position and size
+    RECT rcDialog;
+    GetWindowRect(watcherPanel, &rcDialog);
+    
+    // Get Notepad++ window dimensions
+    RECT rcNpp;
+    GetWindowRect(plugin.nppData._nppHandle, &rcNpp);
+    
+    // Calculate the maximum available width for the left panel
+    // Use a larger portion of the window width for better usability
+    int nppWidth = rcNpp.right - rcNpp.left;
+    int nppHeight = rcNpp.bottom - rcNpp.top;
+    int maxPanelWidth = nppWidth * 2 / 3;  // Allow up to 2/3 of the window width
+    int panelWidth = maxPanelWidth;
+    int panelHeight = nppHeight - 100; // Leave some space for menu/toolbar
+    
+    // Set minimum sizes to ensure usability
+    const int MIN_WIDTH = 200;
+    const int MIN_HEIGHT = 150;
+    
+    panelWidth = max(panelWidth, MIN_WIDTH);
+    panelHeight = max(panelHeight, MIN_HEIGHT);
+    
+    // Resize the dialog to fill the available space
+    SetWindowPos(watcherPanel, nullptr, 0, 0, panelWidth, panelHeight, 
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    
+    // Resize the tree control to fill the dialog
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    if (hTree) {
+        RECT rcClient;
+        GetClientRect(watcherPanel, &rcClient);
+        SetWindowPos(hTree, nullptr, 0, 0, 
+                    rcClient.right - rcClient.left, 
+                    rcClient.bottom - rcClient.top, 
+                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        
+        // Force the tree control to update its scrollbars
+        InvalidateRect(hTree, nullptr, TRUE);
+        UpdateWindow(hTree);
+    }
+}
+
 void updateWatcherPanel() { if (watcherPanel && IsWindowVisible(watcherPanel)) updateWatcherPanelUnconditional(); }
 
 
@@ -627,6 +690,9 @@ void toggleWatcherPanelWithList() {
         watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
         NPP::tTbData dock;
         HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+
+        // Resize dialog to match left panel size
+        resizeWatcherPanel();
 
         
         TCHAR configDir[MAX_PATH];
@@ -679,7 +745,7 @@ void toggleWatcherPanelWithList() {
         dock.dlgID = menuItem_ToggleWatcher_Left;          // zero-based position in menu to recall dialog at next startup
         dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
         dock.pszModuleName = L"VFolders.dll";        // plugin module name
-        HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_ICON1));
+        HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
         dock.hIconTab = hIcon;
 
 

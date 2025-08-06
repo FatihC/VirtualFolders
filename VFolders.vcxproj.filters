@@ -147,5 +147,8 @@
     <Image Include="..\..\..\Downloads\folder_icon.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="..\..\..\Downloads\folderyellow.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

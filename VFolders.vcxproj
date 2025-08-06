@@ -93,6 +93,7 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Downloads\folderyellow.ico" />
     <Image Include="..\..\..\Downloads\folder_icon.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
