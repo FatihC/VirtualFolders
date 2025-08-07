@@ -187,8 +187,8 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             break;
 
         case NPPN_SHUTDOWN:
-            saveConfiguration();
             nppShutdown();
+            saveConfiguration();
             break;
 
         }

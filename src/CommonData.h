@@ -46,5 +46,6 @@ inline struct CommonData {
     config<std::wstring> heading = { "Heading", L"List of open files:" };
     config<bool>         annoy   = { "Annoy"  , false };
     config<MyPreference> myPref  = { "MyPreference", MyPreference::Bacon };
+    config<bool>         virtualFoldersTabSelected = { "VirtualFoldersTabSelected", false };
 
 } commonData;

@@ -22,6 +22,9 @@ extern void updateStatusDialog();
 extern void updateWatcherPanel();
 extern void syncVDataWithOpenFilesNotification();
 
+// External variables
+extern HWND watcherPanel;
+
 void syncVDataWithCurrentFiles(VData& vData) {
     // Get current open files
     std::vector<VFile> openFiles = listOpenFiles();
@@ -97,11 +100,26 @@ void nppReady() {
     syncVDataWithOpenFilesNotification();
 
     commonData.isNppReady = true;
+    
+    // Restore tab selection if Virtual Folders tab was selected last time
+    if (commonData.virtualFoldersTabSelected.get()) {
+        // Small delay to ensure docking system is ready
+        Sleep(200);
+        // Switch to Virtual Folders tab
+        npp(NPPM_DMMVIEWOTHERTAB, 0, reinterpret_cast<LPARAM>(L"Virtual Folders"));
+    }
 }
 
 void nppShutdown() {
     // This gets called when Notepad++ is shutting down
     
+    // Save the current tab selection state
+    // Check if Virtual Folders tab is currently visible/selected
+    if (watcherPanel && IsWindowVisible(watcherPanel)) {
+        commonData.virtualFoldersTabSelected = true;
+    } else {
+        commonData.virtualFoldersTabSelected = false;
+    }
 }
 
 

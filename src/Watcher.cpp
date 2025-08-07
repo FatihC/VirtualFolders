@@ -31,6 +31,9 @@ using json = nlohmann::json;
 #include <windowsx.h>
 #include "ProcessCommands.h"
 
+// External variables
+extern CommonData commonData;
+
 
 
 
@@ -48,6 +51,10 @@ void resizeWatcherPanel();
 
 
 #define ID_TREE_DELETE 40001
+#define ID_FILE_CLOSE 40100
+#define ID_FILE_WRAP_IN_FOLDER 40101
+
+
 
 void updateTreeColorsExternal(HWND hTree);
 
@@ -62,6 +69,7 @@ DialogStretch stretch;
 
 std::wstring jsonFilePath;
 VData vData;
+bool contextMenuLoaded = false;
 
 static HTREEITEM hDragItem = nullptr;
 static HTREEITEM hDropTarget = nullptr;
@@ -86,6 +94,8 @@ struct InsertionMark {
 };
 
 int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem);
+TVITEM getTreeItem(HWND hTree, HTREEITEM hItem);
+
 
 // Helper function to find VFile by order
 VFile* findVFileByOrder(VData& vData, int order) {
@@ -183,12 +193,11 @@ void refreshTree(HWND hTree, const VData& vData) {
     // Clear existing tree
     TreeView_DeleteAllItems(hTree);
     
-    // Rebuild tree with new order
-    vDataSort(vData);
+    // Rebuild tree with new order  
+    vDataSort(const_cast<VData&>(vData));
     
     int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
     lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
-    
     for (int i = 0; i <= lastOrder; i++) {
         auto vFile = findFileByOrder(vData.fileList, i);
         if (!vFile) {
@@ -228,6 +237,7 @@ void updateWatcherPanelUnconditional() {
 INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hTree = nullptr;
     static HMENU hContextMenu = nullptr;
+    static HMENU fileContextMenu = nullptr;
     static InsertionMark lastMark = {};
     switch (uMsg) {
     case WM_INITDIALOG: {
@@ -236,6 +246,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         // Create context menu
         hContextMenu = CreatePopupMenu();
         AppendMenu(hContextMenu, MF_STRING, ID_TREE_DELETE, L"Delete");
+
+        fileContextMenu = CreatePopupMenu();
+        AppendMenu(fileContextMenu, MF_STRING, ID_FILE_CLOSE, L"Close");
+        AppendMenu(fileContextMenu, MF_STRING, ID_FILE_WRAP_IN_FOLDER, L"Wrap in folder");
+
+
         HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
         HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
         HICON hIconFile = LoadIcon(NULL, IDI_APPLICATION);
@@ -380,11 +396,33 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 }
                 return TRUE;
             }
+            case NM_RCLICK: {
+                DWORD pos = GetMessagePos();
+                POINT pt = { GET_X_LPARAM(pos), GET_Y_LPARAM(pos) };
+
+                TVHITTESTINFO hit = {0};
+                hit.pt = pt;
+                ScreenToClient(hTree, &hit.pt);
+                HTREEITEM hItem = TreeView_HitTest(hTree, &hit);
+
+                if (hItem && (hit.flags & TVHT_ONITEM))
+                {
+                    TreeView_SelectItem(hTree, hItem);
+                    // ShowContextMenu(hWndParent, pt, hItem);
+                    TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+					contextMenuLoaded = true;
+                }
+                return TRUE;
+            }
             }
         }
         break;
     }
     case WM_CONTEXTMENU: {
+        if (contextMenuLoaded) {
+            contextMenuLoaded = false; // Reset flag
+            return TRUE; // Prevent default context menu handling
+		}
         HWND hwndFrom = (HWND)wParam;
         if (hwndFrom == hTree) {
             POINT pt;
@@ -395,9 +433,20 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             hitTest.pt = pt;
             ScreenToClient(hTree, &hitTest.pt);
             HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
+
+            TVITEM item = { 0 };
+            item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_PARAM;
+            item.hItem = hItem;
+            if (TreeView_GetItem(hTree, &item)) {
+                // Check if this is a file (not a folder) by checking the image index
+                if (item.iImage == idxFile) {
+                    return TRUE;  // This is a file item, no need to do anything here
+                }
+            }
+
             if (hItem) {
                 TreeView_SelectItem(hTree, hItem);
-            }
+            } 
             // Show context menu
             TrackPopupMenu(hContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
             return TRUE;
@@ -408,8 +457,17 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         if (LOWORD(wParam) == ID_TREE_DELETE) {
             HTREEITEM hSel = TreeView_GetSelection(hTree);
             if (hSel) {
-                // TODO: Remove from vData as well
+                //TreeView_DeleteItem(hTree, hSel);
+            }
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == ID_FILE_CLOSE) {
+            HTREEITEM hSel = TreeView_GetSelection(hTree);
+            if (hSel) {
                 TreeView_DeleteItem(hTree, hSel);
+                // TODO: Remove from vData as well
+				TVITEM item = getTreeItem(hTree, hSel);
+
             }
             return TRUE;
         }
@@ -714,13 +772,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 }
 
 int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem) {
-    //TVITEM tvi = { 0 };
-    //tvi.mask = TVIF_PARAM;
-    //tvi.hItem = hItem;
-    //if (TreeView_GetItem(GetDlgItem(watcherPanel, IDC_TREE1), &tvi)) {
-    //    return static_cast<int>(tvi.lParam); // lParam contains the order
-    //}
-
     TVITEM tvi = { 0 };
     tvi.mask = TVIF_TEXT | TVIF_PARAM;   // We only care about lParam
     tvi.hItem = hItem;       // The HTREEITEM you have
@@ -731,6 +782,21 @@ int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem) {
     }
 
     return -1; // Not found or error
+}
+
+TVITEM getTreeItem(HWND hTree, HTREEITEM hItem) {
+    TVITEM tvi = { 0 };
+    tvi.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM; // Include all necessary flags
+    tvi.hItem = hItem;
+    TCHAR text[256] = { 0 };
+    tvi.pszText = text;
+    tvi.cchTextMax = sizeof(text) / sizeof(TCHAR);
+    
+    if (TreeView_GetItem(hTree, &tvi)) {
+        return tvi; // Return the filled TVITEM structure
+    }
+    
+    return {}; // Return an empty structure if not found
 }
 
 void updateTreeColors(HWND hTree) {
@@ -871,11 +937,15 @@ void toggleWatcherPanelWithList() {
     else if (IsWindowVisible(watcherPanel)) {
         npp(NPPM_DMMHIDE, 0, watcherPanel);
         OutputDebugStringA("Watch Panel Hide\n");
+        // Update tab selection state
+        commonData.virtualFoldersTabSelected = false;
     }
     else {
         updateWatcherPanelUnconditional();
         npp(NPPM_DMMSHOW, 0, watcherPanel);
         OutputDebugStringA("Watch Panel Show\n");
+        // Update tab selection state
+        commonData.virtualFoldersTabSelected = true;
     }
 }
 
@@ -916,8 +986,14 @@ void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
     tvis.item.pszText = buffer;
     tvis.item.iImage = idxFile; // or idxFile
     tvis.item.iSelectedImage = idxFile; // or idxFile
-	tvis.item.lParam = vFile.order; // Store the order/index directly in lparam
+	//tvis.item.lParam = vFile.order; // Store the order/index directly in lparam
+
+    tvis.item.lParam = reinterpret_cast<LPARAM>(&vFile);
     HTREEITEM hItem = TreeView_InsertItem(hTree, &tvis);
+    
+
+    //VFile vFile2 = *reinterpret_cast<VFile*>(tvis.item.lParam);
+
 
     if (vFile.isActive) {
         TreeView_SelectItem(hTree, hItem);
