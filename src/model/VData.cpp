@@ -3,83 +3,150 @@
 #include <fstream>
 #include <map>
 #include <set>
+#include <memory>  // for std::construct_at
 
-vector<VFile> VFolder::getAllFiles() const {
-	vector<VFile> allFiles;
+
+using std::vector;
+using std::map;
+using std::optional;
+using std::string;
+
+
+
+vector<VFile*> VFolder::getAllFiles() const {
+	vector<VFile*> allFiles;
 	
 	// Add all files from this folder
-	allFiles.insert(allFiles.end(), fileList.begin(), fileList.end());
+	for (const auto& file : fileList) {
+		allFiles.push_back(const_cast<VFile*>(&file));
+	}
 	
 	// Recursively add files from all subfolders
 	for (const auto& subFolder : folderList) {
-		vector<VFile> subFolderFiles = subFolder.getAllFiles();
+		vector<VFile*> subFolderFiles = subFolder.getAllFiles();
 		allFiles.insert(allFiles.end(), subFolderFiles.begin(), subFolderFiles.end());
 	}
 	
 	return allFiles;
 }
 
-vector<VFile> VData::getAllFiles() const {
-	vector<VFile> allFiles;
-	
-	// Add all files from this folder
-	allFiles.insert(allFiles.end(), fileList.begin(), fileList.end());
-	
-	// Recursively add files from all subfolders
-	for (const auto& subFolder : folderList) {
-		vector<VFile> subFolderFiles = subFolder.getAllFiles();
-		allFiles.insert(allFiles.end(), subFolderFiles.begin(), subFolderFiles.end());
-	}
-	
-	return allFiles;
+vector<VFile*> VData::getAllFiles() const {
+    vector<VFile*> allFiles;
+    
+    // Add all files from this folder
+    for (const auto& file : fileList) {
+        allFiles.push_back(const_cast<VFile*>(&file));
+    }
+    
+    // Recursively add files from all subfolders
+    for (const auto& subFolder : folderList) {
+        vector<VFile*> subFolderFiles = subFolder.getAllFiles();
+        allFiles.insert(allFiles.end(), subFolderFiles.begin(), subFolderFiles.end());
+    }
+    
+    return allFiles;
 }
 
-void vFolderSort(VFolder& vFolder)
+void VFolder::vFolderSort()
 {
 	// Sort files in the folder by order
-	std::sort(vFolder.fileList.begin(), vFolder.fileList.end(), [](const VFile& a, const VFile& b) {
+	std::sort(fileList.begin(), fileList.end(), [](const VFile& a, const VFile& b) {
 		return a.order < b.order;
 		});
 	// Sort subfolders by order
-	std::sort(vFolder.folderList.begin(), vFolder.folderList.end(), [](const VFolder& a, const VFolder& b) {
+	std::sort(folderList.begin(), folderList.end(), [](const VFolder& a, const VFolder& b) {
 		return a.order < b.order;
 		});
 	// Recursively sort subfolders
-	for (auto& subFolder : vFolder.folderList) {
-		vFolderSort(subFolder);
+	for (auto& subFolder : folderList) {
+		subFolder.vFolderSort();
 	}
 }
 
-void vDataSort(VData& vData) {
+void VData::vDataSort() {
 	// Sort folders by order
-	std::sort(vData.folderList.begin(), vData.folderList.end(), [](const VFolder& a, const VFolder& b) {
+	std::sort(folderList.begin(), folderList.end(), [](const VFolder& a, const VFolder& b) {
 		return a.order < b.order;
 		});
-	for (auto& folder : vData.folderList) {
-		vFolderSort(folder);
+	for (auto& folder : folderList) {
+		folder.vFolderSort();
 	}
 
 	// Optionally sort root-level files if you have any
-	std::sort(vData.fileList.begin(), vData.fileList.end(), [](const VFile& a, const VFile& b) {
+	std::sort(fileList.begin(), fileList.end(), [](const VFile& a, const VFile& b) {
 		return a.order < b.order;
 		});
 }
 
-std::optional<VFile> findFileByOrder(const vector<VFile>& fileList, int order) {
-	for (const auto& file : fileList) {
-		if (file.order == order) {
-			return file;
+optional<VFile*> VData::findFileByOrder(int order) const {  
+    for (const auto& file : fileList) {  
+        if (file.order == order) {  
+            return &const_cast<VFile&>(file);  
+        }  
+    }
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		optional<VFile*> foundFile = folder.findFileByOrder(order);
+		if (foundFile) {
+			return foundFile;
 		}
 	}
+
+    return std::nullopt; // Return null if not found  
+}
+
+optional<VFile*> VFolder::findFileByOrder(int order) const {
+	for (const auto& file : fileList) {
+		if (file.order == order) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+
+	// Recursively search in subfolders
+	for (const auto& subFolder : folderList) {
+		optional<VFile*> foundFile = subFolder.findFileByOrder(order);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+
+	return std::nullopt; // Return null if not found  
+}
+
+optional<VFolder*> VData::findFolderByOrder(int order) const {
+	for (const auto& folder : folderList) {
+		if (folder.order == order) {
+			return &const_cast<VFolder&>(folder);
+		}
+	}
+
+	// Recursively search in subfolders
+	for (const auto& subFolder : folderList) {
+		optional<VFolder*> foundFolder = subFolder.findFolderByOrder(order);
+		if (foundFolder) {
+			return foundFolder;
+		}
+	}
+
 	return std::nullopt; // Return null if not found
 }
 
-std::optional<VFolder> findFolderByOrder(const vector<VFolder>& folderList, int order) {
+optional<VFolder*> VFolder::findFolderByOrder(int order) const {
 	for (const auto& folder : folderList) {
 		if (folder.order == order) {
-			return folder;
+			return &const_cast<VFolder&>(folder);
 		}
 	}
+
+	// Recursively search in subfolders
+	for (const auto& subFolder : folderList) {
+		optional<VFolder*> foundFolder = subFolder.findFolderByOrder(order);
+		if (foundFolder) {
+			return foundFolder;
+		}
+	}
+
 	return std::nullopt; // Return null if not found
 }
 
@@ -107,23 +174,25 @@ json loadVDataFromFile(const std::wstring& filePath) {
     }
 }
 
-void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles) {
+void syncVDataWithOpenFiles(VData& vData, vector<VFile>& openFiles) {
     // Create a map of existing files in vData for quick lookup using name and backupFilePath
-    std::map<std::string, size_t> existingFileIndices;
-	vector<VFile> allFilesOfVData = vData.getAllFiles();
+    map<string, size_t> existingFileIndices;
+	vector<VFile*> allFilesOfVData = vData.getAllFiles();
 	
 	// Populate the map with existing files
 	for (size_t i = 0; i < allFilesOfVData.size(); ++i) {
-		std::string key = allFilesOfVData[i].name + "|" + allFilesOfVData[i].backupFilePath;
+		string key = allFilesOfVData[i]->path;
 		existingFileIndices[key] = i;
 	}
     
     // Track which open files we've processed
-    std::set<std::string> processedOpenFiles;
+    std::set<string> processedOpenFiles;
     
     // Check each open file
-    for (const auto& openFile : openFiles) {
-        std::string key = openFile.name + "|" + openFile.backupFilePath;
+	for (int i = 0; i < openFiles.size(); i++) {
+    //for (const auto& openFile : openFiles) {
+        /*string key = openFiles[i].backupFilePath.length() == 0 ? openFiles[i] : "";*/
+		string key = openFiles[i].path;
         processedOpenFiles.insert(key);
         
         // Check if this file exists in vData
@@ -131,17 +200,18 @@ void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles) {
 		if (it != existingFileIndices.end()) {
 			size_t index = it->second;
 			if (index < allFilesOfVData.size()) {
-				VFile& existingFile = allFilesOfVData[index];
-				if (existingFile.backupFilePath != openFile.backupFilePath) {
-					existingFile = openFile;
+				VFile* existingFile = allFilesOfVData[index];
+				if (existingFile->backupFilePath != openFiles[i].backupFilePath) {
+					existingFile = &openFiles[i];
 				}
 				else {
-					existingFile.isActive = openFile.isActive;
+					existingFile->isActive = openFiles[i].isActive;
+					existingFile->docOrder = i;
 				}
 			}
 		}
 		else {
-			vData.fileList.push_back(openFile);
+			vData.fileList.push_back(openFiles[i]);
 		}
     }
     
@@ -149,7 +219,7 @@ void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles) {
     vData.fileList.erase(
         std::remove_if(vData.fileList.begin(), vData.fileList.end(),
             [&processedOpenFiles](const VFile& file) {
-                std::string key = file.name + "|" + file.backupFilePath;
+                string key = file.path;
                 return processedOpenFiles.find(key) == processedOpenFiles.end();
             }),
         vData.fileList.end()

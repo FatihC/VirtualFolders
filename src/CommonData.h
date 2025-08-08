@@ -19,6 +19,7 @@
 #include "Framework/PluginFramework.h"
 #include "Framework/ConfigFramework.h"
 #include "Framework/UtilityFramework.h"
+#include "model/VData.h"
 
 
 // Define enumerations for use with config, and tell the JSON package how represent them in the configuration file
@@ -47,5 +48,8 @@ inline struct CommonData {
     config<bool>         annoy   = { "Annoy"  , false };
     config<MyPreference> myPref  = { "MyPreference", MyPreference::Bacon };
     config<bool>         virtualFoldersTabSelected = { "VirtualFoldersTabSelected", false };
+
+    std::vector<VFile> openFiles;
+    VData vData;
 
 } commonData;

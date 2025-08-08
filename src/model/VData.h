@@ -14,23 +14,28 @@ using json = nlohmann::json;
 
 using std::string;
 using std::vector;
+using std::optional;
+
 
 class VFile
 {
 public:
 	int order;
+	int docOrder; // Order in the document list
 	string name;
 	string path;
 	int view;
 	int session;
 	string backupFilePath;
 	bool isActive = false;
+
 };
 
 class VFolder
 {
 public:
 	int order;
+	int docOrder; // Order in the document list
 	string name;
 	string path;
 	bool isExpanded = false;
@@ -38,7 +43,10 @@ public:
 	vector<VFile> fileList;
 	
 	// Returns a vector of all VFile objects in this folder and all subfolders
-	vector<VFile> getAllFiles() const;
+	vector<VFile*> getAllFiles() const;
+	void vFolderSort();
+	optional<VFile*> findFileByOrder(int order) const;
+	optional<VFolder*> findFolderByOrder(int order) const;
 };
 
 class VData
@@ -47,13 +55,17 @@ public:
 	vector<VFolder> folderList;
 	vector<VFile> fileList;
 
-	vector<VFile> getAllFiles() const;
+	vector<VFile*> getAllFiles() const;
+	void vDataSort();
+	optional<VFile*> findFileByOrder(int order) const;
+	optional<VFolder*> findFolderByOrder(int order) const;
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)
 inline void to_json(json& j, const VFile& f) {
 	j = json{ 
 		{"order", f.order},
+		{"docOrder", f.docOrder},
 		{"name", f.name}, 
 		{"path", f.path},
 		{"view", f.view},
@@ -82,10 +94,11 @@ inline void to_json(json& j, const VData& data) {
 }
 
 inline void from_json(const json& j, VFile& f) {
-	j.at("order").get_to(f.order);
-	j.at("name").get_to(f.name);
-	j.at("path").get_to(f.path);
-	j.at("view").get_to(f.view);
+	if (j.contains("order")) j.at("order").get_to(f.order);
+	if (j.contains("docOrder")) j.at("docOrder").get_to(f.docOrder);
+	if (j.contains("name")) j.at("name").get_to(f.name);
+	if (j.contains("path")) j.at("path").get_to(f.path);
+	if (j.contains("view")) j.at("view").get_to(f.view);
 
 	if (j.contains("session")) j.at("session").get_to(f.session);
 	if (j.contains("backupFilePath")) j.at("backupFilePath").get_to(f.backupFilePath);
@@ -93,9 +106,9 @@ inline void from_json(const json& j, VFile& f) {
 }
 
 inline void from_json(const json& j, VFolder& folder) {
-	j.at("order").get_to(folder.order);
-	j.at("name").get_to(folder.name);
-	j.at("path").get_to(folder.path);
+	if (j.contains("order")) j.at("order").get_to(folder.order);
+	if (j.contains("name")) j.at("name").get_to(folder.name);
+	if (j.contains("path")) j.at("path").get_to(folder.path);
 	if (j.contains("isExpanded")) j.at("isExpanded").get_to(folder.isExpanded);
 	if (j.contains("folderList")) j.at("folderList").get_to(folder.folderList);
 	if (j.contains("fileList")) j.at("fileList").get_to(folder.fileList);
@@ -124,9 +137,5 @@ inline void from_json(const json& j, VData& data) {
 }
 
 // Function declarations for functions implemented in VData.cpp
-void vFolderSort(VFolder& vFolder);
-void vDataSort(VData& vData);
-std::optional<VFile> findFileByOrder(const vector<VFile>& fileList, int order);
-std::optional<VFolder> findFolderByOrder(const vector<VFolder>& folderList, int order);
 json loadVDataFromFile(const std::wstring& filePath);
-void syncVDataWithOpenFiles(VData& vData, const std::vector<VFile>& openFiles);
+void syncVDataWithOpenFiles(VData& vData, std::vector<VFile>& openFiles);

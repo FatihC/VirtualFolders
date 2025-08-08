@@ -25,19 +25,6 @@ extern void syncVDataWithOpenFilesNotification();
 // External variables
 extern HWND watcherPanel;
 
-void syncVDataWithCurrentFiles(VData& vData) {
-    // Get current open files
-    std::vector<VFile> openFiles = listOpenFiles();
-    
-    // Sync vData with current open files
-    syncVDataWithOpenFiles(vData, openFiles);
-    
-    // Update the UI
-    updateWatcherPanel();
-    
-    // Optionally save to JSON
-    // writeJsonFile(); // Uncomment if you want to save immediately
-}
 
 void scnModified(const Scintilla::NotificationData* scnp) {
     using Scintilla::FlagSet;
@@ -70,8 +57,7 @@ void fileClosed(const NMHDR* nmhdr) {
     if (position == -1) /* file is no longer open in either view */ {
         MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
         
-        // Sync vData when a file is closed
-        syncVDataWithOpenFilesNotification();
+		// TODO: remove file from vData
     }
 }
 
@@ -97,7 +83,7 @@ void nppReady() {
     // This gets called when Notepad++ is fully ready
     // Wait a bit for files to be loaded, then sync
     Sleep(100); // Small delay to ensure files are loaded
-    syncVDataWithOpenFilesNotification();
+    //syncVDataWithOpenFilesNotification(); Buna gerek yok gibi
 
     commonData.isNppReady = true;
     

@@ -43,10 +43,10 @@ extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 void writeJsonFile();
 void syncVDataWithOpenFilesNotification();
 
-void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
+
 wchar_t* toWchar(const std::string& str);
-void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent);
-void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent);
+void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent);
+void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent);
 void resizeWatcherPanel();
 
 
@@ -68,7 +68,6 @@ Scintilla::Position terminal = -1;
 DialogStretch stretch;
 
 std::wstring jsonFilePath;
-VData vData;
 bool contextMenuLoaded = false;
 
 static HTREEITEM hDragItem = nullptr;
@@ -189,24 +188,24 @@ void reorderFolders(VData& vData, int oldOrder, int newOrder) {
     movedFolder->order = newOrder;
 }
 
-void refreshTree(HWND hTree, const VData& vData) {
+void refreshTree(HWND hTree, VData& vData) {
     // Clear existing tree
     TreeView_DeleteAllItems(hTree);
     
     // Rebuild tree with new order  
-    vDataSort(const_cast<VData&>(vData));
+	vData.vDataSort();
     
     int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
     lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
     for (int i = 0; i <= lastOrder; i++) {
-        auto vFile = findFileByOrder(vData.fileList, i);
+        optional<VFile*> vFile = vData.findFileByOrder(i);
         if (!vFile) {
-            auto vFolder = findFolderByOrder(vData.folderList, i);
+            optional<VFolder*> vFolder = vData.findFolderByOrder(i);
             if (vFolder) {
-                addFolderToTree(*vFolder, hTree, TVI_ROOT);
+                addFolderToTree(vFolder.value(), hTree, TVI_ROOT);
             }
         } else {
-            addFileToTree(*vFile, hTree, TVI_ROOT);
+            addFileToTree(vFile.value(), hTree, TVI_ROOT);
         }
     }
 }
@@ -301,15 +300,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                         int order = static_cast<int>(item.lParam);
                             
                         // Find the VFile using the helper function
-                        VFile* selectedFile = findVFileByOrder(vData, order);
+                        optional<VFile*> selectedFile = commonData.vData.findFileByOrder(order);
                             
                         // If file found and has a valid path, open it
-                        if (selectedFile && !selectedFile->path.empty()) {
+                        if (selectedFile && !selectedFile.value()->path.empty()) {
                             // Convert path to wide string
-                            std::wstring widePath(selectedFile->path.begin(), selectedFile->path.end());
+                            std::wstring widePath(selectedFile.value()->path.begin(), selectedFile.value()->path.end());
                                 
                             // Debug output
-                            OutputDebugStringA(("Opening file: " + selectedFile->path).c_str());
+                            OutputDebugStringA(("Opening file: " + selectedFile.value()->path).c_str());
                                 
                             // First, try to switch to the file if it's already open
                             if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(widePath.c_str()))) {
@@ -318,12 +317,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                             }
                                 
                             // Optionally, switch to the appropriate view if specified
-                            if (selectedFile->view >= 0) {
+                            if (selectedFile.value()->view >= 0) {
                                 // Switch to the specified view (0 = main view, 1 = sub view)
-                                npp(NPPM_ACTIVATEDOC, selectedFile->view, order);
+                                npp(NPPM_ACTIVATEDOC, selectedFile.value()->view, order);
                             }
                         }
-                        else if (selectedFile && selectedFile->path.empty()) {
+                        else if (selectedFile && selectedFile.value()->path.empty()) {
                             OutputDebugStringA("File has empty path, cannot open");
                         }
                         else {
@@ -368,7 +367,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                                 int order = static_cast<int>(item.lParam);
                                 
                                 // Find the VFile using the helper function
-                                VFile* selectedFile = findVFileByOrder(vData, order);
+                                VFile* selectedFile = findVFileByOrder(commonData.vData, order);
                                 
                                 // If file found and has a valid path, open it
                                 if (selectedFile && !selectedFile->path.empty()) {
@@ -704,21 +703,21 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 				int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
 
                 // Find the dragged item in vData
-                auto draggedFileOpt = findFileByOrder(vData.fileList, dragOrder);
-                auto draggedFolderOpt = findFolderByOrder(vData.folderList, dragOrder);
+                optional<VFile*> draggedFileOpt = commonData.vData.findFileByOrder(dragOrder);
+                optional<VFolder*> draggedFolderOpt = commonData.vData.findFolderByOrder(dragOrder);
                 
                 if (draggedFileOpt) {
                     // Calculate new order based on drop position
                     int newOrder = calculateNewOrder(targetOrder, lastMark);
                     
                     // Update the VFile order
-                    draggedFileOpt->order = newOrder;
+                    draggedFileOpt.value()->order = newOrder;
                     
                     // Reorder other items
-                    reorderItems(vData, dragOrder, newOrder);
+                    reorderItems(commonData.vData, dragOrder, newOrder);
                     
                     // Refresh the tree
-                    refreshTree(hTree, vData);
+                    refreshTree(hTree, commonData.vData);
                     
                     // Save to JSON
                     writeJsonFile();
@@ -726,9 +725,9 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 else if (draggedFolderOpt) {
                     // Similar logic for folders
                     int newOrder = calculateNewOrder(targetOrder, lastMark);
-                    draggedFolderOpt->order = newOrder;
-                    reorderFolders(vData, dragOrder, newOrder);
-                    refreshTree(hTree, vData);
+                    draggedFolderOpt.value()->order = newOrder;
+                    reorderFolders(commonData.vData, dragOrder, newOrder);
+                    refreshTree(hTree, commonData.vData);
                     writeJsonFile();
                 }
             }
@@ -886,36 +885,33 @@ void toggleWatcherPanelWithList() {
 
         // read JSON
         json vDataJson = loadVDataFromFile(jsonFilePath);
-        vData = vDataJson.get<VData>();
+        commonData.vData = vDataJson.get<VData>();
 
-        std::vector<VFile> openFiles = listOpenFiles();
-
-        // WARNING: This is a hack to simplify the code.
-        // Filter out files that are not in session.mainView.files
-        
+        commonData.openFiles = listOpenFiles();
         
         // Sync vData with open files
-        syncVDataWithOpenFiles(vData, openFiles);
+        syncVDataWithOpenFiles(commonData.vData, commonData.openFiles);
         
 
 		
         writeJsonFile();
         
 
-		vDataSort(vData);
-		int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
-		lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
+        commonData.vData.vDataSort();
+		
+        int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().order;
+		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().order);
 
         for (int i = 0; i <= lastOrder; i++) {
-			auto vFile = findFileByOrder(vData.fileList, i);
+			auto vFile = commonData.vData.findFileByOrder(i);
             if (!vFile) {
-                auto vFolder = findFolderByOrder(vData.folderList, i);
+                auto vFolder = commonData.vData.findFolderByOrder(i);
                 if (vFolder) {
-                    addFolderToTree(*vFolder, hTree, TVI_ROOT);
+                    addFolderToTree(vFolder.value(), hTree, TVI_ROOT);
                 }
             }
             else {
-                addFileToTree(*vFile, hTree, TVI_ROOT);
+                addFileToTree(vFile.value(), hTree, TVI_ROOT);
             }
 
         }
@@ -950,7 +946,7 @@ void toggleWatcherPanelWithList() {
 }
 
 void writeJsonFile() {
-    json vDataJson = vData;
+    json vDataJson = commonData.vData;
     std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
 }
 
@@ -959,7 +955,7 @@ void syncVDataWithOpenFilesNotification() {
     std::vector<VFile> openFiles = listOpenFiles();
     
     // Sync vData with current open files
-    syncVDataWithOpenFiles(vData, openFiles);
+    syncVDataWithOpenFiles(commonData.vData, openFiles);
     
     // Update the UI
     updateWatcherPanel();
@@ -974,7 +970,7 @@ wchar_t* toWchar(const std::string& str) {
 	return buffer;
 }
 
-void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
+void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent)
 {
     wchar_t buffer[100];
 
@@ -982,26 +978,27 @@ void addFileToTree(const VFile vFile, HWND hTree, HTREEITEM hParent)
     tvis.hParent = hParent;
     tvis.hInsertAfter = TVI_LAST;
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
-    wcscpy_s(buffer, 100, toWchar(vFile.name));
+    wcscpy_s(buffer, 100, toWchar(vFile->name));
     tvis.item.pszText = buffer;
     tvis.item.iImage = idxFile; // or idxFile
     tvis.item.iSelectedImage = idxFile; // or idxFile
-	//tvis.item.lParam = vFile.order; // Store the order/index directly in lparam
+	tvis.item.lParam = vFile->order; // Store the order/index directly in lparam
 
-    tvis.item.lParam = reinterpret_cast<LPARAM>(&vFile);
+    //tvis.item.lParam = reinterpret_cast<LPARAM>(&vFile);
+
     HTREEITEM hItem = TreeView_InsertItem(hTree, &tvis);
     
 
     //VFile vFile2 = *reinterpret_cast<VFile*>(tvis.item.lParam);
 
 
-    if (vFile.isActive) {
+    if (vFile->isActive) {
         TreeView_SelectItem(hTree, hItem);
         TreeView_EnsureVisible(hTree, hItem);
     }
 }
 
-void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
+void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent)
 {
     wchar_t buffer[100];
 
@@ -1009,23 +1006,23 @@ void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
     tvis.hParent = hParent;
     tvis.hInsertAfter = TVI_LAST;
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-    wcscpy_s(buffer, 100, toWchar(vFolder.name));
+    wcscpy_s(buffer, 100, toWchar(vFolder->name));
     tvis.item.pszText = buffer;
     tvis.item.iImage = idxFolder; // or idxFile
     tvis.item.iSelectedImage = idxFolder; // or idxFile
-	tvis.item.lParam = vFolder.order; // Store the order/index directly in lparam
+	tvis.item.lParam = vFolder->order; // Store the order/index directly in lparam
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
     
 	
-    int lastOrder = vFolder.fileList.empty() ? 0 : vFolder.fileList.back().order;
-	lastOrder = std::max(lastOrder, vFolder.folderList.empty() ? 0 : vFolder.folderList.back().order);
+    int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().order;
+	lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().order);
     for (int i = 0; i <= lastOrder; i++) {
-        auto vFile = findFileByOrder(vFolder.fileList, i);
+        optional<VFile*> vFile = vFolder->findFileByOrder(i);
         if (vFile) {
             addFileToTree(*vFile, hTree, hFolder);
         }
         else {
-			auto vSubFolder = findFolderByOrder(vFolder.folderList, i);
+			auto vSubFolder = vFolder->findFolderByOrder(i);
 			if (vSubFolder) {
 				addFolderToTree(*vSubFolder, hTree, hFolder);
 			}
@@ -1033,7 +1030,7 @@ void addFolderToTree(const VFolder vFolder, HWND hTree, HTREEITEM hParent)
     }
 
 
-    if (vFolder.isExpanded) {
+    if (vFolder->isExpanded) {
         TreeView_Expand(hTree, hFolder, TVE_EXPAND);
     }
 }
