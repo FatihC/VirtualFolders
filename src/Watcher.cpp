@@ -23,6 +23,7 @@ using json = nlohmann::json;
 
 #include <fstream>
 #include <iostream>
+#include <functional>
 
 #include <commctrl.h>
 #include "model/VData.h"
@@ -46,7 +47,7 @@ void syncVDataWithOpenFilesNotification();
 
 wchar_t* toWchar(const std::string& str);
 void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent);
-void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent);
+void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos);
 void resizeWatcherPanel();
 
 
@@ -159,33 +160,177 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
     movedFile->order = newOrder;
 }
 
-void reorderFolders(VData& vData, int oldOrder, int newOrder) {
-    // Similar logic for folders
-    VFolder* movedFolder = nullptr;
-    for (auto& folder : vData.folderList) {
-        if (folder.order == oldOrder) {
-            movedFolder = &folder;
-            break;
-        }
+// Helper function to count total items (folders + files) recursively in a folder
+int countItemsInFolder(const VFolder& folder) {
+    int count = 1; // Count the folder itself
+    
+    // Count all files in this folder
+    count += folder.fileList.size();
+    
+    // Recursively count items in subfolders
+    for (const auto& subFolder : folder.folderList) {
+        count += countItemsInFolder(subFolder);
     }
     
-    if (!movedFolder) return;
+    return count;
+}
+
+// Helper function to adjust global orders when moving a folder with all its contents
+void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, int folderItemCount) {
+    // Get all files across the entire hierarchy
+    vector<VFile*> allFiles = vData.getAllFiles();
+    
+    // Helper lambda to get all folders recursively
+    std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders = 
+        [&](vector<VFolder>& folders, vector<VFolder*>& result) {
+            for (auto& folder : folders) {
+                result.push_back(&folder);
+                getAllFolders(folder.folderList, result);
+            }
+        };
+    
+    vector<VFolder*> allFolders;
+    getAllFolders(vData.folderList, allFolders);
     
     if (oldOrder < newOrder) {
-        for (auto& folder : vData.folderList) {
+        // Moving down - shift items in between to the left
+        int posShiftAmount = newOrder - folderItemCount;
+		int negShiftAmount = folderItemCount;
+		int startOrder = oldOrder + folderItemCount; // Start from the next item
+
+        
+        // Adjust files
+        for (auto* file : allFiles) {
+            if (file->order >= startOrder && file->order <= newOrder) {
+                file->order -= negShiftAmount;
+            }
+        }
+        
+        // Adjust folders
+        for (auto* folder : allFolders) {
+            if (folder->order >= startOrder && folder->order <= newOrder) {
+                folder->order -= negShiftAmount;
+            }
+        }
+    } else {
+        // Moving up - shift items in between to the right
+        int shiftAmount = folderItemCount;
+        
+        // Adjust files
+        for (auto* file : allFiles) {
+            if (file->order >= newOrder && file->order < oldOrder) {
+                file->order += shiftAmount;
+            }
+        }
+        
+        // Adjust folders
+        for (auto* folder : allFolders) {
+            if (folder->order >= newOrder && folder->order < oldOrder) {
+                folder->order += shiftAmount;
+            }
+        }
+    }
+}
+
+// Helper function to recursively adjust orders within a container
+void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder) {
+    if (oldOrder < newOrder) {
+        // Moving down - decrease orders of items in between
+        for (auto& folder : folders) {
             if (folder.order > oldOrder && folder.order <= newOrder) {
                 folder.order--;
             }
         }
+        for (auto& file : files) {
+            if (file.order > oldOrder && file.order <= newOrder) {
+                file.order--;
+            }
+        }
     } else {
-        for (auto& folder : vData.folderList) {
+        // Moving up - increase orders of items in between
+        for (auto& folder : folders) {
             if (folder.order >= newOrder && folder.order < oldOrder) {
                 folder.order++;
             }
         }
+        for (auto& file : files) {
+            if (file.order >= newOrder && file.order < oldOrder) {
+                file.order++;
+            }
+        }
+    }
+}
+
+// Helper function to find which container holds a folder with the given order
+struct FolderLocation {
+    VFolder* parentFolder = nullptr;  // nullptr means root level
+    VFolder* folder = nullptr;
+    bool found = false;
+};
+
+FolderLocation findFolderLocation(VData& vData, int order) {
+    FolderLocation location;
+    
+    // Check root level first
+    for (auto& folder : vData.folderList) {
+        if (folder.order == order) {
+            location.folder = &folder;
+            location.parentFolder = nullptr;  // Root level
+            location.found = true;
+            return location;
+        }
     }
     
-    movedFolder->order = newOrder;
+    // Recursively search in subfolders
+    std::function<bool(VFolder&)> searchInFolder = [&](VFolder& parent) -> bool {
+        for (auto& folder : parent.folderList) {
+            if (folder.order == order) {
+                location.folder = &folder;
+                location.parentFolder = &parent;
+                location.found = true;
+                return true;
+            }
+            // Recursive search in this folder's subfolders
+            if (searchInFolder(folder)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    
+    // Search in all root-level folders
+    for (auto& rootFolder : vData.folderList) {
+        if (searchInFolder(rootFolder)) {
+            break;
+        }
+    }
+    
+    return location;
+}
+
+void reorderFolders(VData& vData, int oldOrder, int newOrder) {
+    // Find the folder to move using recursive search
+    FolderLocation moveLocation = findFolderLocation(vData, oldOrder);
+    
+    if (!moveLocation.found) {
+        return;  // Folder not found
+    }
+    
+    VFolder* movedFolder = moveLocation.folder;
+    
+    // Count total items in the folder (folder itself + all contents recursively)
+    int folderItemCount = countItemsInFolder(*movedFolder);
+    newOrder--;
+    
+    // Adjust global orders to make space for the moved folder and its contents
+    adjustGlobalOrdersForFolderMove(vData, oldOrder, newOrder, folderItemCount);
+    
+    // Set the new order for the moved folder
+    //movedFolder->order = newOrder;
+    movedFolder->move((newOrder - oldOrder) - (folderItemCount - 1));
+    
+    // After reordering, recursively sort the entire data structure to ensure consistency
+    vData.vDataSort();
 }
 
 void refreshTree(HWND hTree, VData& vData) {
@@ -197,15 +342,16 @@ void refreshTree(HWND hTree, VData& vData) {
     
     int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
     lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
-    for (int i = 0; i <= lastOrder; i++) {
-        optional<VFile*> vFile = vData.findFileByOrder(i);
+    for (size_t pos = 0; pos <= lastOrder; pos) {
+        optional<VFile*> vFile = vData.findFileByOrder(pos);
         if (!vFile) {
-            optional<VFolder*> vFolder = vData.findFolderByOrder(i);
+            optional<VFolder*> vFolder = vData.findFolderByOrder(pos);
             if (vFolder) {
-                addFolderToTree(vFolder.value(), hTree, TVI_ROOT);
+                addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos);
             }
         } else {
             addFileToTree(vFile.value(), hTree, TVI_ROOT);
+            pos++;
         }
     }
 }
@@ -319,7 +465,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                             // Optionally, switch to the appropriate view if specified
                             if (selectedFile.value()->view >= 0) {
                                 // Switch to the specified view (0 = main view, 1 = sub view)
-                                npp(NPPM_ACTIVATEDOC, selectedFile.value()->view, order);
+                                npp(NPPM_ACTIVATEDOC, selectedFile.value()->view, selectedFile.value()->docOrder);
                             }
                         }
                         else if (selectedFile && selectedFile.value()->path.empty()) {
@@ -403,6 +549,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 hit.pt = pt;
                 ScreenToClient(hTree, &hit.pt);
                 HTREEITEM hItem = TreeView_HitTest(hTree, &hit);
+
+                TVITEM tvItem = getTreeItem(hTree, hItem);
 
                 if (hItem && (hit.flags & TVHT_ONITEM))
                 {
@@ -725,7 +873,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 else if (draggedFolderOpt) {
                     // Similar logic for folders
                     int newOrder = calculateNewOrder(targetOrder, lastMark);
-                    draggedFolderOpt.value()->order = newOrder;
+                    //draggedFolderOpt.value()->order = newOrder;
                     reorderFolders(commonData.vData, dragOrder, newOrder);
                     refreshTree(hTree, commonData.vData);
                     writeJsonFile();
@@ -902,16 +1050,17 @@ void toggleWatcherPanelWithList() {
         int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().order;
 		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().order);
 
-        for (int i = 0; i <= lastOrder; i++) {
-			auto vFile = commonData.vData.findFileByOrder(i);
+        for (size_t pos = 0; pos <= lastOrder; pos) {
+			auto vFile = commonData.vData.findFileByOrder(pos);
             if (!vFile) {
-                auto vFolder = commonData.vData.findFolderByOrder(i);
+                auto vFolder = commonData.vData.findFolderByOrder(pos);
                 if (vFolder) {
-                    addFolderToTree(vFolder.value(), hTree, TVI_ROOT);
+                    addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos);
                 }
             }
             else {
                 addFileToTree(vFile.value(), hTree, TVI_ROOT);
+                pos++;
             }
 
         }
@@ -998,33 +1147,38 @@ void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent)
     }
 }
 
-void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent)
+void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos)
 {
     wchar_t buffer[100];
 
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = TVI_LAST;
-    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFolder->name));
     tvis.item.pszText = buffer;
     tvis.item.iImage = idxFolder; // or idxFile
     tvis.item.iSelectedImage = idxFolder; // or idxFile
 	tvis.item.lParam = vFolder->order; // Store the order/index directly in lparam
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
+
+
+    //TVITEM tvItem = getTreeItem(hTree, hFolder);
     
+	pos++;
 	
     int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().order;
 	lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().order);
-    for (int i = 0; i <= lastOrder; i++) {
-        optional<VFile*> vFile = vFolder->findFileByOrder(i);
+    for (pos; pos <= lastOrder; pos) {
+        optional<VFile*> vFile = vFolder->findFileByOrder(pos);
         if (vFile) {
             addFileToTree(*vFile, hTree, hFolder);
+            pos++;
         }
         else {
-			auto vSubFolder = vFolder->findFolderByOrder(i);
+			auto vSubFolder = vFolder->findFolderByOrder(pos);
 			if (vSubFolder) {
-				addFolderToTree(*vSubFolder, hTree, hFolder);
+				addFolderToTree(*vSubFolder, hTree, hFolder, pos);
 			}
         }
     }

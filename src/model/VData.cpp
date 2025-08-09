@@ -150,6 +150,23 @@ optional<VFolder*> VFolder::findFolderByOrder(int order) const {
 	return std::nullopt; // Return null if not found
 }
 
+void VFolder::move(int steps) {
+	// Adjust the order of this folder
+	order += steps;
+	for (auto& folder: folderList) {
+		// Adjust the order of subfolders
+		folder.move(steps);
+	}
+
+	for (auto& file : fileList) {
+		// Adjust the order of files in this folder
+		file.order += steps;
+	}
+
+	// Sort files and subfolders after moving
+	vFolderSort();
+}
+
 json loadVDataFromFile(const std::wstring& filePath) {
     std::ifstream file(filePath);
     

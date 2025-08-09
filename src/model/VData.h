@@ -47,6 +47,7 @@ public:
 	void vFolderSort();
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
+	void move(int steps);
 };
 
 class VData
