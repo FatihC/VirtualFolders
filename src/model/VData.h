@@ -35,7 +35,6 @@ class VFolder
 {
 public:
 	int order;
-	int docOrder; // Order in the document list
 	string name;
 	string path;
 	bool isExpanded = false;

@@ -143,7 +143,7 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
         for (auto& file : vData.fileList) {
-            if (file.order > oldOrder && file.order <= newOrder) {
+            if (file.order > oldOrder && file.order < newOrder) {
                 file.order--;
             }
         }
@@ -155,6 +155,8 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
             }
         }
     }
+
+	if (newOrder > oldOrder) newOrder--;  // Adjust for the moved item
     
     // Set new order
     movedFile->order = newOrder;
@@ -311,23 +313,31 @@ FolderLocation findFolderLocation(VData& vData, int order) {
 void reorderFolders(VData& vData, int oldOrder, int newOrder) {
     // Find the folder to move using recursive search
     FolderLocation moveLocation = findFolderLocation(vData, oldOrder);
-    
+
     if (!moveLocation.found) {
         return;  // Folder not found
     }
-    
+
     VFolder* movedFolder = moveLocation.folder;
-    
+
     // Count total items in the folder (folder itself + all contents recursively)
     int folderItemCount = countItemsInFolder(*movedFolder);
-    newOrder--;
+    if (newOrder > oldOrder) {
+        newOrder--;
+    }
     
     // Adjust global orders to make space for the moved folder and its contents
     adjustGlobalOrdersForFolderMove(vData, oldOrder, newOrder, folderItemCount);
     
     // Set the new order for the moved folder
     //movedFolder->order = newOrder;
-    movedFolder->move((newOrder - oldOrder) - (folderItemCount - 1));
+    
+    if (newOrder > oldOrder) {
+        movedFolder->move(newOrder - (oldOrder + folderItemCount - 1));
+    } else {
+        movedFolder->move(newOrder - oldOrder);
+	}
+
     
     // After reordering, recursively sort the entire data structure to ensure consistency
     vData.vDataSort();
@@ -859,7 +869,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     int newOrder = calculateNewOrder(targetOrder, lastMark);
                     
                     // Update the VFile order
-                    draggedFileOpt.value()->order = newOrder;
+                    //draggedFileOpt.value()->order = newOrder;
                     
                     // Reorder other items
                     reorderItems(commonData.vData, dragOrder, newOrder);
