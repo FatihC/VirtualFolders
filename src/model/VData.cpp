@@ -167,6 +167,21 @@ void VFolder::move(int steps) {
 	vFolderSort();
 }
 
+bool VData::isInRoot(int order) const {
+	for (const auto& file : fileList) {
+		if (file.order == order) {
+			return true; // Found in root files
+		}
+	}
+
+	for (const auto& folder : folderList) {
+		if (folder.order == order) {
+			return true; // Found in root folders
+		}
+	}
+	return false;
+}
+
 json loadVDataFromFile(const std::wstring& filePath) {
     std::ifstream file(filePath);
     

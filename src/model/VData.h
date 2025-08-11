@@ -59,6 +59,7 @@ public:
 	void vDataSort();
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
+	bool isInRoot(int order) const;
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)

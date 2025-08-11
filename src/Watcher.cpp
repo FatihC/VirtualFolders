@@ -24,6 +24,7 @@ using json = nlohmann::json;
 #include <fstream>
 #include <iostream>
 #include <functional>
+#include <algorithm>
 
 #include <commctrl.h>
 #include "model/VData.h"
@@ -34,6 +35,15 @@ using json = nlohmann::json;
 
 // External variables
 extern CommonData commonData;
+
+
+// Helper function to find which container holds a file with the given order
+struct FileLocation {
+    VFolder* parentFolder = nullptr;  // nullptr means root level
+    VFile* file = nullptr;
+    bool found = false;
+};
+
 
 
 
@@ -95,27 +105,16 @@ struct InsertionMark {
 
 int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem);
 TVITEM getTreeItem(HWND hTree, HTREEITEM hItem);
+FileLocation findFileLocation(VData& vData, int order);
+void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
+void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder);
+
 
 
 // Helper function to find VFile by order
 VFile* findVFileByOrder(VData& vData, int order) {
-    // Search in root level files
-    for (auto& file : vData.fileList) {
-        if (file.order == order) {
-            return &file;
-        }
-    }
-    
-    // If not found in root, search in folders
-    for (auto& folder : vData.folderList) {
-        for (auto& file : folder.fileList) {
-            if (file.order == order) {
-                return &file;
-            }
-        }
-    }
-    
-    return nullptr;
+    FileLocation location = findFileLocation(vData, order);
+    return location.file;
 }
 
 // Helper functions for drag and drop reordering
@@ -128,38 +127,87 @@ int calculateNewOrder(int targetOrder, const InsertionMark& mark) {
 }
 
 void reorderItems(VData& vData, int oldOrder, int newOrder) {
-    // Find the item to move
-    VFile* movedFile = nullptr;
-    for (auto& file : vData.fileList) {
-        if (file.order == oldOrder) {
-            movedFile = &file;
-            break;
-        }
+    // Find the file to move (could be in root or any folder)
+    FileLocation sourceLocation = findFileLocation(vData, oldOrder);
+    if (!sourceLocation.found || !sourceLocation.file) {
+        return; // File not found
     }
     
-    if (!movedFile) return;
+    VFile* movedFile = sourceLocation.file;
+    VFolder* sourceFolder = sourceLocation.parentFolder;
     
-    // Adjust orders of other items
-    if (oldOrder < newOrder) {
-        // Moving down - decrease orders of items in between
-        for (auto& file : vData.fileList) {
-            if (file.order > oldOrder && file.order < newOrder) {
-                file.order--;
-            }
-        }
+    // For now, we'll implement a simpler approach that handles the most common cases:
+    // 1. Moving within the same container (root or same folder)
+    // 2. Moving from folder to root
+    // 3. Moving from root to folder
+    
+    // Determine if we're moving to root level or staying in a folder
+    bool movingToRoot = false;
+    VFolder* targetFolder = nullptr;
+    
+    // Count items at root level to determine if target is root
+    int rootItemCount = vData.fileList.size() + vData.folderList.size(); // TODO: add a class function if the order is in root
+    
+    if (vData.isInRoot(newOrder)) {
+        movingToRoot = true;
+        targetFolder = nullptr;
     } else {
-        // Moving up - increase orders of items in between
-        for (auto& file : vData.fileList) {
-            if (file.order >= newOrder && file.order < oldOrder) {
-                file.order++;
-            }
-        }
+        // For now, assume we're staying in the same folder
+        // In a full implementation, you'd need to determine the exact target folder
+        FileLocation targetLocation = findFileLocation(vData, newOrder);
+		targetFolder = targetLocation.parentFolder;
+        //targetFolder = sourceFolder;
     }
-
-	if (newOrder > oldOrder) newOrder--;  // Adjust for the moved item
     
-    // Set new order
-    movedFile->order = newOrder;
+    // If moving to a different container, we need to handle the move
+    if (movingToRoot && sourceFolder) {
+        // Moving from folder to root
+        // Store the file data before removing
+        VFile fileData = *movedFile;
+        
+        // First, adjust global orders to make space for the move
+        adjustGlobalOrdersForFileMove(vData, oldOrder, newOrder);
+        
+        // Remove from source folder
+        auto& sourceFileList = sourceFolder->fileList;
+        sourceFileList.erase(std::remove_if(sourceFileList.begin(), sourceFileList.end(),
+            [movedFile](const VFile& file) { return &file == movedFile; }), sourceFileList.end());
+        
+        // Set new order and add to root
+		if (newOrder > oldOrder) newOrder--;
+        fileData.order = newOrder;
+        vData.fileList.push_back(fileData);
+        
+    } else if (!movingToRoot && !sourceFolder) {
+        // Moving from root to folder
+        // Store the file data before removing
+        VFile fileData = *movedFile;
+        
+        // First, adjust global orders to make space for the move
+        adjustGlobalOrdersForFileMove(vData, oldOrder, newOrder);
+        
+        // Remove from root
+        auto& rootFileList = vData.fileList;
+        rootFileList.erase(std::remove_if(rootFileList.begin(), rootFileList.end(),
+            [movedFile](const VFile& file) { return &file == movedFile; }), rootFileList.end());
+        
+        // Find the target folder (simplified - would need proper logic)
+        // For now, we'll assume the first folder
+        if (!vData.folderList.empty()) {
+            // Set new order and add to folder
+            fileData.order = newOrder;
+            targetFolder->fileList.push_back(fileData);
+        }
+        
+    } else {
+        // Moving within the same container (root or same folder)
+        // Since order is global across the entire tree, we need to adjust all affected items globally
+        adjustGlobalOrdersForFileMove(vData, oldOrder, newOrder);
+        
+        // Set the new order for the moved file
+        if (newOrder > oldOrder) newOrder--;
+        movedFile->order = newOrder;
+    }
 }
 
 // Helper function to count total items (folders + files) recursively in a folder
@@ -234,17 +282,61 @@ void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, i
     }
 }
 
+// Helper function to adjust global orders for a single file move
+void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
+    // Get all files across the entire hierarchy
+    vector<VFile*> allFiles = vData.getAllFiles();
+    
+    // Helper lambda to get all folders recursively
+    std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders = 
+        [&](vector<VFolder>& folders, vector<VFolder*>& result) {
+            for (auto& folder : folders) {
+                result.push_back(&folder);
+                getAllFolders(folder.folderList, result);
+            }
+        };
+    
+    vector<VFolder*> allFolders;
+    getAllFolders(vData.folderList, allFolders);
+    
+    if (oldOrder < newOrder) {
+        // Moving down - decrease orders of items in between
+        for (auto* file : allFiles) {
+            if (file->order > oldOrder && file->order < newOrder) {
+                file->order--;
+            }
+        }
+        for (auto* folder : allFolders) {
+            if (folder->order > oldOrder && folder->order < newOrder) {
+                folder->order--;
+            }
+        }
+    } else {
+        // Moving up - increase orders of items in between
+        for (auto* file : allFiles) {
+            if (file->order >= newOrder && file->order < oldOrder) {
+                file->order++;
+            }
+        }
+        for (auto* folder : allFolders) {
+            if (folder->order >= newOrder && folder->order < oldOrder) {
+                folder->order++;
+            }
+        }
+    }
+}
+
 // Helper function to recursively adjust orders within a container
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder) {
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
         for (auto& folder : folders) {
-            if (folder.order > oldOrder && folder.order <= newOrder) {
+            if (folder.order > oldOrder && folder.order < newOrder) {
                 folder.order--;
             }
         }
         for (auto& file : files) {
-            if (file.order > oldOrder && file.order <= newOrder) {
+            if (file.order > oldOrder && file.order < newOrder) {
                 file.order--;
             }
         }
@@ -309,6 +401,55 @@ FolderLocation findFolderLocation(VData& vData, int order) {
     
     return location;
 }
+
+
+FileLocation findFileLocation(VData& vData, int order) {
+    FileLocation location;
+    // TODO: change the folder location according to insertion mark 
+
+
+    // Check root level first
+    for (auto& file : vData.fileList) {
+        if (file.order == order) {
+            location.file = &file;
+            location.parentFolder = nullptr;  // Root level
+            location.found = true;
+            return location;
+        }
+    }
+    
+    // Recursively search in folders
+    std::function<bool(VFolder&)> searchInFolder = [&](VFolder& folder) -> bool {
+        // Check files in this folder
+        for (auto& file : folder.fileList) {
+            if (file.order == order) {
+                location.file = &file;
+                location.parentFolder = &folder;
+                location.found = true;
+                return true;
+            }
+        }
+        
+        // Recursive search in subfolders
+        for (auto& subFolder : folder.folderList) {
+            if (searchInFolder(subFolder)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    
+    // Search in all root-level folders
+    for (auto& rootFolder : vData.folderList) {
+        if (searchInFolder(rootFolder)) {
+            break;
+        }
+    }
+    
+    return location;
+}
+
+
 
 void reorderFolders(VData& vData, int oldOrder, int newOrder) {
     // Find the folder to move using recursive search
