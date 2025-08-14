@@ -93,6 +93,10 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Downloads\file_dark.ico" />
+    <Image Include="..\..\..\Downloads\file_edit.ico" />
+    <Image Include="..\..\..\Downloads\file_light.ico" />
+    <Image Include="..\..\..\Downloads\file_red.ico" />
     <Image Include="..\..\..\Downloads\folderyellow.ico" />
     <Image Include="..\..\..\Downloads\folder_icon.ico" />
   </ItemGroup>

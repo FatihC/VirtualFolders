@@ -108,9 +108,11 @@ VFile sessionFileToVFile(const SessionFile& sessionFile, int view) {
         std::filesystem::path filePath(sessionFile.filename);
         vFile.name = filePath.filename().string();
         vFile.path = sessionFile.filename;
+        vFile.isEdited = false;
     } else {
         vFile.name = sessionFile.filename;
         vFile.path = sessionFile.backupFilePath;
+        vFile.isEdited = true;
     }
     
     vFile.view = view; // Use the passed view parameter

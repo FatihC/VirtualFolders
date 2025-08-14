@@ -56,7 +56,7 @@ void syncVDataWithOpenFilesNotification();
 
 
 wchar_t* toWchar(const std::string& str);
-void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent);
+void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode);
 void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos);
 void resizeWatcherPanel();
 
@@ -87,8 +87,20 @@ static HIMAGELIST hDragImage = nullptr;
 static bool isDragging = false;
 
 
-int idxFolder;
-int idxFile;
+//int idxFolder;
+//int idxFile, idxFileLight, idxFileDark, idxFileEdited;
+
+enum IconType {
+    ICON_FOLDER,
+    ICON_FILE,
+    ICON_FILE_LIGHT,
+    ICON_FILE_DARK,
+    ICON_FILE_EDITED
+};
+
+std::unordered_map<IconType, int> iconIndex;
+
+
 
 std::string new_line = "\n";
 
@@ -490,6 +502,8 @@ void refreshTree(HWND hTree, VData& vData) {
     
     // Rebuild tree with new order  
 	vData.vDataSort();
+
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
     
     int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
     lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
@@ -501,7 +515,7 @@ void refreshTree(HWND hTree, VData& vData) {
                 addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos);
             }
         } else {
-            addFileToTree(vFile.value(), hTree, TVI_ROOT);
+            addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode);
             pos++;
         }
     }
@@ -549,10 +563,21 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
 
         HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
-        HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
+        //HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
+        HICON hIconFolder = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
         HICON hIconFile = LoadIcon(NULL, IDI_APPLICATION);
-        idxFolder = ImageList_AddIcon(hImages, hIconFolder);
-        idxFile = ImageList_AddIcon(hImages, hIconFile);
+        HICON hIconFileLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LIGHT_ICON));
+        HICON hIconFileDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_DARK_ICON));
+        HICON hIconFileEdited = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_EDITED_ICON));
+
+        
+
+        iconIndex[ICON_FOLDER] = ImageList_AddIcon(hImages, hIconFolder);
+        iconIndex[ICON_FILE] = ImageList_AddIcon(hImages, hIconFile);
+        iconIndex[ICON_FILE_LIGHT] = ImageList_AddIcon(hImages, hIconFileLight);
+        iconIndex[ICON_FILE_DARK] = ImageList_AddIcon(hImages, hIconFileDark);
+        iconIndex[ICON_FILE_EDITED] = ImageList_AddIcon(hImages, hIconFileEdited);
+
         TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
 
         // Increase item height and indent for better spacing
@@ -588,9 +613,9 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     item.mask = TVIF_IMAGE | TVIF_PARAM;
                     item.hItem = hSelectedItem;
                     if (TreeView_GetItem(hTree, &item)) {
-                        // Check if this is a file (not a folder) by checking the image index
-                        if (item.iImage != idxFile) {
-							return TRUE;  // This is a file item, no need to do anything here
+                        // Check if this is a folder (not a file) by checking the image index
+                        if (item.iImage == iconIndex[ICON_FOLDER]) {
+							return TRUE;
                         }
                             
                         // This is a file item, get the order and find the corresponding VFile
@@ -659,7 +684,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                         item.hItem = hSelectedItem;
                         if (TreeView_GetItem(hTree, &item)) {
                             // Check if this is a file (not a folder) by checking the image index
-                            if (item.iImage == idxFile) {
+                            if (item.iImage != iconIndex[ICON_FOLDER]) {
                                 // This is a file item, get the order and find the corresponding VFile
                                 int order = static_cast<int>(item.lParam);
                                 
@@ -737,7 +762,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             item.hItem = hItem;
             if (TreeView_GetItem(hTree, &item)) {
                 // Check if this is a file (not a folder) by checking the image index
-                if (item.iImage == idxFile) {
+                if (item.iImage != iconIndex[ICON_FOLDER]) {
                     return TRUE;  // This is a file item, no need to do anything here
                 }
             }
@@ -996,39 +1021,71 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             // Clear drop target selection and restore normal selection
             TreeView_SelectDropTarget(hTree, nullptr);
 
-            if (hDragItem && hDropTarget && hDragItem != hDropTarget && insertion) {
-                // Get the dragged and target item orders
-                int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
-				int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
+            if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
+				TVITEM dropItem = getTreeItem(hTree, hDropTarget);
+                if (dropItem.iImage == iconIndex[ICON_FOLDER]) {
+                    // Move file into folder
+                    int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
+                    int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
+                    auto draggedFileOpt = commonData.vData.findFileByOrder(dragOrder);
+                    auto targetFolderOpt = commonData.vData.findFolderByOrder(targetOrder);
+                    if (draggedFileOpt && targetFolderOpt) {
+                        VFile* file = draggedFileOpt.value();
+                        VFolder* folder = targetFolderOpt.value();
+                        VFolder* parentFolder = commonData.vData.findParentFolder(file->order);
+                        VFile fileCopy = *file; // Create a copy of VFile*
+                        
+                        if (parentFolder) {
+                            parentFolder->removeFile(file->order);
+                        }
+                        else {
+							commonData.vData.removeFile(file->order);
+                        }
+                        commonData.vData.adjustOrders(fileCopy.order, NULL, -1);
+						// 
+                        folder->addFile(&fileCopy);
+						int tempOrder = fileCopy.order;
+						commonData.vData.adjustOrders(fileCopy.order, INT_MAX, 1);
+						// Update the file's order to match the folder's order
+                        file = commonData.vData.findFileByPath(fileCopy.path);
+						file->order = tempOrder;
 
-                // Find the dragged item in vData
-                optional<VFile*> draggedFileOpt = commonData.vData.findFileByOrder(dragOrder);
-                optional<VFolder*> draggedFolderOpt = commonData.vData.findFolderByOrder(dragOrder);
+                        refreshTree(hTree, commonData.vData);
+                        writeJsonFile();
+                    }
+                }
+                // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
+                else if (insertion) {
+                    // Get the dragged and target item orders
+                    int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
+                    int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
+
+                    // Find the dragged item in vData
+                    optional<VFile*> draggedFileOpt = commonData.vData.findFileByOrder(dragOrder);
+                    optional<VFolder*> draggedFolderOpt = commonData.vData.findFolderByOrder(dragOrder);
+
+                    if (draggedFileOpt) {
+                        // Calculate new order based on drop position
+                        int newOrder = calculateNewOrder(targetOrder, lastMark);
+
+                        // Update the VFile order
+                        //draggedFileOpt.value()->order = newOrder;
+
+                        // Reorder other items
+                        reorderItems(commonData.vData, dragOrder, newOrder);
+                        refreshTree(hTree, commonData.vData);
+                        writeJsonFile();
+                    }
+                    else if (draggedFolderOpt) {
+                        // Similar logic for folders
+                        int newOrder = calculateNewOrder(targetOrder, lastMark);
+                        //draggedFolderOpt.value()->order = newOrder;
+                        reorderFolders(commonData.vData, dragOrder, newOrder);
+                        refreshTree(hTree, commonData.vData);
+                        writeJsonFile();
+                    }
+                }
                 
-                if (draggedFileOpt) {
-                    // Calculate new order based on drop position
-                    int newOrder = calculateNewOrder(targetOrder, lastMark);
-                    
-                    // Update the VFile order
-                    //draggedFileOpt.value()->order = newOrder;
-                    
-                    // Reorder other items
-                    reorderItems(commonData.vData, dragOrder, newOrder);
-                    
-                    // Refresh the tree
-                    refreshTree(hTree, commonData.vData);
-                    
-                    // Save to JSON
-                    writeJsonFile();
-                }
-                else if (draggedFolderOpt) {
-                    // Similar logic for folders
-                    int newOrder = calculateNewOrder(targetOrder, lastMark);
-                    //draggedFolderOpt.value()->order = newOrder;
-                    reorderFolders(commonData.vData, dragOrder, newOrder);
-                    refreshTree(hTree, commonData.vData);
-                    writeJsonFile();
-                }
             }
             hDragItem = nullptr;
             hDropTarget = nullptr;
@@ -1201,6 +1258,8 @@ void toggleWatcherPanelWithList() {
         int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().order;
 		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().order);
 
+        BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+
         for (size_t pos = 0; pos <= lastOrder; pos) {
 			auto vFile = commonData.vData.findFileByOrder(pos);
             if (!vFile) {
@@ -1210,7 +1269,7 @@ void toggleWatcherPanelWithList() {
                 }
             }
             else {
-                addFileToTree(vFile.value(), hTree, TVI_ROOT);
+                addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode);
                 pos++;
             }
 
@@ -1270,7 +1329,7 @@ wchar_t* toWchar(const std::string& str) {
 	return buffer;
 }
 
-void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent)
+void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode)
 {
     wchar_t buffer[100];
 
@@ -1280,8 +1339,18 @@ void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent)
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFile->name));
     tvis.item.pszText = buffer;
-    tvis.item.iImage = idxFile; // or idxFile
-    tvis.item.iSelectedImage = idxFile; // or idxFile
+    if (vFile->isEdited) {
+        tvis.item.iImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
+        tvis.item.iSelectedImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
+    }
+    else if (darkMode){
+        tvis.item.iImage = iconIndex[ICON_FILE_DARK];
+        tvis.item.iSelectedImage = iconIndex[ICON_FILE_DARK];
+    }
+    else {
+        tvis.item.iImage = iconIndex[ICON_FILE_LIGHT]; // Use light file icon
+        tvis.item.iSelectedImage = iconIndex[ICON_FILE_LIGHT]; // Use light file icon
+    }
 	tvis.item.lParam = vFile->order; // Store the order/index directly in lparam
 
     //tvis.item.lParam = reinterpret_cast<LPARAM>(&vFile);
@@ -1308,8 +1377,8 @@ void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& po
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFolder->name));
     tvis.item.pszText = buffer;
-    tvis.item.iImage = idxFolder; // or idxFile
-    tvis.item.iSelectedImage = idxFolder; // or idxFile
+    tvis.item.iImage = iconIndex[ICON_FOLDER]; // or idxFile
+    tvis.item.iSelectedImage = iconIndex[ICON_FOLDER]; // or idxFile
 	tvis.item.lParam = vFolder->order; // Store the order/index directly in lparam
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
 
@@ -1317,13 +1386,14 @@ void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& po
     //TVITEM tvItem = getTreeItem(hTree, hFolder);
     
 	pos++;
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 	
     int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().order;
 	lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().order);
     for (pos; pos <= lastOrder; pos) {
         optional<VFile*> vFile = vFolder->findFileByOrder(pos);
         if (vFile) {
-            addFileToTree(*vFile, hTree, hFolder);
+            addFileToTree(*vFile, hTree, hFolder, isDarkMode);
             pos++;
         }
         else {

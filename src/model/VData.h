@@ -28,6 +28,8 @@ public:
 	int session;
 	string backupFilePath;
 	bool isActive = false;
+	bool isEdited = false;
+
 
 };
 
@@ -47,6 +49,12 @@ public:
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
 	void move(int steps);
+	VFolder* findParentFolder(int order) const;
+	void removeFile(int order);
+	void adjustOrders(int beginOrder, int endOrder, int step);
+	void addFile(VFile* vFile);
+	int getLastOrder() const;
+	VFile* findFileByPath(const string& path) const;
 };
 
 class VData
@@ -60,6 +68,10 @@ public:
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
 	bool isInRoot(int order) const;
+	VFolder* findParentFolder(int order) const;
+	void adjustOrders(int beginOrder, int endOrder, int step);
+	void removeFile(int order);
+	VFile* findFileByPath(const string& path) const;
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)
@@ -72,7 +84,8 @@ inline void to_json(json& j, const VFile& f) {
 		{"view", f.view},
 		{"session", f.session},
 		{"backupFilePath", f.backupFilePath},
-		{"isActive", f.isActive}
+		{"isActive", f.isActive},
+		{"isEdited", f.isEdited}
 	};
 }
 
@@ -104,6 +117,7 @@ inline void from_json(const json& j, VFile& f) {
 	if (j.contains("session")) j.at("session").get_to(f.session);
 	if (j.contains("backupFilePath")) j.at("backupFilePath").get_to(f.backupFilePath);
 	if (j.contains("isActive")) j.at("isActive").get_to(f.isActive);
+	if (j.contains("isEdited")) j.at("isEdited").get_to(f.isEdited);
 }
 
 inline void from_json(const json& j, VFolder& folder) {

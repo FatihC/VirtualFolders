@@ -150,5 +150,17 @@
     <Image Include="..\..\..\Downloads\folderyellow.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="..\..\..\Downloads\file_light.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Downloads\file_edit.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Downloads\file_dark.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Downloads\file_red.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
