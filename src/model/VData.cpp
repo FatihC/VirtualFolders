@@ -60,6 +60,19 @@ int VFolder::getLastOrder() const {
 	return lastOrder;
 }
 
+int VData::getLastOrder() const {
+	// Get the last order in this folder
+	if (fileList.empty() && folderList.empty()) {
+		return 0;
+	}
+
+	int lastOrder = fileList.empty() ? 0 : fileList.back().order;
+	if (!folderList.empty() && folderList.back().order > lastOrder) {
+		lastOrder = folderList.back().getLastOrder();
+	}
+	return lastOrder;
+}
+
 void VFolder::addFile(VFile* vFile) {
 	vFile->order = getLastOrder() + 1; // Set the order to be after the last file in this folder
 	// Add file to the folder's file list
@@ -147,6 +160,25 @@ optional<VFile*> VData::findFileByOrder(int order) const {
     return std::nullopt; // Return null if not found  
 }
 
+optional<VFile*> VData::findFileByDocOrder(int docOrder) const {
+	for (const auto& file : fileList) {
+		if (file.docOrder == docOrder) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		optional<VFile*> foundFile = folder.findFileByOrder(docOrder);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+
+	return std::nullopt; // Return null if not found  
+}
+
+
 optional<VFile*> VFolder::findFileByOrder(int order) const {
 	for (const auto& file : fileList) {
 		if (file.order == order) {
@@ -157,6 +189,24 @@ optional<VFile*> VFolder::findFileByOrder(int order) const {
 	// Recursively search in subfolders
 	for (const auto& subFolder : folderList) {
 		optional<VFile*> foundFile = subFolder.findFileByOrder(order);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+
+	return std::nullopt; // Return null if not found  
+}
+
+optional<VFile*> VFolder::findFileByDocOrder(int docOrder) const {
+	for (const auto& file : fileList) {
+		if (file.docOrder == docOrder) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		optional<VFile*> foundFile = folder.findFileByOrder(docOrder);
 		if (foundFile) {
 			return foundFile;
 		}

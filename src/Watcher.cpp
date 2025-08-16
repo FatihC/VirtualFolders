@@ -56,6 +56,7 @@ void syncVDataWithOpenFilesNotification();
 
 
 wchar_t* toWchar(const std::string& str);
+string fromWchar(const wchar_t* wstr);
 void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode);
 void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos);
 void resizeWatcherPanel();
@@ -99,7 +100,7 @@ enum IconType {
 };
 
 std::unordered_map<IconType, int> iconIndex;
-
+static bool ignoreSelectionChange = false;
 
 
 std::string new_line = "\n";
@@ -120,6 +121,7 @@ TVITEM getTreeItem(HWND hTree, HTREEITEM hItem);
 FileLocation findFileLocation(VData& vData, int order);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
 void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder);
+HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam);
 
 
 
@@ -522,24 +524,72 @@ void refreshTree(HWND hTree, VData& vData) {
 }
 
 void updateWatcherPanelUnconditional() {
-    std::wstring text = GetDlgItemString(watcherPanel, IDC_WATCHER_TEXT);
-    if (text.empty()) {
-        SetDlgItemText(watcherPanel, IDC_WATCHER_RESULT, L"");
-        location = -1;
+    if(!commonData.isNppReady) {
         return;
     }
-    plugin.getScintillaPointers();
-    std::string s = fromWide(text);
-    sci.TargetWholeDocument();
-    sci.SetSearchFlags(Scintilla::FindOption::WholeWord);
-    location = sci.SearchInTarget(s);
-    if (location < 0) {
-        SetDlgItemText(watcherPanel, IDC_WATCHER_RESULT, (L"\"" + text + L"\" not found.").data());
+
+    if (ignoreSelectionChange) {
+        ignoreSelectionChange = false;
+		return; // Ignore this update
+    }
+
+    
+    // Get current buffer ID
+    LRESULT bufID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+    LRESULT posId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufID, 0);
+
+
+    optional<VFile*> vFileOption = commonData.vData.findFileByDocOrder(posId);
+    if (!vFileOption) {
+        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufID, 0);
+        wchar_t* filePath = new wchar_t[len + 1];
+        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufID, (LPARAM)filePath);
+
+
+        // TODO: create vFile
+		VFile newFile;
+		newFile.docOrder = posId;
+		newFile.order = commonData.vData.getLastOrder() + 1;
+		newFile.name = fromWchar(filePath);
+		newFile.path = fromWchar(filePath);
+		newFile.view = 0;
+		newFile.session = 0;
+		newFile.backupFilePath = "";
+		newFile.isActive = true;
+		commonData.vData.fileList.push_back(newFile);
+
+
+        // TODO: create treeItem
+		HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+		addFileToTree(&newFile, hTree, TVI_ROOT, isDarkMode);
         return;
     }
-    terminal = sci.TargetEnd();
-    std::wstring linenum = std::to_wstring(sci.LineFromPosition(location) + 1);
-    SetDlgItemText(watcherPanel, IDC_WATCHER_RESULT, (L"Found \"" + text + L"\" on line " + linenum + L".").data());
+
+    if (!IsWindowVisible(watcherPanel)) {
+        ignoreSelectionChange = true;
+        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOption.value()->order));
+        TreeView_SelectItem(hTree, hSelectedItem);
+    }
+
+
+}
+
+// Example: Find by lParam
+HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam) {
+    HTREEITEM hItem = TreeView_GetChild(hTree, hParent);
+    while (hItem) {
+        TVITEM tvi = { 0 };
+        tvi.mask = TVIF_PARAM;
+        tvi.hItem = hItem;
+        if (TreeView_GetItem(hTree, &tvi) && tvi.lParam == lParam)
+            return hItem;
+        HTREEITEM hFound = FindItemByLParam(hTree, hItem, lParam);
+        if (hFound) return hFound;
+        hItem = TreeView_GetNextSibling(hTree, hItem);
+    }
+    return nullptr;
 }
 
 
@@ -604,7 +654,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 // Only process file clicks if Notepad++ is ready
                 if (!commonData.isNppReady) {
                     return TRUE;  // Skip processing if Notepad++ isn't ready yet
-                }
+                } else if (ignoreSelectionChange) {
+                    ignoreSelectionChange = false;  // Reset the flag
+                    return TRUE;  // Skip processing if we are ignoring this change
+				}
 
                 // Handle file selection - open file when user clicks on a file item
                 HTREEITEM hSelectedItem = pnmtv->itemNew.hItem;
@@ -633,6 +686,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                             OutputDebugStringA(("Opening file: " + selectedFile.value()->path).c_str());
                                 
                             // First, try to switch to the file if it's already open
+                            ignoreSelectionChange = true;
                             if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(widePath.c_str()))) {
                                 // If file is not open, open it
                                 npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(widePath.c_str()));
@@ -1221,7 +1275,38 @@ void resizeWatcherPanel() {
     }
 }
 
-void updateWatcherPanel() { if (watcherPanel && IsWindowVisible(watcherPanel)) updateWatcherPanelUnconditional(); }
+void updateWatcherPanel() {
+    if (watcherPanel && IsWindowVisible(watcherPanel)) {
+    }
+        updateWatcherPanelUnconditional(); 
+}
+
+void onBeforeFileClosed(int docOrder) {
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+
+    optional<VFile*> vFile = commonData.vData.findFileByDocOrder(docOrder);
+    if (!vFile) {
+        OutputDebugStringA("File not found in vData\n");
+        return;
+	}
+
+    
+    HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFile.value()->order));
+    if (hSelectedItem) {
+        // Remove the item from the tree
+        TreeView_DeleteItem(hTree, hSelectedItem);
+        
+        // Also remove from vData
+        commonData.vData.removeFile(vFile.value()->order);
+        
+        // Write updated vData to JSON file
+        writeJsonFile();
+        
+        
+        OutputDebugStringA("File closed and removed from watcher panel\n");
+	}
+}
 
 
 
@@ -1327,6 +1412,13 @@ wchar_t* toWchar(const std::string& str) {
 	static wchar_t buffer[256];
 	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, 256);
 	return buffer;
+}
+
+string fromWchar(const wchar_t* wstr) {
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
+    string str(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &str[0], size_needed, NULL, NULL);
+    return str;
 }
 
 void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode)

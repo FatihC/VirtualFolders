@@ -47,6 +47,7 @@ public:
 	vector<VFile*> getAllFiles() const;
 	void vFolderSort();
 	optional<VFile*> findFileByOrder(int order) const;
+	optional<VFile*> findFileByDocOrder(int docOrder) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
 	void move(int steps);
 	VFolder* findParentFolder(int order) const;
@@ -67,11 +68,13 @@ public:
 	void vDataSort();
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
+	optional<VFile*> findFileByDocOrder(int docOrder) const;
 	bool isInRoot(int order) const;
 	VFolder* findParentFolder(int order) const;
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void removeFile(int order);
 	VFile* findFileByPath(const string& path) const;
+	int getLastOrder() const;
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)

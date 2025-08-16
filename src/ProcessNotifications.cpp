@@ -21,6 +21,8 @@
 extern void updateStatusDialog();
 extern void updateWatcherPanel();
 extern void syncVDataWithOpenFilesNotification();
+extern void onBeforeFileClosed(int pos);
+
 
 // External variables
 extern HWND watcherPanel;
@@ -48,6 +50,19 @@ void bufferActivated() {
     updateWatcherPanel();
 }
 
+void beforeFileClose(const NMHDR* nmhdr) {
+    if (plugin.startupOrShutdown) {
+        return;
+    }
+    auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
+    if (position == -1) {
+        return;
+    }
+
+    // TODO: remove file from vData
+    onBeforeFileClosed(position);
+}
+
 
 void fileClosed(const NMHDR* nmhdr) {
     if (!commonData.annoy) return;
@@ -56,8 +71,6 @@ void fileClosed(const NMHDR* nmhdr) {
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
     if (position == -1) /* file is no longer open in either view */ {
         MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
-        
-		// TODO: remove file from vData
     }
 }
 
@@ -67,9 +80,12 @@ void fileOpened(const NMHDR* nmhdr) {
     // syncVDataWithOpenFilesNotification();
 
     if (!commonData.annoy) return;
+	//if (!commonData.isNppReady) return; // Ensure Notepad++ is ready before showing message
     UINT_PTR bufferID = nmhdr->idFrom;
     std::wstring filepath = getFilePath(bufferID);
     MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VFolders", 0);
+
+    //TODO: have to implement this. just in case multiple files opened
 }
 
 // Add this new notification handler for session loading

@@ -35,6 +35,7 @@ void scnZoom(const Scintilla::NotificationData*);
 // Routines that process Notepad++ notifications
 
 void bufferActivated();
+void beforeFileClose(const NMHDR*);
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
 void modifyAll(const NMHDR*);
@@ -143,10 +144,14 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             plugin.fileIsOpening = true;
             break;
 
+        case NPPN_FILEBEFORECLOSE:
+            beforeFileClose(nmhdr);
+            break;
+
         case NPPN_FILECLOSED:
             fileClosed(nmhdr);
             break;
-
+        
         case NPPN_FILEOPENED:
             plugin.fileIsOpening = false;
             fileOpened(nmhdr);

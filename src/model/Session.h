@@ -62,7 +62,7 @@ public:
     
     // Helper methods
     bool isUnsavedFile() const {
-        return !backupFilePath.empty() || filename.find("new ") == 0;
+        return !backupFilePath.empty() == 0;
     }
     
     string getDisplayName() const {
