@@ -50,11 +50,11 @@ vector<VFile*> VData::getAllFiles() const {
 int VFolder::getLastOrder() const {
 	// Get the last order in this folder
 	if (fileList.empty() && folderList.empty()) {
-		return order; // No files or folders, return folder's own order
+		return getOrder(); // No files or folders, return folder's own order
 	}
 
-	int lastOrder = fileList.empty() ? 0 : fileList.back().order;
-	if (!folderList.empty() && folderList.back().order > lastOrder) {
+	int lastOrder = fileList.empty() ? 0 : fileList.back().getOrder();
+	if (!folderList.empty() && folderList.back().getOrder() > lastOrder) {
 		lastOrder = folderList.back().getLastOrder();
 	}
 	return lastOrder;
@@ -66,15 +66,15 @@ int VData::getLastOrder() const {
 		return 0;
 	}
 
-	int lastOrder = fileList.empty() ? 0 : fileList.back().order;
-	if (!folderList.empty() && folderList.back().order > lastOrder) {
+	int lastOrder = fileList.empty() ? 0 : fileList.back().getOrder();
+	if (!folderList.empty() && folderList.back().getOrder() > lastOrder) {
 		lastOrder = folderList.back().getLastOrder();
 	}
 	return lastOrder;
 }
 
 void VFolder::addFile(VFile* vFile) {
-	vFile->order = getLastOrder() + 1; // Set the order to be after the last file in this folder
+	vFile->setOrder(getLastOrder() + 1); // Set the order to be after the last file in this folder
 	// Add file to the folder's file list
 	fileList.push_back(*vFile);
 }
@@ -83,11 +83,11 @@ void VFolder::vFolderSort()
 {
 	// Sort files in the folder by order
 	std::sort(fileList.begin(), fileList.end(), [](const VFile& a, const VFile& b) {
-		return a.order < b.order;
+		return a.getOrder() < b.getOrder();
 		});
 	// Sort subfolders by order
 	std::sort(folderList.begin(), folderList.end(), [](const VFolder& a, const VFolder& b) {
-		return a.order < b.order;
+		return a.getOrder() < b.getOrder();
 		});
 	// Recursively sort subfolders
 	for (auto& subFolder : folderList) {
@@ -130,7 +130,7 @@ VFile* VFolder::findFileByPath(const string& path) const {
 void VData::vDataSort() {
 	// Sort folders by order
 	std::sort(folderList.begin(), folderList.end(), [](const VFolder& a, const VFolder& b) {
-		return a.order < b.order;
+		return a.getOrder() < b.getOrder();
 		});
 	for (auto& folder : folderList) {
 		folder.vFolderSort();
@@ -138,13 +138,13 @@ void VData::vDataSort() {
 
 	// Optionally sort root-level files if you have any
 	std::sort(fileList.begin(), fileList.end(), [](const VFile& a, const VFile& b) {
-		return a.order < b.order;
+		return a.getOrder() < b.getOrder();
 		});
 }
 
 optional<VFile*> VData::findFileByOrder(int order) const {  
     for (const auto& file : fileList) {  
-        if (file.order == order) {  
+        if (file.getOrder() == order) {
             return &const_cast<VFile&>(file);  
         }  
     }
@@ -158,6 +158,37 @@ optional<VFile*> VData::findFileByOrder(int order) const {
 	}
 
     return std::nullopt; // Return null if not found  
+}
+
+optional<VBase*> VData::findAboveSibling(int order) {
+	// Find the above sibling of the item with the given order
+	optional<VBase*> aboveSibling = std::nullopt;
+	// Check root-level files
+	for (const auto& file : fileList) {
+		if (file.getOrder() < order) {
+			if (!aboveSibling || file.getOrder() > aboveSibling.value()->getOrder()) {
+				aboveSibling = &const_cast<VFile&>(file);
+			}
+		}
+	}
+	// Check root-level folders
+	for (const auto& folder : folderList) {
+		if (folder.getOrder() < order) {
+			if (!aboveSibling || folder.getOrder() > aboveSibling.value()->getOrder()) {
+				aboveSibling = &const_cast<VFolder&>(folder);
+			}
+		}
+	}
+	//// Recursively check in folders
+	//for (const auto& folder : folderList) {
+	//	optional<VBase*> foundInSubfolder = folder.findAboveSibling(order);
+	//	if (foundInSubfolder) {
+	//		if (!aboveSibling || foundInSubfolder.value()->getOrder() > aboveSibling.value()->getOrder()) {
+	//			aboveSibling = foundInSubfolder;
+	//		}
+	//	}
+	//}
+	return aboveSibling;
 }
 
 optional<VFile*> VData::findFileByDocOrder(int docOrder) const {
@@ -181,7 +212,7 @@ optional<VFile*> VData::findFileByDocOrder(int docOrder) const {
 
 optional<VFile*> VFolder::findFileByOrder(int order) const {
 	for (const auto& file : fileList) {
-		if (file.order == order) {
+		if (file.getOrder() == order) {
 			return &const_cast<VFile&>(file);
 		}
 	}
@@ -217,7 +248,7 @@ optional<VFile*> VFolder::findFileByDocOrder(int docOrder) const {
 
 optional<VFolder*> VData::findFolderByOrder(int order) const {
 	for (const auto& folder : folderList) {
-		if (folder.order == order) {
+		if (folder.getOrder() == order) {
 			return &const_cast<VFolder&>(folder);
 		}
 	}
@@ -235,7 +266,7 @@ optional<VFolder*> VData::findFolderByOrder(int order) const {
 
 optional<VFolder*> VFolder::findFolderByOrder(int order) const {
 	for (const auto& folder : folderList) {
-		if (folder.order == order) {
+		if (folder.getOrder() == order) {
 			return &const_cast<VFolder&>(folder);
 		}
 	}
@@ -253,7 +284,7 @@ optional<VFolder*> VFolder::findFolderByOrder(int order) const {
 
 void VFolder::move(int steps) {
 	// Adjust the order of this folder
-	order += steps;
+	setOrder(getOrder() + steps); // Update the order and tree item
 	for (auto& folder: folderList) {
 		// Adjust the order of subfolders
 		folder.move(steps);
@@ -261,7 +292,7 @@ void VFolder::move(int steps) {
 
 	for (auto& file : fileList) {
 		// Adjust the order of files in this folder
-		file.order += steps;
+		file.setOrder(file.getOrder() + steps);
 	}
 
 	// Sort files and subfolders after moving
@@ -270,13 +301,13 @@ void VFolder::move(int steps) {
 
 bool VData::isInRoot(int order) const {
 	for (const auto& file : fileList) {
-		if (file.order == order) {
+		if (file.getOrder() == order) {
 			return true; // Found in root files
 		}
 	}
 
 	for (const auto& folder : folderList) {
-		if (folder.order == order) {
+		if (folder.getOrder() == order) {
 			return true; // Found in root folders
 		}
 	}
@@ -288,7 +319,7 @@ VFolder* VData::findParentFolder(int order) const {
 	for (const auto& folder : folderList) {
 		// Check files in current folder
 		for (const auto& file : folder.fileList) {
-			if (file.order == order) {
+			if (file.getOrder() == order) {
 				return const_cast<VFolder*>(&folder); // Found the parent folder
 			}
 		}
@@ -308,7 +339,7 @@ VFolder* VFolder::findParentFolder(int order) const {
 	for (const auto& folder : folderList) {
 		// Check files in current folder
 		for (const auto& file : folder.fileList) {
-			if (file.order == order) {
+			if (file.getOrder() == order) {
 				return const_cast<VFolder*>(&folder); // Found the parent folder
 			}
 		}
@@ -326,13 +357,13 @@ VFolder* VFolder::findParentFolder(int order) const {
 void VFolder::removeFile(int order) {
 	// Remove file by order
 	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
-		[order](const VFile& file) { return file.order == order; }), fileList.end());
+		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
 }
 
 void VData::removeFile(int order) {
 	// Remove file by order
 	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
-		[order](const VFile& file) { return file.order == order; }), fileList.end());
+		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
 }
 
 void VData::adjustOrders(int beginOrder, int endOrder, int step) {
@@ -341,13 +372,13 @@ void VData::adjustOrders(int beginOrder, int endOrder, int step) {
 	}
 	// Adjust orders of all files and folders in the range [beginOrder, endOrder]
 	for (auto& file : fileList) {
-		if (file.order >= beginOrder && file.order <= endOrder) {
-			file.order += step;
+		if (file.getOrder() >= beginOrder && file.getOrder() <= endOrder) {
+			file.setOrder(file.getOrder() + step);
 		}
 	}
 	for (auto& folder : folderList) {
-		if (folder.order >= beginOrder && folder.order <= endOrder) {
-			folder.order += step;
+		if (folder.getOrder() >= beginOrder && folder.getOrder() <= endOrder) {
+			folder.setOrder(folder.getOrder() + step);
 		}
 		folder.adjustOrders(beginOrder, endOrder, step);
 
@@ -357,13 +388,13 @@ void VData::adjustOrders(int beginOrder, int endOrder, int step) {
 void VFolder::adjustOrders(int beginOrder, int endOrder, int step) {
 	// Adjust orders of all files and folders in the range [beginOrder, endOrder]
 	for (auto& file : fileList) {
-		if (file.order >= beginOrder && file.order <= endOrder) {
-			file.order += step;
+		if (file.getOrder() >= beginOrder && file.getOrder() <= endOrder) {
+			file.setOrder(file.getOrder() + step);
 		}
 	}
 	for (auto& folder : folderList) {
-		if (folder.order >= beginOrder && folder.order <= endOrder) {
-			folder.order += step;
+		if (folder.getOrder() >= beginOrder && folder.getOrder() <= endOrder) {
+			folder.setOrder(folder.getOrder() + step);
 		}
 		folder.adjustOrders(beginOrder, endOrder, step);
 	}

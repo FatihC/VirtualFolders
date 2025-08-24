@@ -45,7 +45,15 @@ struct FileLocation {
 };
 
 
-
+void updateTreeItemLParam(VBase* vBase) {
+    if (vBase->hTreeItem) {
+        TVITEM tvi = { 0 };
+        tvi.mask = TVIF_PARAM;
+        tvi.hItem = (vBase->hTreeItem);
+        tvi.lParam = vBase->order;
+        TreeView_SetItem(commonData.hTree, &tvi);
+    }
+}
 
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
@@ -55,16 +63,21 @@ void writeJsonFile();
 void syncVDataWithOpenFilesNotification();
 
 
-wchar_t* toWchar(const std::string& str);
+wchar_t* toWchar(const string& str);
+wstring toWstring(const string& str);
 string fromWchar(const wchar_t* wstr);
-void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode);
-void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos);
+HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem);
+HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos, HTREEITEM hPrevItem);
 void resizeWatcherPanel();
+// Forward declaration for the rename dialog function
+void showRenameDialog(VBase* item, HTREEITEM treeItem, HWND hTree);
 
 
 #define ID_TREE_DELETE 40001
 #define ID_FILE_CLOSE 40100
 #define ID_FILE_WRAP_IN_FOLDER 40101
+#define ID_FILE_RENAME 40102
+#define ID_FOLDER_RENAME 40103
 
 
 
@@ -81,6 +94,8 @@ DialogStretch stretch;
 
 std::wstring jsonFilePath;
 bool contextMenuLoaded = false;
+int currentView = -1;
+
 
 static HTREEITEM hDragItem = nullptr;
 static HTREEITEM hDropTarget = nullptr;
@@ -146,6 +161,8 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
     if (!sourceLocation.found || !sourceLocation.file) {
         return; // File not found
     }
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+
     
     VFile* movedFile = sourceLocation.file;
     VFolder* sourceFolder = sourceLocation.parentFolder;
@@ -189,7 +206,7 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
         
         // Set new order and add to root
 		if (newOrder > oldOrder) newOrder--;
-        fileData.order = newOrder;
+		fileData.setOrder(newOrder);
         vData.fileList.push_back(fileData);
         
     } else if (!movingToRoot && !sourceFolder) {
@@ -209,18 +226,54 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
         // For now, we'll assume the first folder
         if (!vData.folderList.empty()) {
             // Set new order and add to folder
-            fileData.order = newOrder;
+			fileData.setOrder(newOrder);
             targetFolder->fileList.push_back(fileData);
         }
         
     } else {
         // Moving within the same container (root or same folder)
         // Since order is global across the entire tree, we need to adjust all affected items globally
-        adjustGlobalOrdersForFileMove(vData, oldOrder, newOrder);
+        
         
         // Set the new order for the moved file
         if (newOrder > oldOrder) newOrder--;
-        movedFile->order = newOrder;
+        //newOrder--;
+        if (newOrder == oldOrder) return;
+        
+
+        //HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam);
+        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HTREEITEM oldItem = nullptr;
+        HTREEITEM hParent = nullptr;
+		HTREEITEM prevItem = nullptr;
+
+        int firstOrderOfFolder = -1;
+        if (sourceFolder) {
+			hParent = FindItemByLParam(hTree, nullptr, (LPARAM)sourceFolder->getOrder());
+			firstOrderOfFolder = sourceFolder->getOrder() + 1;
+        } else {
+			firstOrderOfFolder = commonData.vData.fileList[0].getOrder();
+        }
+        TVINSERTSTRUCT tvis = { 0 };
+
+		// What if newOrder is the first item in the folder?
+        if (newOrder == firstOrderOfFolder) {
+            tvis.hInsertAfter = TVI_FIRST;
+        } else {
+            prevItem = FindItemByLParam(hTree, hParent, (LPARAM)newOrder);
+            if (newOrder < oldOrder) {
+                prevItem = FindItemByLParam(hTree, hParent, (LPARAM)newOrder - 1);
+            }
+            tvis.hInsertAfter = prevItem;
+		}
+        oldItem = FindItemByLParam(hTree, hParent, (LPARAM)movedFile->getOrder());
+        TreeView_DeleteItem(hTree, oldItem);
+
+        adjustGlobalOrdersForFileMove(vData, oldOrder, newOrder > oldOrder ? newOrder+1 : newOrder);
+		movedFile->setOrder(newOrder);
+
+		addFileToTree(movedFile, hTree, hParent, isDarkMode, prevItem);
+
     }
 }
 
@@ -265,15 +318,15 @@ void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, i
         
         // Adjust files
         for (auto* file : allFiles) {
-            if (file->order >= startOrder && file->order <= newOrder) {
-                file->order -= negShiftAmount;
+            if (file->getOrder() >= startOrder && file->getOrder() <= newOrder) {
+				file->setOrder(file->getOrder() - negShiftAmount);
             }
         }
         
         // Adjust folders
         for (auto* folder : allFolders) {
-            if (folder->order >= startOrder && folder->order <= newOrder) {
-                folder->order -= negShiftAmount;
+            if (folder->getOrder() >= startOrder && folder->getOrder() <= newOrder) {
+                folder->setOrder(folder->getOrder() - negShiftAmount);
             }
         }
     } else {
@@ -282,15 +335,15 @@ void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, i
         
         // Adjust files
         for (auto* file : allFiles) {
-            if (file->order >= newOrder && file->order < oldOrder) {
-                file->order += shiftAmount;
+            if (file->getOrder() >= newOrder && file->getOrder() < oldOrder) {
+                file->setOrder(file->getOrder() + shiftAmount);
             }
         }
         
         // Adjust folders
         for (auto* folder : allFolders) {
-            if (folder->order >= newOrder && folder->order < oldOrder) {
-                folder->order += shiftAmount;
+            if (folder->getOrder() >= newOrder && folder->getOrder() < oldOrder) {
+				folder->setOrder(folder->getOrder() + shiftAmount);
             }
         }
     }
@@ -316,25 +369,25 @@ void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
         for (auto* file : allFiles) {
-            if (file->order > oldOrder && file->order < newOrder) {
-                file->order--;
+            if (file->getOrder() > oldOrder && file->getOrder() < newOrder) {
+				file->decrementOrder();
             }
         }
         for (auto* folder : allFolders) {
-            if (folder->order > oldOrder && folder->order < newOrder) {
-                folder->order--;
+            if (folder->getOrder() > oldOrder && folder->getOrder() < newOrder) {
+				folder->decrementOrder();
             }
         }
     } else {
         // Moving up - increase orders of items in between
         for (auto* file : allFiles) {
-            if (file->order >= newOrder && file->order < oldOrder) {
-                file->order++;
+            if (file->getOrder() >= newOrder && file->getOrder() < oldOrder) {
+				file->incrementOrder();
             }
         }
         for (auto* folder : allFolders) {
-            if (folder->order >= newOrder && folder->order < oldOrder) {
-                folder->order++;
+            if (folder->getOrder() >= newOrder && folder->getOrder() < oldOrder) {
+                folder->incrementOrder();
             }
         }
     }
@@ -345,25 +398,25 @@ void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
         for (auto& folder : folders) {
-            if (folder.order > oldOrder && folder.order < newOrder) {
-                folder.order--;
+            if (folder.getOrder() > oldOrder && folder.getOrder() < newOrder) {
+                folder.decrementOrder();
             }
         }
         for (auto& file : files) {
-            if (file.order > oldOrder && file.order < newOrder) {
-                file.order--;
+            if (file.getOrder() > oldOrder && file.getOrder() < newOrder) {
+				file.decrementOrder();
             }
         }
     } else {
         // Moving up - increase orders of items in between
         for (auto& folder : folders) {
-            if (folder.order >= newOrder && folder.order < oldOrder) {
-                folder.order++;
+            if (folder.getOrder() >= newOrder && folder.getOrder() < oldOrder) {
+				folder.incrementOrder();
             }
         }
         for (auto& file : files) {
-            if (file.order >= newOrder && file.order < oldOrder) {
-                file.order++;
+            if (file.getOrder() >= newOrder && file.getOrder() < oldOrder) {
+				file.incrementOrder();
             }
         }
     }
@@ -381,7 +434,7 @@ FolderLocation findFolderLocation(VData& vData, int order) {
     
     // Check root level first
     for (auto& folder : vData.folderList) {
-        if (folder.order == order) {
+        if (folder.getOrder() == order) {
             location.folder = &folder;
             location.parentFolder = nullptr;  // Root level
             location.found = true;
@@ -392,7 +445,7 @@ FolderLocation findFolderLocation(VData& vData, int order) {
     // Recursively search in subfolders
     std::function<bool(VFolder&)> searchInFolder = [&](VFolder& parent) -> bool {
         for (auto& folder : parent.folderList) {
-            if (folder.order == order) {
+            if (folder.getOrder() == order) {
                 location.folder = &folder;
                 location.parentFolder = &parent;
                 location.found = true;
@@ -424,7 +477,7 @@ FileLocation findFileLocation(VData& vData, int order) {
 
     // Check root level first
     for (auto& file : vData.fileList) {
-        if (file.order == order) {
+        if (file.getOrder() == order) {
             location.file = &file;
             location.parentFolder = nullptr;  // Root level
             location.found = true;
@@ -436,7 +489,7 @@ FileLocation findFileLocation(VData& vData, int order) {
     std::function<bool(VFolder&)> searchInFolder = [&](VFolder& folder) -> bool {
         // Check files in this folder
         for (auto& file : folder.fileList) {
-            if (file.order == order) {
+            if (file.getOrder() == order) {
                 location.file = &file;
                 location.parentFolder = &folder;
                 location.found = true;
@@ -507,17 +560,17 @@ void refreshTree(HWND hTree, VData& vData) {
 
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
     
-    int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().order;
-    lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().order);
+    int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().getOrder();
+    lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().getOrder());
     for (size_t pos = 0; pos <= lastOrder; pos) {
         optional<VFile*> vFile = vData.findFileByOrder(pos);
         if (!vFile) {
             optional<VFolder*> vFolder = vData.findFolderByOrder(pos);
             if (vFolder) {
-                addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos);
+                addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos, TVI_LAST);
             }
         } else {
-            addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode);
+            addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode, TVI_LAST);
             pos++;
         }
     }
@@ -546,10 +599,10 @@ void updateWatcherPanelUnconditional() {
         ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufID, (LPARAM)filePath);
 
 
-        // TODO: create vFile
+        // create vFile
 		VFile newFile;
 		newFile.docOrder = posId;
-		newFile.order = commonData.vData.getLastOrder() + 1;
+		newFile.setOrder(commonData.vData.getLastOrder() + 1);
 		newFile.name = fromWchar(filePath);
 		newFile.path = fromWchar(filePath);
 		newFile.view = 0;
@@ -559,17 +612,17 @@ void updateWatcherPanelUnconditional() {
 		commonData.vData.fileList.push_back(newFile);
 
 
-        // TODO: create treeItem
+        // create treeItem
 		HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
         BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-		addFileToTree(&newFile, hTree, TVI_ROOT, isDarkMode);
+		addFileToTree(&newFile, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
         return;
     }
 
     if (!IsWindowVisible(watcherPanel)) {
         ignoreSelectionChange = true;
         HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-        HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOption.value()->order));
+        HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOption.value()->getOrder()));
         TreeView_SelectItem(hTree, hSelectedItem);
     }
 
@@ -598,6 +651,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     static HWND hTree = nullptr;
     static HMENU hContextMenu = nullptr;
     static HMENU fileContextMenu = nullptr;
+	static HMENU folderContextMenu = nullptr;
     static InsertionMark lastMark = {};
     switch (uMsg) {
     case WM_INITDIALOG: {
@@ -610,6 +664,11 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         fileContextMenu = CreatePopupMenu();
         AppendMenu(fileContextMenu, MF_STRING, ID_FILE_CLOSE, L"Close");
         AppendMenu(fileContextMenu, MF_STRING, ID_FILE_WRAP_IN_FOLDER, L"Wrap in folder");
+        AppendMenu(fileContextMenu, MF_STRING, ID_FILE_RENAME, L"Rename");
+
+		folderContextMenu = CreatePopupMenu();
+		AppendMenu(folderContextMenu, MF_STRING, ID_TREE_DELETE, L"Delete");
+		AppendMenu(folderContextMenu, MF_STRING, ID_FOLDER_RENAME, L"Rename");
 
 
         HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
@@ -679,23 +738,25 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                             
                         // If file found and has a valid path, open it
                         if (selectedFile && !selectedFile.value()->path.empty()) {
-                            // Convert path to wide string
-                            std::wstring widePath(selectedFile.value()->path.begin(), selectedFile.value()->path.end());
+                            std::wstring wideName(selectedFile.value()->name.begin(), selectedFile.value()->name.end()); // opens by name. not path. With path it opens as a new file
+                            if (selectedFile.value()->backupFilePath.empty()) {
+                                wideName = std::wstring(selectedFile.value()->path.begin(), selectedFile.value()->path.end()); // opens by path.
+                            }
                                 
-                            // Debug output
                             OutputDebugStringA(("Opening file: " + selectedFile.value()->path).c_str());
                                 
                             // First, try to switch to the file if it's already open
                             ignoreSelectionChange = true;
-                            if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(widePath.c_str()))) {
+                            if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()))) {
                                 // If file is not open, open it
-                                npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(widePath.c_str()));
+                                npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
                             }
                                 
                             // Optionally, switch to the appropriate view if specified
-                            if (selectedFile.value()->view >= 0) {
-                                // Switch to the specified view (0 = main view, 1 = sub view)
+                            // Switch to the specified view (0 = main view, 1 = sub view)
+                            if (selectedFile.value()->view >= 0 && selectedFile.value()->view != currentView) {
                                 npp(NPPM_ACTIVATEDOC, selectedFile.value()->view, selectedFile.value()->docOrder);
+                                currentView = selectedFile.value()->view;
                             }
                         }
                         else if (selectedFile && selectedFile.value()->path.empty()) {
@@ -727,6 +788,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 return TRUE;
             }
             case NM_DBLCLK: {
+                if (true) return TRUE;
                 // Handle double-click on tree items
                 LPNMITEMACTIVATE pnmia = (LPNMITEMACTIVATE)lParam;
                 if (pnmia->iItem != -1) {
@@ -785,9 +847,21 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 if (hItem && (hit.flags & TVHT_ONITEM))
                 {
                     TreeView_SelectItem(hTree, hItem);
-                    // ShowContextMenu(hWndParent, pt, hItem);
-                    TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
-					contextMenuLoaded = true;
+
+                    TVITEM item = { 0 };
+                    item.mask = TVIF_IMAGE | TVIF_PARAM;
+                    item.hItem = hItem;
+                    if (TreeView_GetItem(hTree, &item)) {
+                        // Check if this is a folder (not a file) by checking the image index
+                        if (item.iImage == iconIndex[ICON_FOLDER]) {
+                            TrackPopupMenu(folderContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                        }
+                        else {
+                            TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                        }
+					    contextMenuLoaded = true;
+                    }
+
                 }
                 return TRUE;
             }
@@ -844,8 +918,101 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 TreeView_DeleteItem(hTree, hSel);
                 // TODO: Remove from vData as well
 				TVITEM item = getTreeItem(hTree, hSel);
-
+				optional<VFile*> vFile = commonData.vData.findFileByOrder((int)item.lParam);
+                // remove item function  necessary.
             }
+            return TRUE;
+        } 
+        else if (LOWORD(wParam) == ID_FILE_WRAP_IN_FOLDER) {
+            HTREEITEM hSel = TreeView_GetSelection(hTree);
+            if (!hSel) {
+                return TRUE;
+            }
+            TVITEM item = getTreeItem(hTree, hSel);
+            optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+            if (!vFileOpt) {
+                return TRUE;
+            }
+                
+            VFile* vFile = vFileOpt.value();
+            VFile fileCopy = *vFile; // Create a copy of VFile*
+
+			int oldOrder = vFile->getOrder();
+			int lastOrder = commonData.vData.getLastOrder();
+
+            VFolder* parentFolder = commonData.vData.findParentFolder(vFile->getOrder());
+            if (parentFolder) {
+                parentFolder->removeFile(vFile->getOrder());
+            }
+            else {
+                commonData.vData.removeFile(vFile->getOrder());
+            }
+            TreeView_DeleteItem(hTree, hSel);
+            commonData.vData.adjustOrders(oldOrder, NULL, 1);
+
+
+            // Create new folder
+            VFolder newFolder;
+            newFolder.name = "New Folder";
+            newFolder.setOrder(oldOrder);
+            commonData.vData.folderList.push_back(newFolder);
+
+            optional<VFolder*> newFolderOpt = commonData.vData.findFolderByOrder(oldOrder);
+                    
+            fileCopy.setOrder(oldOrder + 1);
+            newFolderOpt.value()->addFile(&fileCopy);
+            size_t pos = oldOrder;
+
+            HTREEITEM folderTreeItem = addFolderToTree(newFolderOpt.value(), hTree, parentFolder ? parentFolder->hTreeItem : nullptr, pos, TVI_LAST);
+			TreeView_DeleteItem(hTree, folderTreeItem);
+
+            pos = oldOrder;
+			optional<VBase*> aboveSiblingOpt = commonData.vData.findAboveSibling(oldOrder);
+            if (aboveSiblingOpt) {
+                folderTreeItem = addFolderToTree(
+                    newFolderOpt.value(), 
+                    hTree, 
+                    parentFolder ? parentFolder->hTreeItem : nullptr, 
+                    pos, 
+					aboveSiblingOpt.value()->hTreeItem
+                );
+            } else {
+                folderTreeItem = addFolderToTree(newFolderOpt.value(), hTree, parentFolder ? parentFolder->hTreeItem : nullptr, pos, TVI_FIRST);
+			}
+
+            TreeView_Expand(hTree, folderTreeItem, TVE_EXPAND);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == ID_FOLDER_RENAME) {
+            HTREEITEM treeItem = TreeView_GetSelection(hTree);
+            if (!treeItem) {
+				return TRUE;
+            }
+            TVITEM tvItem = getTreeItem(hTree, treeItem);
+            optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)tvItem.lParam);
+            if (!vFolderOpt) {
+				return TRUE;
+            }
+            VFolder* vFolder = vFolderOpt.value();
+            
+            // Show rename dialog for the folder
+            showRenameDialog(vFolder, treeItem, hTree);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == ID_FILE_RENAME) {
+            HTREEITEM treeItem = TreeView_GetSelection(hTree);
+            if (!treeItem) {
+				return TRUE;
+            }
+            TVITEM tvItem = getTreeItem(hTree, treeItem);
+            optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)tvItem.lParam);
+            if (!vFileOpt) {
+				return TRUE;
+            }
+            VFile* vFile = vFileOpt.value();
+            
+            // Show rename dialog for the file
+            showRenameDialog(vFile, treeItem, hTree);
             return TRUE;
         }
         break;
@@ -1086,23 +1253,23 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     if (draggedFileOpt && targetFolderOpt) {
                         VFile* file = draggedFileOpt.value();
                         VFolder* folder = targetFolderOpt.value();
-                        VFolder* parentFolder = commonData.vData.findParentFolder(file->order);
+                        VFolder* parentFolder = commonData.vData.findParentFolder(file->getOrder());
                         VFile fileCopy = *file; // Create a copy of VFile*
                         
                         if (parentFolder) {
-                            parentFolder->removeFile(file->order);
+                            parentFolder->removeFile(file->getOrder());
                         }
                         else {
-							commonData.vData.removeFile(file->order);
+							commonData.vData.removeFile(file->getOrder());
                         }
-                        commonData.vData.adjustOrders(fileCopy.order, NULL, -1);
+                        commonData.vData.adjustOrders(fileCopy.getOrder(), NULL, -1);
 						// 
                         folder->addFile(&fileCopy);
-						int tempOrder = fileCopy.order;
-						commonData.vData.adjustOrders(fileCopy.order, INT_MAX, 1);
+						int tempOrder = fileCopy.getOrder();
+						commonData.vData.adjustOrders(fileCopy.getOrder(), INT_MAX, 1);
 						// Update the file's order to match the folder's order
                         file = commonData.vData.findFileByPath(fileCopy.path);
-						file->order = tempOrder;
+						file->setOrder(tempOrder);
 
                         refreshTree(hTree, commonData.vData);
                         writeJsonFile();
@@ -1121,13 +1288,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     if (draggedFileOpt) {
                         // Calculate new order based on drop position
                         int newOrder = calculateNewOrder(targetOrder, lastMark);
-
-                        // Update the VFile order
-                        //draggedFileOpt.value()->order = newOrder;
-
+                        
                         // Reorder other items
                         reorderItems(commonData.vData, dragOrder, newOrder);
-                        refreshTree(hTree, commonData.vData);
+                        //refreshTree(hTree, commonData.vData);
                         writeJsonFile();
                     }
                     else if (draggedFolderOpt) {
@@ -1135,7 +1299,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                         int newOrder = calculateNewOrder(targetOrder, lastMark);
                         //draggedFolderOpt.value()->order = newOrder;
                         reorderFolders(commonData.vData, dragOrder, newOrder);
-                        refreshTree(hTree, commonData.vData);
+                        //refreshTree(hTree, commonData.vData);
                         writeJsonFile();
                     }
                 }
@@ -1292,13 +1456,13 @@ void onBeforeFileClosed(int docOrder) {
 	}
 
     
-    HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFile.value()->order));
+    HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFile.value()->getOrder()));
     if (hSelectedItem) {
         // Remove the item from the tree
         TreeView_DeleteItem(hTree, hSelectedItem);
         
         // Also remove from vData
-        commonData.vData.removeFile(vFile.value()->order);
+        commonData.vData.removeFile(vFile.value()->getOrder());
         
         // Write updated vData to JSON file
         writeJsonFile();
@@ -1340,8 +1504,8 @@ void toggleWatcherPanelWithList() {
 
         commonData.vData.vDataSort();
 		
-        int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().order;
-		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().order);
+        int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().getOrder();
+		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().getOrder());
 
         BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
@@ -1350,11 +1514,11 @@ void toggleWatcherPanelWithList() {
             if (!vFile) {
                 auto vFolder = commonData.vData.findFolderByOrder(pos);
                 if (vFolder) {
-                    addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos);
+                    addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos, TVI_LAST);
                 }
             }
             else {
-                addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode);
+                addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode, TVI_LAST);
                 pos++;
             }
 
@@ -1387,6 +1551,8 @@ void toggleWatcherPanelWithList() {
         // Update tab selection state
         commonData.virtualFoldersTabSelected = true;
     }
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+	commonData.hTree = hTree;
 }
 
 void writeJsonFile() {
@@ -1421,13 +1587,43 @@ string fromWchar(const wchar_t* wstr) {
     return str;
 }
 
-void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode)
+wstring toWstring(const string& str) {
+    if (str.empty()) return L"";
+
+    // Get required size (in wchar_t�s)
+    int size_needed = MultiByteToWideChar(
+        CP_UTF8,            // source is UTF-8
+        0,                  // no special flags
+        str.c_str(),        // input string
+        (int)str.size(),    // number of chars to convert
+        nullptr,            // don�t output yet
+        0                   // request size only
+    );
+
+    // Allocate std::wstring with proper size
+    wstring wstr(size_needed, 0);
+
+    // Do the actual conversion
+    MultiByteToWideChar(
+        CP_UTF8, 0,
+        str.c_str(), (int)str.size(),
+        &wstr[0], size_needed
+    );
+
+    return wstr;
+}
+
+HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem)
 {
     wchar_t buffer[100];
 
+    if (vFile->name.find("\\") != std::string::npos) {
+		OutputDebugStringA(("Invalid file name: " + vFile->name + "\n").c_str());
+    }
+
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
-    tvis.hInsertAfter = TVI_LAST;
+    tvis.hInsertAfter = hPrevItem;
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFile->name));
     tvis.item.pszText = buffer;
@@ -1443,11 +1639,12 @@ void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode)
         tvis.item.iImage = iconIndex[ICON_FILE_LIGHT]; // Use light file icon
         tvis.item.iSelectedImage = iconIndex[ICON_FILE_LIGHT]; // Use light file icon
     }
-	tvis.item.lParam = vFile->order; // Store the order/index directly in lparam
+	tvis.item.lParam = vFile->getOrder(); // Store the order/index directly in lparam
 
     //tvis.item.lParam = reinterpret_cast<LPARAM>(&vFile);
 
     HTREEITEM hItem = TreeView_InsertItem(hTree, &tvis);
+	vFile->hTreeItem = hItem; // Store the HTREEITEM in the VFile for later reference
     
 
     //VFile vFile2 = *reinterpret_cast<VFile*>(tvis.item.lParam);
@@ -1457,47 +1654,57 @@ void addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode)
         TreeView_SelectItem(hTree, hItem);
         TreeView_EnsureVisible(hTree, hItem);
     }
+
+	return hItem;
 }
 
-void addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos)
+HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos, HTREEITEM prevItem)
 {
     wchar_t buffer[100];
 
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
-    tvis.hInsertAfter = TVI_LAST;
+    tvis.hInsertAfter = prevItem;
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFolder->name));
     tvis.item.pszText = buffer;
     tvis.item.iImage = iconIndex[ICON_FOLDER]; // or idxFile
     tvis.item.iSelectedImage = iconIndex[ICON_FOLDER]; // or idxFile
-	tvis.item.lParam = vFolder->order; // Store the order/index directly in lparam
+    tvis.item.lParam = vFolder->getOrder(); // Store the order/index directly in lparam
+
+    // Free previous hTreeItem if it exists
+    if (vFolder->hTreeItem) {
+        // No explicit free needed for HTREEITEM, but we can clear it to avoid dangling references
+        vFolder->hTreeItem = nullptr;
+    }
+
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
-
-
+    vFolder->hTreeItem = hFolder; // Store the HTREEITEM in the VFolder for later reference
     //TVITEM tvItem = getTreeItem(hTree, hFolder);
-    
-	pos++;
+
+	prevItem = hFolder;
+
+    pos++;
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-	
-    int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().order;
-	lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().order);
+
+    int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().getOrder();
+    lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().getOrder());
     for (pos; pos <= lastOrder; pos) {
         optional<VFile*> vFile = vFolder->findFileByOrder(pos);
         if (vFile) {
-            addFileToTree(*vFile, hTree, hFolder, isDarkMode);
+            prevItem = addFileToTree(*vFile, hTree, hFolder, isDarkMode, prevItem);
             pos++;
         }
         else {
-			auto vSubFolder = vFolder->findFolderByOrder(pos);
-			if (vSubFolder) {
-				addFolderToTree(*vSubFolder, hTree, hFolder, pos);
-			}
+            auto vSubFolder = vFolder->findFolderByOrder(pos);
+            if (vSubFolder) {
+                prevItem = addFolderToTree(*vSubFolder, hTree, hFolder, pos, prevItem);
+            }
         }
     }
-
 
     if (vFolder->isExpanded) {
         TreeView_Expand(hTree, hFolder, TVE_EXPAND);
     }
+    return hFolder;
 }

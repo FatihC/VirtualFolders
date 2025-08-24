@@ -42,6 +42,7 @@
     <ClInclude Include="src\Host\Sci_Position.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DialogHelper.cpp" />
     <ClCompile Include="src\About.cpp" />
     <ClCompile Include="src\Configuration.cpp" />
     <ClCompile Include="src\Framework\PluginFramework.cpp" />
@@ -57,6 +58,10 @@
     <None Include="src\Host\ScintillaCall.cxx" />
     <None Include="src\html1.htm">
       <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="TaskList.md">
+      <SubType>
+      </SubType>
     </None>
   </ItemGroup>
   <ItemGroup>

@@ -9,6 +9,8 @@
 #include "nlohmann/json.hpp"
 #include <windows.h>
 #include "DateUtil.h"
+#include <CommCtrl.h>
+
 
 using json = nlohmann::json;
 
@@ -17,31 +19,55 @@ using std::vector;
 using std::optional;
 
 
-class VFile
-{
-public:
+class VBase {
+protected:
 	int order;
-	int docOrder; // Order in the document list
+
+public:
 	string name;
 	string path;
+	HTREEITEM hTreeItem = nullptr; // Pointer to the tree item in the watcher panel
+
+	friend void updateTreeItemLParam(VBase* vBase);
+
+	void setOrder(int newOrder) {
+		order = newOrder;
+		updateTreeItemLParam(this);
+	}
+	int getOrder() const { return order; }
+
+	void incrementOrder() { ++order; updateTreeItemLParam(this); }
+	void decrementOrder() { --order; updateTreeItemLParam(this); }
+};
+
+
+class VFile : public VBase
+{
+public:
+	// Add this inside the VFile class definition, after the private section
+	friend void from_json(const json& j, VFile& f);
+
+	int docOrder; // Order in the document list
+	
 	int view;
 	int session;
 	string backupFilePath;
 	bool isActive = false;
 	bool isEdited = false;
 
-
 };
 
-class VFolder
+class VFolder : public VBase
 {
 public:
-	int order;
-	string name;
-	string path;
+	// Add this inside the VFile class definition, after the private section
+	friend void from_json(const json& j, VFolder& f);
+
+
 	bool isExpanded = false;
 	vector<VFolder> folderList;
 	vector<VFile> fileList;
+
 	
 	// Returns a vector of all VFile objects in this folder and all subfolders
 	vector<VFile*> getAllFiles() const;
@@ -75,12 +101,14 @@ public:
 	void removeFile(int order);
 	VFile* findFileByPath(const string& path) const;
 	int getLastOrder() const;
+
+	optional<VBase*> findAboveSibling(int order);
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)
 inline void to_json(json& j, const VFile& f) {
 	j = json{ 
-		{"order", f.order},
+		{"order", f.getOrder()},
 		{"docOrder", f.docOrder},
 		{"name", f.name}, 
 		{"path", f.path},
@@ -94,7 +122,7 @@ inline void to_json(json& j, const VFile& f) {
 
 inline void to_json(json& j, const VFolder& folder) {
 	j = json{ 
-		{"order", folder.order},
+		{"order", folder.getOrder()},
 		{"name", folder.name},
 		{"path", folder.path},
 		{"isExpanded", folder.isExpanded},

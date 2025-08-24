@@ -114,6 +114,9 @@
     <ClCompile Include="src\model\VData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DialogHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\resource.rc">
@@ -142,6 +145,9 @@
       <Filter>Documentation</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="TaskList.md">
+      <Filter>Documentation</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\Downloads\folder_icon.ico">

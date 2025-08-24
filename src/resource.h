@@ -8,6 +8,7 @@
 #define IDD_WATCHER                     105
 #define IDD_FILEVIEW                    106
 #define IDR_HTML1                       107
+#define IDD_RENAME                      107
 #define IDI_ICON1                       112
 #define IDI_FILE_LIGHT_ICON             114
 #define IDI_FILE_DARK_ICON              115
@@ -33,6 +34,8 @@
 #define IDC_EDIT1                       1016
 #define IDC_WATCHER_TEXT                1017
 #define IDC_TREE1                       1023
+#define IDC_RENAME_NEWNAME              1024
+#define IDC_RENAME_OLDNAME              1025
 
 // Next default values for new objects
 // 
@@ -40,7 +43,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        121
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1024
+#define _APS_NEXT_CONTROL_VALUE         1026
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

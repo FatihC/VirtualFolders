@@ -20,6 +20,7 @@
 #include "Framework/ConfigFramework.h"
 #include "Framework/UtilityFramework.h"
 #include "model/VData.h"
+#include <CommCtrl.h>
 
 
 // Define enumerations for use with config, and tell the JSON package how represent them in the configuration file
@@ -51,5 +52,8 @@ inline struct CommonData {
 
     std::vector<VFile> openFiles;
     VData vData;
+    HWND hTree;
 
 } commonData;
+
+
