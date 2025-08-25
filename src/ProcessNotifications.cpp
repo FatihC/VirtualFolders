@@ -22,10 +22,14 @@ extern void updateStatusDialog();
 extern void updateWatcherPanel();
 extern void syncVDataWithOpenFilesNotification();
 extern void onBeforeFileClosed(int pos);
+extern void onFileRenamed(int pos, wstring filepath, wstring fullpath);
 
 
 // External variables
 extern HWND watcherPanel;
+
+
+wchar_t* getFullPathFromBufferID(UINT_PTR bufferID);
 
 
 void scnModified(const Scintilla::NotificationData* scnp) {
@@ -88,6 +92,24 @@ void fileOpened(const NMHDR* nmhdr) {
     //TODO: have to implement this. just in case multiple files opened
 }
 
+void fileRenamed(const NMHDR* nmhdr) {
+    if (!commonData.isNppReady) return; // Ensure Notepad++ is ready before showing message
+    UINT_PTR bufferID = nmhdr->idFrom;
+    std::wstring filepath = getFilePath(bufferID);
+	wchar_t* fullpathPtr = getFullPathFromBufferID(bufferID);
+    if (!fullpathPtr) {
+        return;
+    }
+    std::wstring fullpath(fullpathPtr);
+    delete[] fullpathPtr; // Clean up the allocated memory
+
+    auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
+    if (position == -1) {
+        return;
+    }
+    onFileRenamed(position, filepath, fullpath);
+}
+
 // Add this new notification handler for session loading
 void sessionLoaded() {
     // This gets called when Notepad++ finishes loading the session
@@ -140,4 +162,16 @@ void modifyAll(const NMHDR* nmhdr) {
         plugin.getScintillaPointers(plugin.nppData._scintillaSecondHandle);
         // process changed visible secondary view
     }
+}
+
+wchar_t* getFullPathFromBufferID(UINT_PTR bufferID) {
+    LRESULT posId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufferID, 0);
+    if (posId == -1) {
+        return nullptr;
+    }
+    int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
+    wchar_t* filePath = new wchar_t[len + 1];
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
+
+    return filePath;
 }

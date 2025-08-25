@@ -787,52 +787,58 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 }
                 return TRUE;
             }
-            case NM_DBLCLK: {
-                if (true) return TRUE;
-                // Handle double-click on tree items
-                LPNMITEMACTIVATE pnmia = (LPNMITEMACTIVATE)lParam;
-                if (pnmia->iItem != -1) {
-                    // Get the selected item from the tree view
-                    HTREEITEM hSelectedItem = TreeView_GetSelection(hTree);
-                    if (hSelectedItem) {
-                        TVITEM item = { 0 };
-                        item.mask = TVIF_IMAGE | TVIF_PARAM;
-                        item.hItem = hSelectedItem;
-                        if (TreeView_GetItem(hTree, &item)) {
-                            // Check if this is a file (not a folder) by checking the image index
-                            if (item.iImage != iconIndex[ICON_FOLDER]) {
-                                // This is a file item, get the order and find the corresponding VFile
-                                int order = static_cast<int>(item.lParam);
-                                
-                                // Find the VFile using the helper function
-                                VFile* selectedFile = findVFileByOrder(commonData.vData, order);
-                                
-                                // If file found and has a valid path, open it
-                                if (selectedFile && !selectedFile->path.empty()) {
-                                    // Convert path to wide string
-                                    std::wstring widePath(selectedFile->path.begin(), selectedFile->path.end());
-                                    
-                                    // Debug output
-                                    OutputDebugStringA(("Double-click opening file: " + selectedFile->path).c_str());
-                                    
-                                    // First, try to switch to the file if it's already open
-                                    if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(widePath.c_str()))) {
-                                        // If file is not open, open it
-                                        npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(widePath.c_str()));
-                                    }
-                                    
-                                    // Optionally, switch to the appropriate view if specified
-                                    if (selectedFile->view >= 0) {
-                                        // Switch to the specified view (0 = main view, 1 = sub view)
-                                        npp(NPPM_ACTIVATEDOC, selectedFile->view, 0);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                return TRUE;
-            }
+            //case NM_DBLCLK: {
+            //    //if (true) return TRUE;
+            //    // Handle double-click on tree items
+            //    LPNMITEMACTIVATE pnmia = (LPNMITEMACTIVATE)lParam;
+            //    if (pnmia->iItem != -1) {
+            //        // Get the selected item from the tree view
+            //        HTREEITEM hSelectedItem = TreeView_GetSelection(hTree);
+            //        if (hSelectedItem) {
+            //            TVITEM item = { 0 };
+            //            item.mask = TVIF_IMAGE | TVIF_PARAM;
+            //            item.hItem = hSelectedItem;
+            //            if (TreeView_GetItem(hTree, &item)) {
+            //                // Check if this is a file (not a folder) by checking the image index
+            //                if (item.iImage != iconIndex[ICON_FOLDER]) {
+            //                    // This is a file item, get the order and find the corresponding VFile
+            //                    int order = static_cast<int>(item.lParam);
+            //                    
+            //                    // Find the VFile using the helper function
+            //                    VFile* selectedFile = findVFileByOrder(commonData.vData, order);
+            //                    
+            //                }
+
+            //                TreeView_EditLabel(hTree, hSelectedItem);
+            //            }
+            //        }
+            //    }
+            //    return TRUE;
+            //}
+     //       case TVN_ENDLABELEDIT:
+     //       {
+     //           LPNMTVDISPINFO pdi = (LPNMTVDISPINFO)lParam;
+     //           if (pdi->item.pszText != NULL) {
+     //               TreeView_SetItem(nmhdr->hwndFrom, &pdi->item);
+     //               //pdi->item.lParam : 19 order
+					//optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)pdi->item.lParam);
+     //               if (vFileOpt) {
+     //                   VFile* vFile = vFileOpt.value();
+     //                   vFile->name = fromWchar(pdi->item.pszText);
+     //                   // TODO: rename
+					//}
+     //               else {
+     //                   optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)pdi->item.lParam);
+     //                   if (vFolderOpt) {
+     //                       VFolder* vFolder = vFolderOpt.value();
+     //                       vFolder->name = fromWchar(pdi->item.pszText);
+     //                       // TODO: rename
+     //                   }
+     //               }
+
+     //           }
+     //           return TRUE;
+     //       }
             case NM_RCLICK: {
                 DWORD pos = GetMessagePos();
                 POINT pt = { GET_X_LPARAM(pos), GET_Y_LPARAM(pos) };
@@ -1472,6 +1478,42 @@ void onBeforeFileClosed(int docOrder) {
 	}
 }
 
+void onFileRenamed(int docOrder, wstring filepath, wstring fullpath) {
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder(docOrder);
+    if (!vFileOpt) {
+        OutputDebugStringA("File not found in vData\n");
+        return;
+    }
+	string oldName = vFileOpt.value()->name;
+        
+	// Extract filename from filepath
+	wstring fileName = filepath;
+    // if file is saved extract filename
+    if (vFileOpt.value()->backupFilePath.empty()) {
+        size_t lastSlash = filepath.find_last_of(L"/\\");
+        fileName = lastSlash != string::npos ? filepath.substr(lastSlash + 1) : filepath;
+    }
+	vFileOpt.value()->name = fromWchar(fileName.c_str());
+	vFileOpt.value()->path = fromWchar(fullpath.c_str());
+
+
+	HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOpt.value()->getOrder()));
+    if (hSelectedItem) {
+        // Update the item's text in the tree
+        //std::wstring wideName(vFile.value()->name.begin(), vFile.value()->name.end());
+        TVITEM tvi = { 0 };
+        tvi.mask = TVIF_TEXT;
+        tvi.hItem = hSelectedItem;
+        tvi.pszText = const_cast<LPWSTR>(fileName.c_str());
+        TreeView_SetItem(hTree, &tvi);
+        
+        // Write updated vData to JSON file
+        writeJsonFile();
+        
+        OutputDebugStringA("File renamed and watcher panel updated\n");
+	}
+}
 
 
 void toggleWatcherPanelWithList() {

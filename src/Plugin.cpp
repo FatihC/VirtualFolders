@@ -38,6 +38,7 @@ void bufferActivated();
 void beforeFileClose(const NMHDR*);
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
+void fileRenamed(const NMHDR*);
 void modifyAll(const NMHDR*);
 void nppReady();
 void nppShutdown();
@@ -156,6 +157,9 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             plugin.fileIsOpening = false;
             fileOpened(nmhdr);
             break;
+        case NPPN_FILERENAMED:
+            fileRenamed(nmhdr);
+			break;
 
         case NPPN_GLOBALMODIFIED:
             modifyAll(nmhdr);
