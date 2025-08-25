@@ -107,12 +107,19 @@ VFile sessionFileToVFile(const SessionFile& sessionFile, int view) {
     if (sessionFile.backupFilePath.empty()) {
         std::filesystem::path filePath(sessionFile.filename);
         vFile.name = filePath.filename().string();
-        vFile.path = sessionFile.filename;
+        vFile.path = sessionFile.filename; // Keep original path
         vFile.isEdited = false;
     } else {
         vFile.name = sessionFile.filename;
         vFile.path = sessionFile.backupFilePath;
         vFile.isEdited = true;
+    }
+
+    string fileName = vFile.name;
+    if (fileName.find_last_of("/\\") != string::npos) {
+        size_t lastSlash = fileName.find_last_of("/\\");
+        fileName = fileName.substr(lastSlash + 1);
+		vFile.name = fileName;
     }
     
     vFile.view = view; // Use the passed view parameter

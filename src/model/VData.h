@@ -30,6 +30,8 @@ public:
 
 	friend void updateTreeItemLParam(VBase* vBase);
 
+	virtual ~VBase() = default; // Make the class polymorphic
+
 	void setOrder(int newOrder) {
 		order = newOrder;
 		updateTreeItemLParam(this);

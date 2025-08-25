@@ -4,7 +4,8 @@
 - [x] Rename Folder
 - [x] Rename Folder text popup
 - [x] File renamed event
-- [ ] Acilista filename'de path olabiliyor. backupFilePath doluysa "extract filename"
+- [x] Acilista filename'de path olabiliyor. backupFilePath doluysa "extract filename"
+- [ ] Cpp dosyalarını ayır
 - [ ] File opened event
 - [ ] File edited event allways calls Watcher::updateWatcherPanelUnconditional
 - [ ] Write json at close

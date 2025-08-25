@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CommonData.h" />
+    <ClInclude Include="src\RenameDialog.h" />
     <ClInclude Include="src\Framework\ConfigFramework.h" />
     <ClInclude Include="src\Framework\PluginFramework.h" />
     <ClInclude Include="src\Framework\ScintillaCallEx.h" />
@@ -42,7 +43,7 @@
     <ClInclude Include="src\Host\Sci_Position.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DialogHelper.cpp" />
+    <ClCompile Include="src\RenameDialog.cpp" />
     <ClCompile Include="src\About.cpp" />
     <ClCompile Include="src\Configuration.cpp" />
     <ClCompile Include="src\Framework\PluginFramework.cpp" />

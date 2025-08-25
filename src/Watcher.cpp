@@ -32,6 +32,7 @@ using json = nlohmann::json;
 
 #include <windowsx.h>
 #include "ProcessCommands.h"
+#include "RenameDialog.h"
 
 // External variables
 extern CommonData commonData;
@@ -69,8 +70,6 @@ string fromWchar(const wchar_t* wstr);
 HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem);
 HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos, HTREEITEM hPrevItem);
 void resizeWatcherPanel();
-// Forward declaration for the rename dialog function
-void showRenameDialog(VBase* item, HTREEITEM treeItem, HWND hTree);
 
 
 #define ID_TREE_DELETE 40001
@@ -787,58 +786,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 }
                 return TRUE;
             }
-            //case NM_DBLCLK: {
-            //    //if (true) return TRUE;
-            //    // Handle double-click on tree items
-            //    LPNMITEMACTIVATE pnmia = (LPNMITEMACTIVATE)lParam;
-            //    if (pnmia->iItem != -1) {
-            //        // Get the selected item from the tree view
-            //        HTREEITEM hSelectedItem = TreeView_GetSelection(hTree);
-            //        if (hSelectedItem) {
-            //            TVITEM item = { 0 };
-            //            item.mask = TVIF_IMAGE | TVIF_PARAM;
-            //            item.hItem = hSelectedItem;
-            //            if (TreeView_GetItem(hTree, &item)) {
-            //                // Check if this is a file (not a folder) by checking the image index
-            //                if (item.iImage != iconIndex[ICON_FOLDER]) {
-            //                    // This is a file item, get the order and find the corresponding VFile
-            //                    int order = static_cast<int>(item.lParam);
-            //                    
-            //                    // Find the VFile using the helper function
-            //                    VFile* selectedFile = findVFileByOrder(commonData.vData, order);
-            //                    
-            //                }
-
-            //                TreeView_EditLabel(hTree, hSelectedItem);
-            //            }
-            //        }
-            //    }
-            //    return TRUE;
-            //}
-     //       case TVN_ENDLABELEDIT:
-     //       {
-     //           LPNMTVDISPINFO pdi = (LPNMTVDISPINFO)lParam;
-     //           if (pdi->item.pszText != NULL) {
-     //               TreeView_SetItem(nmhdr->hwndFrom, &pdi->item);
-     //               //pdi->item.lParam : 19 order
-					//optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)pdi->item.lParam);
-     //               if (vFileOpt) {
-     //                   VFile* vFile = vFileOpt.value();
-     //                   vFile->name = fromWchar(pdi->item.pszText);
-     //                   // TODO: rename
-					//}
-     //               else {
-     //                   optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)pdi->item.lParam);
-     //                   if (vFolderOpt) {
-     //                       VFolder* vFolder = vFolderOpt.value();
-     //                       vFolder->name = fromWchar(pdi->item.pszText);
-     //                       // TODO: rename
-     //                   }
-     //               }
-
-     //           }
-     //           return TRUE;
-     //       }
             case NM_RCLICK: {
                 DWORD pos = GetMessagePos();
                 POINT pt = { GET_X_LPARAM(pos), GET_Y_LPARAM(pos) };
@@ -1017,8 +964,9 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             }
             VFile* vFile = vFileOpt.value();
             
-            // Show rename dialog for the file
-            showRenameDialog(vFile, treeItem, hTree);
+            // Show notepad++ rename dialog for the file
+            UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFile->docOrder, vFile->view);
+            npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_RENAME);
             return TRUE;
         }
         break;

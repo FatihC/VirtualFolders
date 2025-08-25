@@ -49,6 +49,9 @@
     <ClInclude Include="src\CommonData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\RenameDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\nlohmann\json.hpp">
       <Filter>Support Files</Filter>
     </ClInclude>
@@ -114,7 +117,7 @@
     <ClCompile Include="src\model\VData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DialogHelper.cpp">
+    <ClCompile Include="src\RenameDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
