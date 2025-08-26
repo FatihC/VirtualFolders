@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="src\CommonData.h" />
     <ClInclude Include="src\RenameDialog.h" />
+    <ClInclude Include="src\TreeViewManager.h" />
     <ClInclude Include="src\Framework\ConfigFramework.h" />
     <ClInclude Include="src\Framework\PluginFramework.h" />
     <ClInclude Include="src\Framework\ScintillaCallEx.h" />
@@ -44,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\RenameDialog.cpp" />
+    <ClCompile Include="src\TreeViewManager.cpp" />
     <ClCompile Include="src\About.cpp" />
     <ClCompile Include="src\Configuration.cpp" />
     <ClCompile Include="src\Framework\PluginFramework.cpp" />

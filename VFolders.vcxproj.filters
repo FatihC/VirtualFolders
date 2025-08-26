@@ -52,6 +52,9 @@
     <ClInclude Include="src\RenameDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\TreeViewManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\nlohmann\json.hpp">
       <Filter>Support Files</Filter>
     </ClInclude>
@@ -118,6 +121,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\RenameDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TreeViewManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

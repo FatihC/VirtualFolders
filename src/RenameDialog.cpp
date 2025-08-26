@@ -93,23 +93,6 @@ namespace {
                         tvi.pszText = newNameBuffer; // Use the wide string version
                         TreeView_SetItem(hTreeToUpdate, &tvi);
 
-                        // If this is a VFile (not a VFolder), rename the actual file in Notepad++
-                        VFile* vFile = dynamic_cast<VFile*>(itemToRename);
-                        if (vFile) {
-                            // Get the buffer ID directly using the docOrder position
-                            UINT_PTR bufferId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, vFile->docOrder, 0);
-                            
-                            if (bufferId != 0) {
-                                // Activate the file first
-                                ::SendMessage(plugin.nppData._nppHandle, NPPM_ACTIVATEDOC, 0, bufferId);
-                                // Then trigger the rename command
-                                ::SendMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_FILE_RENAME);
-                            } else {
-                                // File not found in open buffers - this might be an unsaved file
-                                // or the file might have been closed. We can still update the tree item name.
-                            }
-                        }
-                        
                         VFolder* vFolder = dynamic_cast<VFolder*>(itemToRename);
                         if (vFolder) {
                             // TODO: write json file

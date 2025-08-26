@@ -5,7 +5,7 @@
 - [x] Rename Folder text popup
 - [x] File renamed event
 - [x] Acilista filename'de path olabiliyor. backupFilePath doluysa "extract filename"
-- [ ] Cpp dosyalarını ayır
+- [x] Cpp dosyalarını ayır
 - [ ] File opened event
 - [ ] File edited event allways calls Watcher::updateWatcherPanelUnconditional
 - [ ] Write json at close
@@ -18,3 +18,4 @@
 
 # Bugs
 - [ ] File delete does not delete file. just removes from the tree
+- [x] Opens some files some not: had to change static to inline

@@ -7,6 +7,7 @@
 #include <set>
 #include <algorithm>
 #include "nlohmann/json.hpp"
+#define NOMINMAX
 #include <windows.h>
 #include "DateUtil.h"
 #include <CommCtrl.h>
