@@ -18,6 +18,7 @@
 #include <iostream>
 #include "CommonData.h"
 
+
 using namespace NPP;
 
 
@@ -31,10 +32,12 @@ void saveConfiguration();
 void scnModified(const Scintilla::NotificationData*);
 void scnUpdateUI(const Scintilla::NotificationData*);
 void scnZoom(const Scintilla::NotificationData*);
+void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
 
 // Routines that process Notepad++ notifications
 
-void bufferActivated();
+
+void bufferActivated(const NMHDR* nmhdr);
 void beforeFileClose(const NMHDR*);
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
@@ -133,7 +136,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
         case NPPN_BUFFERACTIVATED:
             if (!plugin.startupOrShutdown && !plugin.fileIsOpening) {
                 plugin.getScintillaPointers();
-                bufferActivated();
+                bufferActivated(nmhdr);
             }
             break;
 
@@ -191,7 +194,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             SendMessage(plugin.nppData._nppHandle, NPPM_ADDSCNMODIFIEDFLAGS, 0, SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);                  
             plugin.startupOrShutdown = false;
             plugin.getScintillaPointers();
-            bufferActivated();
+            bufferActivated(nmhdr);
             nppReady(); // Sync vData when Notepad++ is ready
             break;
 
@@ -225,8 +228,14 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             plugin.getScintillaPointers(scnp);
             scnZoom(scnp);
             break;
-
-        default:;
+		case Scintilla::Notification::SavePointLeft:
+            plugin.getScintillaPointers(scnp);
+            scnSavePointEvent(nmhdr->idFrom, false);
+            break;
+        case Scintilla::Notification::SavePointReached:
+            plugin.getScintillaPointers(scnp);
+            scnSavePointEvent(nmhdr->idFrom, true);
+            break;
         }
 
     }

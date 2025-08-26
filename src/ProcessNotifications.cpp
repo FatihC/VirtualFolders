@@ -18,11 +18,17 @@
 #include "model/VData.h"
 #include "ProcessCommands.h"
 
+
+
+
 extern void updateStatusDialog();
 extern void updateWatcherPanel();
 extern void syncVDataWithOpenFilesNotification();
 extern void onBeforeFileClosed(int pos);
 extern void onFileRenamed(int pos, wstring filepath, wstring fullpath);
+void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
+extern void changeTreeItemIcon(UINT_PTR bufferID);
+
 
 
 // External variables
@@ -41,6 +47,25 @@ void scnModified(const Scintilla::NotificationData* scnp) {
     updateWatcherPanel();
 }
 
+void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint) {
+    if (!commonData.isNppReady) return;
+    if (bufferID == 0) {
+        bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+    }
+    if (commonData.bufferStates.find(bufferID) == commonData.bufferStates.end()) {
+        commonData.bufferStates[bufferID] = isSavePoint;
+    }
+    
+    if (isSavePoint && !commonData.bufferStates[bufferID]) {
+        // Document has been saved update icon
+        commonData.bufferStates[bufferID] = true;
+    } else if(!isSavePoint && commonData.bufferStates[bufferID]){
+        // Document has been modified since last save
+        commonData.bufferStates[bufferID] = false;
+    }
+    changeTreeItemIcon(bufferID);
+}
+
 
 void scnUpdateUI(const Scintilla::NotificationData* /* scnp */) {
 }
@@ -50,7 +75,9 @@ void scnZoom(const Scintilla::NotificationData* /* scnp */) {
 }
 
 
-void bufferActivated() {
+void bufferActivated(const NMHDR* nmhdr) {
+    UINT_PTR bufferID = nmhdr->idFrom;
+	commonData.activeBufferID = bufferID;
     updateWatcherPanel();
 }
 

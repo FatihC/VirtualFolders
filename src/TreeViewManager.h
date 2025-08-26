@@ -87,5 +87,7 @@ wchar_t* toWchar(const std::string& str);
 std::wstring toWstring(const std::string& str);
 std::string fromWchar(const wchar_t* wstr);
 
+void changeTreeItemIcon(bool isDirty, VFile* vFile);
+
 // Dialog procedure for the file view dialog
 // INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

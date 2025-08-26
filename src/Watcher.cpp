@@ -330,11 +330,13 @@ void updateWatcherPanelUnconditional() {
 		return; // Ignore this update
     }
 
+
+    
     
     // Get current buffer ID
     LRESULT bufID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
     LRESULT posId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufID, 0);
-
+    
 
     optional<VFile*> vFileOption = commonData.vData.findFileByDocOrder(posId);
     if (!vFileOption) {
@@ -362,6 +364,7 @@ void updateWatcherPanelUnconditional() {
 		addFileToTree(&newFile, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
         return;
     }
+
 
     if (!IsWindowVisible(watcherPanel)) {
         ignoreSelectionChange = true;
@@ -425,7 +428,7 @@ void resizeWatcherPanel() {
 void updateWatcherPanel() {
     if (watcherPanel && IsWindowVisible(watcherPanel)) {
     }
-        updateWatcherPanelUnconditional(); 
+    updateWatcherPanelUnconditional(); 
 }
 
 void onBeforeFileClosed(int docOrder) {

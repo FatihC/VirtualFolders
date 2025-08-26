@@ -53,6 +53,9 @@ inline struct CommonData {
     std::vector<VFile> openFiles;
     VData vData;
     HWND hTree;
+    UINT_PTR activeBufferID;
+    std::map<UINT_PTR, bool> bufferStates;
+
 
 } commonData;
 

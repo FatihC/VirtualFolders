@@ -50,6 +50,7 @@ void writeJsonFile();
 void syncVDataWithOpenFilesNotification();
 void updateWatcherPanelUnconditional();
 
+
 // External variables
 extern HWND watcherPanel;
 
@@ -656,6 +657,9 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 						file->setOrder(tempOrder);
 
                         refreshTree(hTree, commonData.vData);
+                        if (folder->isExpanded) {
+                            TreeView_Expand(hTree, hDropTarget, TVE_EXPAND);
+                        }
                         writeJsonFile();
                     }
                 }
@@ -1044,4 +1048,36 @@ FileLocation findFileLocation(VData& vData, int order) {
     }
 
     return location;
+}
+
+void changeTreeItemIcon(UINT_PTR bufferID) {
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+    auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
+	optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder((int)position);
+    if (!vFileOpt) {
+        return;
+	}
+
+    TVITEM item = { 0 };
+    item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+    item.hItem = vFileOpt.value()->hTreeItem;
+
+    wchar_t* name = toWchar(vFileOpt.value()->name);
+    item.pszText = name;
+
+    if (!commonData.bufferStates[bufferID]) {
+        item.iImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
+        item.iSelectedImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
+    }
+    else if (isDarkMode) {
+        item.iImage = iconIndex[ICON_FILE_DARK];
+        item.iSelectedImage = iconIndex[ICON_FILE_DARK];
+    }
+    else {
+        item.iImage = iconIndex[ICON_FILE_LIGHT]; // Use light file icon
+        item.iSelectedImage = iconIndex[ICON_FILE_LIGHT]; // Use light file icon
+    }
+
+
+    TreeView_SetItem(commonData.hTree, &item);
 }
