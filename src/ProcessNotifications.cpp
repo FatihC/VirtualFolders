@@ -22,8 +22,7 @@
 
 
 extern void updateStatusDialog();
-extern void updateWatcherPanel();
-extern void syncVDataWithOpenFilesNotification();
+extern void updateWatcherPanel(UINT_PTR bufferID);
 extern void onBeforeFileClosed(int pos);
 extern void onFileRenamed(int pos, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
@@ -43,8 +42,8 @@ void scnModified(const Scintilla::NotificationData* scnp) {
     if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) ++commonData.insertsCounted;
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::DeleteText)) ++commonData.deletesCounted;
     else return;
-    updateStatusDialog();
-    updateWatcherPanel();
+    //updateStatusDialog();
+    //updateWatcherPanel();
 }
 
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint) {
@@ -78,7 +77,7 @@ void scnZoom(const Scintilla::NotificationData* /* scnp */) {
 void bufferActivated(const NMHDR* nmhdr) {
     UINT_PTR bufferID = nmhdr->idFrom;
 	commonData.activeBufferID = bufferID;
-    updateWatcherPanel();
+    updateWatcherPanel(bufferID);
 }
 
 void beforeFileClose(const NMHDR* nmhdr) {
@@ -101,22 +100,20 @@ void fileClosed(const NMHDR* nmhdr) {
     // we still get this notification. So we have to check to see if the buffer is still open in either view.
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
     if (position == -1) /* file is no longer open in either view */ {
-        MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
+        //MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
     }
 }
 
 
 void fileOpened(const NMHDR* nmhdr) {
-    // Sync vData when a new file is opened
-    // syncVDataWithOpenFilesNotification();
-
-    if (!commonData.annoy) return;
-	//if (!commonData.isNppReady) return; // Ensure Notepad++ is ready before showing message
+    //if (!commonData.annoy) return;
+	if (!commonData.isNppReady) return; // Ensure Notepad++ is ready before showing message
     UINT_PTR bufferID = nmhdr->idFrom;
     std::wstring filepath = getFilePath(bufferID);
-    MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VFolders", 0);
+    //MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VFolders", 0);
 
     //TODO: have to implement this. just in case multiple files opened
+    bufferActivated(nmhdr);
 }
 
 void fileRenamed(const NMHDR* nmhdr) {

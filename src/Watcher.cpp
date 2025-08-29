@@ -50,9 +50,6 @@ extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 
 void writeJsonFile();
-void syncVDataWithOpenFilesNotification();
-
-
 void resizeWatcherPanel();
 
 
@@ -66,27 +63,7 @@ Scintilla::Position location = -1;
 Scintilla::Position terminal = -1;
 
 
-
-int countItemsInFolder(const VFolder& folder);
-
-
-
 std::wstring jsonFilePath;
-
-// Helper function to count total items (folders + files) recursively in a folder
-int countItemsInFolder(const VFolder& folder) {
-    int count = 1; // Count the folder itself
-    
-    // Count all files in this folder
-    count += folder.fileList.size();
-    
-    // Recursively count items in subfolders
-    for (const auto& subFolder : folder.folderList) {
-        count += countItemsInFolder(subFolder);
-    }
-    
-    return count;
-}
 
 // Helper function to adjust global orders when moving a folder with all its contents
 void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, int folderItemCount) {
@@ -189,6 +166,40 @@ void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
     }
 }
 
+void adjustGlobalDocOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
+    // Get all files across the entire hierarchy
+    vector<VFile*> allFiles = vData.getAllFiles();
+
+    // Helper lambda to get all folders recursively
+    std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders =
+        [&](vector<VFolder>& folders, vector<VFolder*>& result) {
+        for (auto& folder : folders) {
+            result.push_back(&folder);
+            getAllFolders(folder.folderList, result);
+        }
+    };
+
+    vector<VFolder*> allFolders;
+    getAllFolders(vData.folderList, allFolders);
+
+    if (oldOrder < newOrder) {
+        // Moving down - decrease orders of items in between
+        for (auto* file : allFiles) {
+            if (file->docOrder > oldOrder && file->docOrder < newOrder) {
+                file->docOrder--;
+            }
+        }
+    }
+    else {
+        // Moving up - increase orders of items in between
+        for (auto* file : allFiles) {
+            if (file->docOrder >= newOrder && file->docOrder < oldOrder) {
+                file->docOrder++;
+            }
+        }
+    }
+}
+
 // Helper function to recursively adjust orders within a container
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder) {
     if (oldOrder < newOrder) {
@@ -261,40 +272,6 @@ FolderLocation findFolderLocation(VData& vData, int order) {
 }
 
 
-
-void reorderFolders(VData& vData, int oldOrder, int newOrder) {
-    // Find the folder to move using recursive search
-    FolderLocation moveLocation = findFolderLocation(vData, oldOrder);
-
-    if (!moveLocation.found) {
-        return;  // Folder not found
-    }
-
-    VFolder* movedFolder = moveLocation.folder;
-
-    // Count total items in the folder (folder itself + all contents recursively)
-    int folderItemCount = countItemsInFolder(*movedFolder);
-    if (newOrder > oldOrder) {
-        newOrder--;
-    }
-    
-    // Adjust global orders to make space for the moved folder and its contents
-    adjustGlobalOrdersForFolderMove(vData, oldOrder, newOrder, folderItemCount);
-    
-    // Set the new order for the moved folder
-    //movedFolder->order = newOrder;
-    
-    if (newOrder > oldOrder) {
-        movedFolder->move(newOrder - (oldOrder + folderItemCount - 1));
-    } else {
-        movedFolder->move(newOrder - oldOrder);
-	}
-
-    
-    // After reordering, recursively sort the entire data structure to ensure consistency
-    vData.vDataSort();
-}
-
 void refreshTree(HWND hTree, VData& vData) {
     // Clear existing tree
     TreeView_DeleteAllItems(hTree);
@@ -320,36 +297,42 @@ void refreshTree(HWND hTree, VData& vData) {
     }
 }
 
-void updateWatcherPanelUnconditional() {
+void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
     if(!commonData.isNppReady) {
         return;
     }
 
-    if (ignoreSelectionChange) {
-        ignoreSelectionChange = false;
-		return; // Ignore this update
-    }
+  //  if (ignoreSelectionChange) {
+  //      ignoreSelectionChange = false;
+		//return; // Ignore this update
+  //  }
 
 
     
     
     // Get current buffer ID
-    LRESULT bufID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
-    LRESULT posId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufID, 0);
+    if (bufferID == -1) {
+        bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+    }
+    LRESULT posId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufferID, 0);
     
 
     optional<VFile*> vFileOption = commonData.vData.findFileByDocOrder(posId);
     if (!vFileOption) {
-        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufID, 0);
+        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
         wchar_t* filePath = new wchar_t[len + 1];
-        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufID, (LPARAM)filePath);
+        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
 
 
         // create vFile
 		VFile newFile;
 		newFile.docOrder = posId;
 		newFile.setOrder(commonData.vData.getLastOrder() + 1);
-		newFile.name = fromWchar(filePath);
+
+        string filePathString = fromWchar(filePath);
+        size_t lastSlash = filePathString.find_last_of("/\\");
+        newFile.name = lastSlash != string::npos ? filePathString.substr(lastSlash + 1) : filePathString;
+
 		newFile.path = fromWchar(filePath);
 		newFile.view = 0;
 		newFile.session = 0;
@@ -357,11 +340,13 @@ void updateWatcherPanelUnconditional() {
 		newFile.isActive = true;
 		commonData.vData.fileList.push_back(newFile);
 
+		VFile* vFilePtr = commonData.vData.findFileByDocOrder(posId).value();
+
 
         // create treeItem
 		HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
         BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-		addFileToTree(&newFile, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
+		addFileToTree(vFilePtr, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
         return;
     }
 
@@ -425,10 +410,10 @@ void resizeWatcherPanel() {
     }
 }
 
-void updateWatcherPanel() {
+void updateWatcherPanel(UINT_PTR bufferID) {
     if (watcherPanel && IsWindowVisible(watcherPanel)) {
     }
-    updateWatcherPanelUnconditional(); 
+    updateWatcherPanelUnconditional(bufferID);
 }
 
 void onBeforeFileClosed(int docOrder) {
@@ -447,14 +432,24 @@ void onBeforeFileClosed(int docOrder) {
         // Remove the item from the tree
         TreeView_DeleteItem(hTree, hSelectedItem);
         
+		VFile fileCopy = *(vFile.value());
+        VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+
+
         // Also remove from vData
         commonData.vData.removeFile(vFile.value()->getOrder());
+
+		adjustGlobalOrdersForFileMove(commonData.vData, fileCopy.getOrder(), commonData.vData.getLastOrder() + 1);
+		adjustGlobalDocOrdersForFileMove(commonData.vData, fileCopy.docOrder - 1, commonData.vData.getLastOrder() + 2);
+
         
         // Write updated vData to JSON file
         writeJsonFile();
         
         
         OutputDebugStringA("File closed and removed from watcher panel\n");
+
+		
 	}
 }
 
@@ -567,7 +562,7 @@ void toggleWatcherPanelWithList() {
         commonData.virtualFoldersTabSelected = false;
     }
     else {
-        updateWatcherPanelUnconditional();
+        updateWatcherPanelUnconditional(-1);
         npp(NPPM_DMMSHOW, 0, watcherPanel);
         OutputDebugStringA("Watch Panel Show\n");
         // Update tab selection state
@@ -580,20 +575,6 @@ void toggleWatcherPanelWithList() {
 void writeJsonFile() {
     json vDataJson = commonData.vData;
     std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
-}
-
-void syncVDataWithOpenFilesNotification() {
-    // Get current open files
-    std::vector<VFile> openFiles = listOpenFiles();
-    
-    // Sync vData with current open files
-    syncVDataWithOpenFiles(commonData.vData, openFiles);
-    
-    // Update the UI
-    updateWatcherPanel();
-    
-    // Optionally save to JSON
-    // writeJsonFile(); // Uncomment if you want to save immediately
 }
 
 wchar_t* toWchar(const std::string& str) {

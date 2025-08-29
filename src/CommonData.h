@@ -21,7 +21,15 @@
 #include "Framework/UtilityFramework.h"
 #include "model/VData.h"
 #include <CommCtrl.h>
+#include <format>
 
+
+#define LOG(fmt, ...) { \
+    auto msg = std::format(fmt, __VA_ARGS__); \
+    msg = "***** VFOLDER LOG ***** : " + msg; \
+    msg += "\n"; \
+    OutputDebugStringA(msg.c_str()); \
+}
 
 // Define enumerations for use with config, and tell the JSON package how represent them in the configuration file
 

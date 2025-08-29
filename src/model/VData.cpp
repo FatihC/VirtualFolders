@@ -79,6 +79,16 @@ void VFolder::addFile(VFile* vFile) {
 	fileList.push_back(*vFile);
 }
 
+int VFolder::countItemsInFolder() const {
+	int count = 1; // Count the folder itself
+	count += fileList.size();
+
+	for (const auto& subFolder : folderList) {
+		count += subFolder.countItemsInFolder();
+	}
+	return count;
+}
+
 void VFolder::vFolderSort()
 {
 	// Sort files in the folder by order

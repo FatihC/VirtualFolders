@@ -88,6 +88,8 @@ std::wstring toWstring(const std::string& str);
 std::string fromWchar(const wchar_t* wstr);
 
 void changeTreeItemIcon(bool isDirty, VFile* vFile);
+FolderLocation findFolderLocation(VData& vData, int order);
+void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, int folderItemCount);
 
 // Dialog procedure for the file view dialog
 // INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

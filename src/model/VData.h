@@ -85,6 +85,7 @@ public:
 	void addFile(VFile* vFile);
 	int getLastOrder() const;
 	VFile* findFileByPath(const string& path) const;
+	int countItemsInFolder() const;
 };
 
 class VData

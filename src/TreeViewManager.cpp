@@ -45,10 +45,10 @@ DialogStretch stretch;
 
 
 
+
 // Forward declarations
 void writeJsonFile();
-void syncVDataWithOpenFilesNotification();
-void updateWatcherPanelUnconditional();
+void updateWatcherPanelUnconditional(UINT_PTR bufferID);
 
 
 // External variables
@@ -145,7 +145,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     return TRUE;  // Skip processing if Notepad++ isn't ready yet
                 } else if (ignoreSelectionChange) {
                     ignoreSelectionChange = false;  // Reset the flag
-                    return TRUE;  // Skip processing if we are ignoring this change
+                    //return TRUE;  // Skip processing if we are ignoring this change
 				}
 
                 // Handle file selection - open file when user clicks on a file item
@@ -173,7 +173,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                                 wideName = std::wstring(selectedFile.value()->path.begin(), selectedFile.value()->path.end()); // opens by path.
                             }
                                 
-                            OutputDebugStringA(("Opening file: " + selectedFile.value()->path).c_str());
+                            LOG("Opening file: [{}]", selectedFile.value()->path);
                                 
                             // First, try to switch to the file if it's already open
                             ignoreSelectionChange = true;
@@ -299,11 +299,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         else if (LOWORD(wParam) == ID_FILE_CLOSE) {
             HTREEITEM hSel = TreeView_GetSelection(hTree);
             if (hSel) {
-                TreeView_DeleteItem(hTree, hSel);
-                // TODO: Remove from vData as well
 				TVITEM item = getTreeItem(hTree, hSel);
-				optional<VFile*> vFile = commonData.vData.findFileByOrder((int)item.lParam);
-                // remove item function  necessary.
+				optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+                if (vFileOpt) {
+                    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+                    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_CLOSE);
+                }
             }
             return TRUE;
         } 
@@ -504,7 +505,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
             // Draw new line if needed
             if (newMark.valid && (!lastMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
-                OutputDebugStringA("Draw new line\n");
                 HDC hdc = GetDC(hTree);
                 RECT rc = newMark.rect;
                 int y = newMark.above ? rc.top : rc.bottom;
@@ -640,6 +640,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                         VFolder* folder = targetFolderOpt.value();
                         VFolder* parentFolder = commonData.vData.findParentFolder(file->getOrder());
                         VFile fileCopy = *file; // Create a copy of VFile*
+
+                        UINT state = TreeView_GetItemState(hTree, hDropTarget, TVIS_EXPANDED);
+                        bool isTargetFolderExpanded = (state & TVIS_EXPANDED) != 0;
+
+                        // Remove dragged item from tree
+						TreeView_DeleteItem(hTree, hDragItem);
+						// Add dragged item as child of target folder in tree
+						addFileToTree(&fileCopy, hTree, hDropTarget, npp(NPPM_ISDARKMODEENABLED, 0, 0), TVI_LAST);
+
                         
                         if (parentFolder) {
                             parentFolder->removeFile(file->getOrder());
@@ -655,12 +664,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 						// Update the file's order to match the folder's order
                         file = commonData.vData.findFileByPath(fileCopy.path);
 						file->setOrder(tempOrder);
-
-                        refreshTree(hTree, commonData.vData);
-                        if (folder->isExpanded) {
+                        
+                        if (isTargetFolderExpanded) {
                             TreeView_Expand(hTree, hDropTarget, TVE_EXPAND);
                         }
                         writeJsonFile();
+
+                        //OutputDebugStringA("%s moved in to folder %s's end\n");
+
+                        LOG("[{}] moved into folder [{}]'s end", file->name, folder->name);
                     }
                 }
                 // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
@@ -679,18 +691,16 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                         
                         // Reorder other items
                         reorderItems(commonData.vData, dragOrder, newOrder);
-                        //refreshTree(hTree, commonData.vData);
                         writeJsonFile();
                     }
                     else if (draggedFolderOpt) {
                         // Similar logic for folders
                         int newOrder = calculateNewOrder(targetOrder, lastMark);
-                        //draggedFolderOpt.value()->order = newOrder;
                         reorderFolders(commonData.vData, dragOrder, newOrder);
-                        //refreshTree(hTree, commonData.vData);
                         writeJsonFile();
                     }
                 }
+                commonData.vData.vDataSort();
                 
             }
             hDragItem = nullptr;
@@ -935,6 +945,24 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
 		if (newOrder > oldOrder) newOrder--;
 		fileData.setOrder(newOrder);
         vData.fileList.push_back(fileData);
+        movedFile = vData.findFileByOrder(newOrder).value();
+
+        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HTREEITEM oldItem = fileData.hTreeItem;
+        HTREEITEM prevItem = nullptr;
+        optional<VBase*> aboveSibling = vData.findAboveSibling(newOrder);
+        if (aboveSibling) {
+            prevItem = aboveSibling.value()->hTreeItem;
+            LOG("[{}] moved into root after [{}]", movedFile->name, aboveSibling.value()->name);
+        }
+        else {
+            prevItem = TVI_FIRST;
+            LOG("[{}] moved into root to first place", movedFile->name);
+        }
+
+        TreeView_DeleteItem(hTree, fileData.hTreeItem);
+        addFileToTree(movedFile, hTree, nullptr, isDarkMode, prevItem);
+        
         
     } else if (!movingToRoot && !sourceFolder) {
         // Moving from root to folder
@@ -948,14 +976,35 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
         auto& rootFileList = vData.fileList;
         rootFileList.erase(std::remove_if(rootFileList.begin(), rootFileList.end(),
             [movedFile](const VFile& file) { return &file == movedFile; }), rootFileList.end());
-        
+
+		if (newOrder > oldOrder) newOrder--;
         // Find the target folder (simplified - would need proper logic)
         // For now, we'll assume the first folder
         if (!vData.folderList.empty()) {
             // Set new order and add to folder
 			fileData.setOrder(newOrder);
             targetFolder->fileList.push_back(fileData);
+            movedFile = targetFolder->findFileByOrder(newOrder).value();
         }
+
+        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HTREEITEM oldItem = nullptr;
+        HTREEITEM parentItem = targetFolder->hTreeItem;
+        HTREEITEM prevItem = nullptr;
+        optional<VFile*> aboveSibling = targetFolder->findFileByOrder(newOrder - 1);
+        if (aboveSibling) {
+            prevItem = aboveSibling.value()->hTreeItem;
+            LOG("[{}] moved into folder [{}] after [{}]", movedFile->name, targetFolder->name, aboveSibling.value()->name);
+        } else {
+            prevItem = TVI_FIRST;
+            LOG("[{}] moved into folder [{}]'s start", movedFile->name, targetFolder->name);
+		}
+
+        /*oldItem = FindItemByLParam(hTree, nullptr, (LPARAM)movedFile->getOrder());*/
+        TreeView_DeleteItem(hTree, fileData.hTreeItem);
+
+        addFileToTree(movedFile, hTree, parentItem, isDarkMode, prevItem);
+        
         
     } else {
         // Moving within the same container (root or same folder)
@@ -1001,7 +1050,43 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
 
 		addFileToTree(movedFile, hTree, hParent, isDarkMode, prevItem);
 
+        LOG("[{}] moved to order [{}]", movedFile->name, newOrder);
+
     }
+}
+
+void reorderFolders(VData& vData, int oldOrder, int newOrder) {
+    // Find the folder to move using recursive search
+    FolderLocation moveLocation = findFolderLocation(vData, oldOrder);
+
+    if (!moveLocation.found) {
+        return;  // Folder not found
+    }
+
+    VFolder* movedFolder = moveLocation.folder;
+
+    // Count total items in the folder (folder itself + all contents recursively)
+    int folderItemCount = (*movedFolder).countItemsInFolder();
+    if (newOrder > oldOrder) {
+        newOrder--;
+    }
+
+    // Adjust global orders to make space for the moved folder and its contents
+    adjustGlobalOrdersForFolderMove(vData, oldOrder, newOrder, folderItemCount);
+
+    // Set the new order for the moved folder
+    //movedFolder->order = newOrder;
+
+    if (newOrder > oldOrder) {
+        movedFolder->move(newOrder - (oldOrder + folderItemCount - 1));
+    }
+    else {
+        movedFolder->move(newOrder - oldOrder);
+    }
+
+
+    // After reordering, recursively sort the entire data structure to ensure consistency
+    vData.vDataSort();
 }
 
 FileLocation findFileLocation(VData& vData, int order) {
@@ -1065,7 +1150,7 @@ void changeTreeItemIcon(UINT_PTR bufferID) {
     wchar_t* name = toWchar(vFileOpt.value()->name);
     item.pszText = name;
 
-    if (!commonData.bufferStates[bufferID]) {
+    if (!commonData.bufferStates[bufferID] || vFileOpt.value()->isEdited) {
         item.iImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
         item.iSelectedImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
     }
