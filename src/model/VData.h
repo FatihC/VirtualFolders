@@ -81,11 +81,13 @@ public:
 	void move(int steps);
 	VFolder* findParentFolder(int order) const;
 	void removeFile(int order);
+	void removeChild(int order);
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void addFile(VFile* vFile);
 	int getLastOrder() const;
 	VFile* findFileByPath(const string& path) const;
 	int countItemsInFolder() const;
+	optional<VBase*> getChildByOrder(int order) const;
 };
 
 class VData
@@ -103,6 +105,7 @@ public:
 	VFolder* findParentFolder(int order) const;
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void removeFile(int order);
+	void removeChild(int order);
 	VFile* findFileByPath(const string& path) const;
 	int getLastOrder() const;
 

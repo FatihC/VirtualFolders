@@ -50,6 +50,8 @@ extern std::string new_line;
 #define ID_FILE_WRAP_IN_FOLDER 40101
 #define ID_FILE_RENAME 40102
 #define ID_FOLDER_RENAME 40103
+#define ID_FOLDER_UNWRAP 40104
+
 
 // Global variables for TreeView management
 inline HTREEITEM hDragItem = nullptr;
@@ -71,7 +73,7 @@ void updateTreeColorsExternal(HWND hTree);
 
 // Drag & Drop and Reordering functions
 void reorderItems(VData& vData, int oldOrder, int newOrder);
-void reorderFolders(VData& vData, int oldOrder, int newOrder);
+void reorderFolders(int oldOrder, int newOrder);
 void refreshTree(HWND hTree, VData& vData);
 void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);

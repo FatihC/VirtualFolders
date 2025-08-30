@@ -50,6 +50,9 @@ DialogStretch stretch;
 void writeJsonFile();
 void updateWatcherPanelUnconditional(UINT_PTR bufferID);
 
+void moveFileIntoFolder(int dragOrder, int targetOrder);
+void moveFolderIntoFolder(int dragOrder, int targetOrder);
+
 
 // External variables
 extern HWND watcherPanel;
@@ -97,7 +100,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         AppendMenu(fileContextMenu, MF_STRING, ID_FILE_RENAME, L"Rename");
 
 		folderContextMenu = CreatePopupMenu();
-		AppendMenu(folderContextMenu, MF_STRING, ID_TREE_DELETE, L"Delete");
+		AppendMenu(folderContextMenu, MF_STRING, ID_FOLDER_UNWRAP, L"Unwrap");
 		AppendMenu(folderContextMenu, MF_STRING, ID_FOLDER_RENAME, L"Rename");
 
 
@@ -169,6 +172,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                         // If file found and has a valid path, open it
                         if (selectedFile && !selectedFile.value()->path.empty()) {
                             std::wstring wideName(selectedFile.value()->name.begin(), selectedFile.value()->name.end()); // opens by name. not path. With path it opens as a new file
+                            std::wstring widePath = std::wstring(selectedFile.value()->path.begin(), selectedFile.value()->path.end()); // opens by path.
                             if (selectedFile.value()->backupFilePath.empty()) {
                                 wideName = std::wstring(selectedFile.value()->path.begin(), selectedFile.value()->path.end()); // opens by path.
                             }
@@ -340,8 +344,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             VFolder newFolder;
             newFolder.name = "New Folder";
             newFolder.setOrder(oldOrder);
-            commonData.vData.folderList.push_back(newFolder);
-
+            if (parentFolder) {
+                parentFolder->folderList.push_back(newFolder);
+            }
+			else {
+                commonData.vData.folderList.push_back(newFolder);
+            }
             optional<VFolder*> newFolderOpt = commonData.vData.findFolderByOrder(oldOrder);
                     
             fileCopy.setOrder(oldOrder + 1);
@@ -400,6 +408,55 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFile->docOrder, vFile->view);
             npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_RENAME);
             return TRUE;
+        }
+        else if (LOWORD(wParam) == ID_FOLDER_UNWRAP) {
+            HTREEITEM treeItem = TreeView_GetSelection(hTree);
+            if (!treeItem) {
+                return TRUE;
+            }
+            TVITEM tvItem = getTreeItem(hTree, treeItem);
+            optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)tvItem.lParam);
+            if (!vFolderOpt) {
+                return TRUE;
+            }
+            VFolder* vFolder = vFolderOpt.value();
+			VFolder* parentFolder = commonData.vData.findParentFolder(vFolder->getOrder());
+
+            int lastChildOrder = vFolder->getLastOrder();
+            size_t pos = vFolder->getOrder() + 1;
+            while(pos <= lastChildOrder) {
+                optional<VBase*> child = vFolder->getChildByOrder(pos);
+                if (!child) {
+                    break;
+				}
+                if (VFile* vFile = dynamic_cast<VFile*>(child.value())) {
+                    reorderItems(commonData.vData, pos, pos - 1);
+					pos++;
+                }
+                else if (VFolder* subFolder = dynamic_cast<VFolder*>(child.value())) {
+                    reorderFolders(pos, pos - 1);
+                    pos = pos + subFolder->countItemsInFolder();
+                }
+            }
+
+            TreeView_DeleteItem(hTree, vFolder->hTreeItem);
+
+            //if (draggedFileOpt) {
+            //    // Calculate new order based on drop position
+            //    int newOrder = calculateNewOrder(targetOrder, lastMark);
+
+            //    // Reorder other items
+            //    reorderItems(commonData.vData, dragOrder, newOrder);
+            //    writeJsonFile();
+            //}
+            //else if (draggedFolderOpt) {
+            //    // Similar logic for folders
+            //    int newOrder = calculateNewOrder(targetOrder, lastMark);
+            //    reorderFolders(dragOrder, newOrder);
+            //    writeJsonFile();
+            //}
+
+
         }
         break;
     }
@@ -634,45 +691,16 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
                     int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
                     auto draggedFileOpt = commonData.vData.findFileByOrder(dragOrder);
+                    auto draggedFolderOpt = commonData.vData.findFolderByOrder(dragOrder);
                     auto targetFolderOpt = commonData.vData.findFolderByOrder(targetOrder);
-                    if (draggedFileOpt && targetFolderOpt) {
-                        VFile* file = draggedFileOpt.value();
-                        VFolder* folder = targetFolderOpt.value();
-                        VFolder* parentFolder = commonData.vData.findParentFolder(file->getOrder());
-                        VFile fileCopy = *file; // Create a copy of VFile*
 
-                        UINT state = TreeView_GetItemState(hTree, hDropTarget, TVIS_EXPANDED);
-                        bool isTargetFolderExpanded = (state & TVIS_EXPANDED) != 0;
-
-                        // Remove dragged item from tree
-						TreeView_DeleteItem(hTree, hDragItem);
-						// Add dragged item as child of target folder in tree
-						addFileToTree(&fileCopy, hTree, hDropTarget, npp(NPPM_ISDARKMODEENABLED, 0, 0), TVI_LAST);
-
-                        
-                        if (parentFolder) {
-                            parentFolder->removeFile(file->getOrder());
-                        }
-                        else {
-							commonData.vData.removeFile(file->getOrder());
-                        }
-                        commonData.vData.adjustOrders(fileCopy.getOrder(), NULL, -1);
-						// 
-                        folder->addFile(&fileCopy);
-						int tempOrder = fileCopy.getOrder();
-						commonData.vData.adjustOrders(fileCopy.getOrder(), INT_MAX, 1);
-						// Update the file's order to match the folder's order
-                        file = commonData.vData.findFileByPath(fileCopy.path);
-						file->setOrder(tempOrder);
-                        
-                        if (isTargetFolderExpanded) {
-                            TreeView_Expand(hTree, hDropTarget, TVE_EXPAND);
-                        }
-                        writeJsonFile();
-
-                        //OutputDebugStringA("%s moved in to folder %s's end\n");
-
-                        LOG("[{}] moved into folder [{}]'s end", file->name, folder->name);
+                    if (draggedFileOpt && targetFolderOpt) 
+                    {
+                        moveFileIntoFolder(dragOrder, targetOrder);
+                    }
+                    else if (draggedFolderOpt && targetFolderOpt) 
+                    {
+                        moveFolderIntoFolder(dragOrder, targetOrder);
                     }
                 }
                 // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
@@ -696,7 +724,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     else if (draggedFolderOpt) {
                         // Similar logic for folders
                         int newOrder = calculateNewOrder(targetOrder, lastMark);
-                        reorderFolders(commonData.vData, dragOrder, newOrder);
+                        reorderFolders(dragOrder, newOrder);
                         writeJsonFile();
                     }
                 }
@@ -740,6 +768,85 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     }
     }
     return FALSE;
+}
+
+void moveFileIntoFolder(int dragOrder, int targetOrder) {
+    auto draggedFileOpt = commonData.vData.findFileByOrder(dragOrder);
+    auto targetFolderOpt = commonData.vData.findFolderByOrder(targetOrder);
+    VFile* file = draggedFileOpt.value();
+    VFolder* folder = targetFolderOpt.value();
+    VFolder* parentFolder = commonData.vData.findParentFolder(file->getOrder());
+    VFile fileCopy = *file; // Create a copy of VFile*
+
+
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    UINT state = TreeView_GetItemState(hTree, hDropTarget, TVIS_EXPANDED);
+    bool isTargetFolderExpanded = (state & TVIS_EXPANDED) != 0;
+
+    // Remove dragged item from tree
+    TreeView_DeleteItem(hTree, hDragItem);
+    // Add dragged item as child of target folder in tree
+    addFileToTree(&fileCopy, hTree, hDropTarget, npp(NPPM_ISDARKMODEENABLED, 0, 0), TVI_LAST);
+
+
+    if (parentFolder) {
+        parentFolder->removeFile(file->getOrder());
+    }
+    else {
+        commonData.vData.removeFile(file->getOrder());
+    }
+    commonData.vData.adjustOrders(fileCopy.getOrder(), NULL, -1);
+    // 
+    folder->addFile(&fileCopy);
+    int tempOrder = fileCopy.getOrder();
+    commonData.vData.adjustOrders(fileCopy.getOrder(), INT_MAX, 1);
+    // Update the file's order to match the folder's order
+    file = commonData.vData.findFileByPath(fileCopy.path);
+    file->setOrder(tempOrder);
+
+    if (isTargetFolderExpanded) {
+        TreeView_Expand(hTree, hDropTarget, TVE_EXPAND);
+    }
+    writeJsonFile();
+
+    //OutputDebugStringA("%s moved in to folder %s's end\n");
+
+    LOG("[{}] moved into folder [{}]'s end", file->name, folder->name);
+}
+
+void moveFolderIntoFolder(int dragOrder, int targetOrder) {
+    // TODO: folder into folder
+    auto draggedFolderOpt = commonData.vData.findFolderByOrder(dragOrder);
+    auto targetFolderOpt = commonData.vData.findFolderByOrder(targetOrder);
+
+    VFolder* movedFolder = draggedFolderOpt.value();
+    VFolder* targetFolder = targetFolderOpt.value();
+
+    int step = targetFolder->getLastOrder() - dragOrder + 1;
+    if (dragOrder < targetOrder) {
+        step = targetFolder->getLastOrder() - movedFolder->countItemsInFolder() + 1;
+    }
+    VFolder movedFolderCopy = *movedFolder;
+	
+    
+    optional<VFolder*> sourceParentFolder = commonData.vData.findParentFolder(dragOrder);
+    if (sourceParentFolder.value() != nullptr) {
+        sourceParentFolder.value()->removeChild(dragOrder);
+    }
+    else {
+		commonData.vData.removeChild(dragOrder);
+    }
+	
+    movedFolderCopy.move(step);
+    targetFolder->folderList.push_back(movedFolderCopy);
+    movedFolder = commonData.vData.findFolderByOrder(movedFolderCopy.getOrder()).value();
+
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    size_t pos = targetFolder->getLastOrder();
+    HTREEITEM folderTreeItem = addFolderToTree(movedFolder, hTree, targetFolder->hTreeItem, pos, TVI_LAST);
+    TreeView_Expand(hTree, hDropTarget, TVE_EXPAND);
+
+	TreeView_DeleteItem(hTree, hDragItem);
 }
 
 HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem) {
@@ -1055,38 +1162,98 @@ void reorderItems(VData& vData, int oldOrder, int newOrder) {
     }
 }
 
-void reorderFolders(VData& vData, int oldOrder, int newOrder) {
+void reorderFolders(int oldOrder, int newOrder) {
     // Find the folder to move using recursive search
-    FolderLocation moveLocation = findFolderLocation(vData, oldOrder);
+    FolderLocation moveLocation = findFolderLocation(commonData.vData, oldOrder);
 
     if (!moveLocation.found) {
         return;  // Folder not found
     }
 
-    VFolder* movedFolder = moveLocation.folder;
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    optional<VFolder*> movedFolderOpt = commonData.vData.findFolderByOrder(oldOrder);
+	VFolder* movedFolder = movedFolderOpt.value();
+    VFolder* sourceParentFolder = moveLocation.parentFolder;
+    VFolder* targetParentFolder = commonData.vData.findParentFolder(newOrder);
+
+    UINT state = TreeView_GetItemState(hTree, movedFolder->hTreeItem, TVIS_EXPANDED);
+    bool isTargetFolderExpanded = (state & TVIS_EXPANDED) != 0;
 
     // Count total items in the folder (folder itself + all contents recursively)
     int folderItemCount = (*movedFolder).countItemsInFolder();
-    if (newOrder > oldOrder) {
-        newOrder--;
+       
+
+    // Tree manipulation - similar to reorderItems
+    HTREEITEM oldItem = movedFolder->hTreeItem;
+    HTREEITEM hParent = nullptr;
+    HTREEITEM prevItem = nullptr;
+
+    // Determine the parent for the new location
+    // For now, assume we're moving within the same level (root or same parent folder)
+    // This is a simplified implementation - in a full implementation you'd need to handle
+    // moving between different parent folders
+    hParent = sourceParentFolder ? sourceParentFolder->hTreeItem : nullptr;
+    hParent = targetParentFolder ? targetParentFolder->hTreeItem : nullptr;
+
+    // Find the insertion point
+    int firstOrderOfFolder = -1;
+    if (targetParentFolder) {
+        firstOrderOfFolder = targetParentFolder->getOrder() + 1;
+    } else {
+        // Find first order at root level
+        if (!commonData.vData.fileList.empty()) {
+            firstOrderOfFolder = commonData.vData.fileList[0].getOrder();
+        } else if (!commonData.vData.folderList.empty()) {
+            firstOrderOfFolder = commonData.vData.folderList[0].getOrder();
+        }
     }
 
+    if (newOrder == firstOrderOfFolder) {
+        prevItem = TVI_FIRST;
+    } else {
+        // Find the item that should come before the moved folder
+        optional<VBase*> aboveSibling = commonData.vData.findAboveSibling(newOrder);
+        if (aboveSibling) {
+            prevItem = aboveSibling.value()->hTreeItem;
+        } else {
+            prevItem = TVI_FIRST;
+        }
+    }
+
+    // Remove the folder and all its contents from the tree
+    // TreeView_DeleteItem automatically removes all child items recursively
+    TreeView_DeleteItem(hTree, oldItem);
+
     // Adjust global orders to make space for the moved folder and its contents
-    adjustGlobalOrdersForFolderMove(vData, oldOrder, newOrder, folderItemCount);
+    adjustGlobalOrdersForFolderMove(commonData.vData, oldOrder, newOrder, folderItemCount);
+
+    if (newOrder > oldOrder) {
+        newOrder = newOrder - movedFolder->countItemsInFolder();
+    }
 
     // Set the new order for the moved folder
     //movedFolder->order = newOrder;
-
-    if (newOrder > oldOrder) {
+    movedFolder->move(newOrder - oldOrder);
+    /*if (newOrder > oldOrder) {
         movedFolder->move(newOrder - (oldOrder + folderItemCount - 1));
     }
     else {
         movedFolder->move(newOrder - oldOrder);
-    }
+    }*/
 
+
+
+    // Re-insert the folder in the new position
+    // addFolderToTree will recursively add all files and subfolders
+    size_t pos = newOrder;
+    HTREEITEM newItem = addFolderToTree(movedFolder, hTree, hParent, pos, prevItem);
+    if (isTargetFolderExpanded) {
+        TreeView_Expand(hTree, newItem, TVE_EXPAND);
+    }
+    
 
     // After reordering, recursively sort the entire data structure to ensure consistency
-    vData.vDataSort();
+    commonData.vData.vDataSort();
 }
 
 FileLocation findFileLocation(VData& vData, int order) {

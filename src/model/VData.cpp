@@ -210,7 +210,7 @@ optional<VFile*> VData::findFileByDocOrder(int docOrder) const {
 
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		optional<VFile*> foundFile = folder.findFileByOrder(docOrder);
+		optional<VFile*> foundFile = folder.findFileByDocOrder(docOrder);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -254,6 +254,20 @@ optional<VFile*> VFolder::findFileByDocOrder(int docOrder) const {
 	}
 
 	return std::nullopt; // Return null if not found  
+}
+
+optional<VBase*> VFolder::getChildByOrder(int order) const {
+	for (const auto& file : fileList) {
+		if (file.getOrder() == order) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+	for (const auto& folder : folderList) {
+		if (folder.getOrder() == order) {
+			return &const_cast<VFolder&>(folder);
+		}
+	}
+	return std::nullopt; // Return null if not found
 }
 
 optional<VFolder*> VData::findFolderByOrder(int order) const {
@@ -369,11 +383,27 @@ void VFolder::removeFile(int order) {
 	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
 		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
 }
+void VFolder::removeChild(int order) {
+	// Remove file by order
+	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
+		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
+	folderList.erase(std::remove_if(folderList.begin(), folderList.end(),
+		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
+}
+
 
 void VData::removeFile(int order) {
 	// Remove file by order
 	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
 		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
+}
+
+void VData::removeChild(int order) {
+	// Remove file by order
+	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
+		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
+	folderList.erase(std::remove_if(folderList.begin(), folderList.end(),
+		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
 }
 
 void VData::adjustOrders(int beginOrder, int endOrder, int step) {

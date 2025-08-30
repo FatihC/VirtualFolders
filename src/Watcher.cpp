@@ -91,14 +91,14 @@ void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, i
         
         // Adjust files
         for (auto* file : allFiles) {
-            if (file->getOrder() >= startOrder && file->getOrder() <= newOrder) {
+            if (file->getOrder() >= startOrder && file->getOrder() < newOrder) {
 				file->setOrder(file->getOrder() - negShiftAmount);
             }
         }
         
         // Adjust folders
         for (auto* folder : allFolders) {
-            if (folder->getOrder() >= startOrder && folder->getOrder() <= newOrder) {
+            if (folder->getOrder() >= startOrder && folder->getOrder() < newOrder) {
                 folder->setOrder(folder->getOrder() - negShiftAmount);
             }
         }
