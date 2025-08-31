@@ -88,6 +88,9 @@ public:
 	VFile* findFileByPath(const string& path) const;
 	int countItemsInFolder() const;
 	optional<VBase*> getChildByOrder(int order) const;
+	optional<VBase*> findAboveSibling(int order);
+	vector<VBase*> getAllChildren();
+	void addChildren(vector<VBase*>& allChildren);
 };
 
 class VData
@@ -108,8 +111,9 @@ public:
 	void removeChild(int order);
 	VFile* findFileByPath(const string& path) const;
 	int getLastOrder() const;
-
 	optional<VBase*> findAboveSibling(int order);
+	vector<VBase*> getAllChildren();
+	void addChildren(vector<VBase*>& allChildren);
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)

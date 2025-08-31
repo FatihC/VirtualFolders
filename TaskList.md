@@ -7,22 +7,27 @@
 - [x] Acilista filename'de path olabiliyor. backupFilePath doluysa "extract filename"
 - [x] Cpp dosyalarını ayır
 - [x] Edited/Saved icon event handle
-- [ ] File opened event
-- [*] File edited event allways calls Watcher::updateWatcherPanelUnconditional (Scintilla:modified removed)
-- [ ] Write json at close
+- [x] File opened event
+- [x] File edited event allways calls Watcher::updateWatcherPanelUnconditional (Scintilla:modified removed)
+- [x] Write json at close
 - [ ] Add file into folder
 - [ ] Add folder into folder
 - [x] Move file into folder
 - [x] Move file out of folder
 	- [x] Bir üste giderken problem
 	- [x] Bir alta giderken
+	- [x] Inner folder outer folder'dan cikarilmali
 - [ ] NPPN_DOCORDERCHANGED 
 - [x] Ortadan bir dosya silince tree'nin güncellenmesi
 - [x] Ust menuden dosya acma
 - [?] DOsya npp penceresinin üzerine bırakınca (bu normal document listte de çalışmıyor)
 - [x] Büyük dosyalarla test (200KB'lık side dosyası ile hata vermedi.)
-- [ ] Folder moving
+- [x] Folder moving
 - [ ] Folder deleting (Unwrap)
+- [ ] Use std::list instead of vector
+- [ ] Degisik temalarda insertion line
+- [ ] Internationalization
+- [ ] 
 
 
 
@@ -33,4 +38,5 @@
 - [x] Bir dosyayı notepad++'in üzerine getirip bırakınca tree'de tüm path gözüküyor. Restart edince düzeliyor.
 - [ ] Bir dosya bir klasörün hemen üstüne taşınırken klasör highlihted ise klasörün sonuna ekliyor. HATA MI?
 - [ ] dosya ismi uzun olunca otomatik sağa kaydırıyor
-- [ ] 
+- [x] dosya isminde '\u0000' olusmasi
+- [ ] ctrl+pagedown secili item'i degistirmedi

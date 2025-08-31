@@ -123,4 +123,6 @@ void saveConfiguration() {
 
     file << std::setw(4) << configuration;
 
+    
+    writeJsonFile();
 }

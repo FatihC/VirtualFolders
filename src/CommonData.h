@@ -67,4 +67,10 @@ inline struct CommonData {
 
 } commonData;
 
+inline std::wstring jsonFilePath;
+
+inline void writeJsonFile() {
+    json vDataJson = commonData.vData;
+    std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
+}
 

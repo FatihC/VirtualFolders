@@ -72,10 +72,10 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_
 void updateTreeColorsExternal(HWND hTree);
 
 // Drag & Drop and Reordering functions
-void reorderItems(VData& vData, int oldOrder, int newOrder);
+void reorderItems(int oldOrder, int newOrder);
 void reorderFolders(int oldOrder, int newOrder);
 void refreshTree(HWND hTree, VData& vData);
-void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder);
+void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
 
 // Helper functions
@@ -91,7 +91,7 @@ std::string fromWchar(const wchar_t* wstr);
 
 void changeTreeItemIcon(bool isDirty, VFile* vFile);
 FolderLocation findFolderLocation(VData& vData, int order);
-void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, int folderItemCount);
+void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount);
 
 // Dialog procedure for the file view dialog
 // INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

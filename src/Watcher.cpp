@@ -63,12 +63,12 @@ Scintilla::Position location = -1;
 Scintilla::Position terminal = -1;
 
 
-std::wstring jsonFilePath;
+
 
 // Helper function to adjust global orders when moving a folder with all its contents
-void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, int folderItemCount) {
+void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount) {
     // Get all files across the entire hierarchy
-    vector<VFile*> allFiles = vData.getAllFiles();
+    vector<VFile*> allFiles = commonData.vData.getAllFiles();
     
     // Helper lambda to get all folders recursively
     std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders = 
@@ -80,7 +80,7 @@ void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, i
         };
     
     vector<VFolder*> allFolders;
-    getAllFolders(vData.folderList, allFolders);
+    getAllFolders(commonData.vData.folderList, allFolders);
     
     if (oldOrder < newOrder) {
         // Moving down - shift items in between to the left
@@ -123,9 +123,9 @@ void adjustGlobalOrdersForFolderMove(VData& vData, int oldOrder, int newOrder, i
 }
 
 // Helper function to adjust global orders for a single file move
-void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
+void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder) {
     // Get all files across the entire hierarchy
-    vector<VFile*> allFiles = vData.getAllFiles();
+    vector<VFile*> allFiles = commonData.vData.getAllFiles();
     
     // Helper lambda to get all folders recursively
     std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders = 
@@ -137,7 +137,7 @@ void adjustGlobalOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
         };
     
     vector<VFolder*> allFolders;
-    getAllFolders(vData.folderList, allFolders);
+    getAllFolders(commonData.vData.folderList, allFolders);
     
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
@@ -439,7 +439,7 @@ void onBeforeFileClosed(int docOrder) {
         // Also remove from vData
         commonData.vData.removeFile(vFile.value()->getOrder());
 
-		adjustGlobalOrdersForFileMove(commonData.vData, fileCopy.getOrder(), commonData.vData.getLastOrder() + 1);
+		adjustGlobalOrdersForFileMove(fileCopy.getOrder(), commonData.vData.getLastOrder() + 1);
 		adjustGlobalDocOrdersForFileMove(commonData.vData, fileCopy.docOrder - 1, commonData.vData.getLastOrder() + 2);
 
         
@@ -572,11 +572,6 @@ void toggleWatcherPanelWithList() {
 	commonData.hTree = hTree;
 }
 
-void writeJsonFile() {
-    json vDataJson = commonData.vData;
-    std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
-}
-
 wchar_t* toWchar(const std::string& str) {
 	static wchar_t buffer[256];
 	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, 256);
@@ -584,10 +579,21 @@ wchar_t* toWchar(const std::string& str) {
 }
 
 string fromWchar(const wchar_t* wstr) {
-    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
-    string str(size_needed, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &str[0], size_needed, NULL, NULL);
-    return str;
+    if (!wstr) return {};
+
+    // length of wide string excluding the null terminator
+    int len = static_cast<int>(wcslen(wstr));
+
+    if (len == 0) return {};
+
+    // get required size for conversion
+    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wstr, len, nullptr, 0, nullptr, nullptr);
+
+    std::string result(sizeNeeded, '\0');
+
+    WideCharToMultiByte(CP_UTF8, 0, wstr, len, &result[0], sizeNeeded, nullptr, nullptr);
+
+    return result;
 }
 
 wstring toWstring(const string& str) {
