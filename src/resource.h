@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by resource.rc
 //
+#define IDI_FILE_LOCKED_LIGHT_ICON      5
 #define IDD_SETTINGS                    101
 #define IDD_ABOUT                       102
 #define IDD_STATUS                      103
@@ -10,11 +11,14 @@
 #define IDR_HTML1                       107
 #define IDD_RENAME                      107
 #define IDI_ICON1                       112
+#define IDI_FOLDER_ICON                 112
+#define IDI_FOLDER_WHITE_ICON           112
 #define IDI_FILE_LIGHT_ICON             114
 #define IDI_FILE_DARK_ICON              115
 #define IDI_FILE_EDITED_ICON            116
 #define IDI_ICON3                       119
 #define IDI_ICON2                       120
+#define IDI_FILE_LOCKED_DARK_ICON       122
 #define IDI_FOLDER                      201
 #define IDI_FOLDER_YELLOW               202
 #define IDC_ABOUT_VERSION               1001
@@ -41,7 +45,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        121
+#define _APS_NEXT_RESOURCE_VALUE        124
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1026
 #define _APS_NEXT_SYMED_VALUE           101

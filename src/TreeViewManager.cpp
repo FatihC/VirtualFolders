@@ -51,14 +51,7 @@ void writeJsonFile();
 void updateWatcherPanelUnconditional(UINT_PTR bufferID);
 
 
-void nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
-void toRecycleBin(HTREEITEM selectedTreeItem);
-void openParentInExplorer(HTREEITEM selectedTreeItem);
-void openParentInCmd(HTREEITEM selectedTreeItem);
-void openParentAsWorkspace(HTREEITEM selectedTreeItem);
-void openInDefaultViewer(HTREEITEM selectedTreeItem);
-void saveBuffer(HTREEITEM selectedTreeItem);
-void saveBufferAs(HTREEITEM selectedTreeItem);
+LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
 void treeItemSelected(HTREEITEM selectedTreeItem);
 void moveFileIntoFolder(int dragOrder, int targetOrder);
 void moveFolderIntoFolder(int dragOrder, int targetOrder);
@@ -100,6 +93,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     
     static HMENU fileContextMenu = nullptr;
 	static HMENU openContextSubMenu = nullptr;
+    static HMENU copyContextSubMenu = nullptr;
+    static HMENU moveContextSubMenu = nullptr;
 
 	static HMENU folderContextMenu = nullptr;
     
@@ -116,26 +111,46 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         fileContextMenu = CreatePopupMenu();
         AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_CLOSE, L"Close");
         AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_WRAP_IN_FOLDER, L"Wrap in folder");
-        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_RENAME, L"Rename");
 		AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
-		AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_SAVE, L"Save");
-        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_SAVE_AS, L"Save As");
-        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_RECYCLE_BIN, L"Move to Recycle Bin");
-
-
-		openContextSubMenu = CreatePopupMenu();
-        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_PARENT_EXPLORER, L"Open Containing Folder in Explorer");
-        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_PARENT_CMD, L"Open Containing Folder in cmd");
-        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, L"Open Containing Folder as Workspace");
-        //EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, MF_BYCOMMAND | MF_DISABLED);
-        AppendMenu(openContextSubMenu, MF_SEPARATOR, 0, NULL);
-        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_DEFAULT_VIEWER, L"Open in Default Viewer");
-
-        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, L"Open Into");
-
+		AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVE, L"Save");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVEAS, L"Save As");
         
 
 
+		openContextSubMenu = CreatePopupMenu();
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_FOLDER, L"Open Containing Folder in Explorer");
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_CMD, L"Open Containing Folder in cmd");
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_CONTAININGFOLDERASWORKSPACE, L"Open Containing Folder as Workspace");
+        //EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, MF_BYCOMMAND | MF_DISABLED);
+        AppendMenu(openContextSubMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_DEFAULT_VIEWER, L"Open in Default Viewer");
+
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, L"Open Into");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RENAME, L"Rename");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_DELETE, L"Move to Recycle Bin");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RELOAD, L"Reload");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, L"Print");
+        AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
+
+        AppendMenu(fileContextMenu, MF_STRING, IDM_EDIT_SETREADONLY, L"Read-Only in Notepad++");
+        //AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, L"Read-Only Attribute in Windows");
+
+        AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
+
+        copyContextSubMenu = CreatePopupMenu();
+        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FULLPATHTOCLIP, L"Copy Full File Path");
+        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FILENAMETOCLIP, L"Copy Filename");
+        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_CURRENTDIRTOCLIP, L"Copy Current Dir. Path");
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)copyContextSubMenu, L"Copy to Clipboard");
+
+
+        /*moveContextSubMenu = CreatePopupMenu();
+        AppendMenu(moveContextSubMenu, MF_STRING, IDM_MOVE, L"Move to Start");
+        AppendMenu(moveContextSubMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, L"Move Document");*/
+
+
+        /**********************************************************************************************************************/
 		folderContextMenu = CreatePopupMenu();
 		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_UNWRAP, L"Unwrap");
 		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_RENAME, L"Rename");
@@ -150,6 +165,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         HICON hIconFileLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LIGHT_ICON));
         HICON hIconFileDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_DARK_ICON));
         HICON hIconFileEdited = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_EDITED_ICON));
+        HICON hIconFileReadOnlyDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_DARK_ICON));
+        HICON hIconFileReadOnlyLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_LIGHT_ICON));
 
         
 
@@ -158,6 +175,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         iconIndex[ICON_FILE_LIGHT] = ImageList_AddIcon(hImages, hIconFileLight);
         iconIndex[ICON_FILE_DARK] = ImageList_AddIcon(hImages, hIconFileDark);
         iconIndex[ICON_FILE_EDITED] = ImageList_AddIcon(hImages, hIconFileEdited);
+        iconIndex[ICON_FILE_READONLY_DARK] = ImageList_AddIcon(hImages, hIconFileReadOnlyDark);
+        iconIndex[ICON_FILE_READONLY_LIGHT] = ImageList_AddIcon(hImages, hIconFileReadOnlyLight);
 
         TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
 
@@ -240,20 +259,26 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                                 VFile* vFile = vFileOpt.value();
                                 if (vFile->backupFilePath.empty()) 
                                 {
-                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_EXPLORER, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_CMD, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(fileContextMenu, MENU_ID_FILE_RECYCLE_BIN, MF_BYCOMMAND | MF_ENABLED);
-
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_FOLDER, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_CMD, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_CONTAININGFOLDERASWORKSPACE, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(fileContextMenu, IDM_FILE_DELETE, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(fileContextMenu, IDM_FILE_RELOAD, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(fileContextMenu, IDM_FILE_PRINT, MF_BYCOMMAND | MF_ENABLED);
                                 }
                                 else 
                                 {
-                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_EXPLORER, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_CMD, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(fileContextMenu, MENU_ID_FILE_RECYCLE_BIN, MF_BYCOMMAND | MF_DISABLED);
-                                    
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_FOLDER, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_CMD, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_CONTAININGFOLDERASWORKSPACE, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(fileContextMenu, IDM_FILE_DELETE, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(fileContextMenu, IDM_FILE_RELOAD, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(fileContextMenu, IDM_FILE_PRINT, MF_BYCOMMAND | MF_DISABLED);
                                 }
+
+                                CheckMenuItem(fileContextMenu, IDM_EDIT_SETREADONLY, MF_BYCOMMAND | (vFile->isReadOnly ? MF_CHECKED : MF_UNCHECKED));
                             }
                             TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
                         }
@@ -354,7 +379,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             showRenameDialog(vFolder, selectedTreeItem, hTree);
             return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_RENAME) 
+        else if (LOWORD(wParam) == IDM_FILE_RENAME)
         {
             nppMenuCall(selectedTreeItem, IDM_FILE_RENAME);
             return TRUE;
@@ -363,37 +388,79 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             unwrapFolder(selectedTreeItem);
 			return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_SAVE) {
-            saveBuffer(selectedTreeItem);
+        else if (LOWORD(wParam) == IDM_FILE_SAVE) {
+            nppMenuCall(selectedTreeItem, IDM_FILE_SAVE);
             return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_SAVE_AS) {
-            saveBufferAs(selectedTreeItem);
+        else if (LOWORD(wParam) == IDM_FILE_SAVEAS) {
+            nppMenuCall(selectedTreeItem, IDM_FILE_SAVEAS);
             return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_PARENT_EXPLORER) 
+        else if (LOWORD(wParam) == IDM_FILE_OPEN_FOLDER)
         {
-            openParentInExplorer(selectedTreeItem);
+            nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_FOLDER);
             return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_PARENT_CMD) 
+        else if (LOWORD(wParam) == IDM_FILE_OPEN_CMD)
         {
-            openParentInCmd(selectedTreeItem);
+            nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_CMD);
             return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_PARENT_WORKSPACE) 
+        else if (LOWORD(wParam) == IDM_FILE_CONTAININGFOLDERASWORKSPACE)
         {
-            openParentAsWorkspace(selectedTreeItem);
+            nppMenuCall(selectedTreeItem, IDM_FILE_CONTAININGFOLDERASWORKSPACE);
             return TRUE;
         }
-        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_DEFAULT_VIEWER) 
+        else if (LOWORD(wParam) == IDM_FILE_OPEN_DEFAULT_VIEWER)
         {
-            openInDefaultViewer(selectedTreeItem);
+            nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_DEFAULT_VIEWER);
             return TRUE;
 		}
-        else if (LOWORD(wParam) == MENU_ID_FILE_RECYCLE_BIN)
+        else if (LOWORD(wParam) == IDM_FILE_DELETE)
         {
-            toRecycleBin(selectedTreeItem);
+            nppMenuCall(selectedTreeItem, IDM_FILE_DELETE);
+			return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_FILE_RELOAD)
+        {
+            nppMenuCall(selectedTreeItem, IDM_FILE_RELOAD);
+			return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_FILE_PRINT)
+        {
+            nppMenuCall(selectedTreeItem, IDM_FILE_PRINT);
+			return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_EDIT_SETREADONLY)
+        {
+            LRESULT result = nppMenuCall(selectedTreeItem, IDM_EDIT_SETREADONLY);
+
+            if (result) {
+                TVITEM item = getTreeItem(hTree, selectedTreeItem);
+                optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+                vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
+
+
+                UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+                changeTreeItemIcon(bufferID);
+            }
+
+            // TODO: change icon 
+			return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_EDIT_FULLPATHTOCLIP)
+        {
+			nppMenuCall(selectedTreeItem, IDM_EDIT_FULLPATHTOCLIP);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_EDIT_FILENAMETOCLIP)
+        {
+            nppMenuCall(selectedTreeItem, IDM_EDIT_FILENAMETOCLIP);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_EDIT_CURRENTDIRTOCLIP)
+        {
+			nppMenuCall(selectedTreeItem, IDM_EDIT_CURRENTDIRTOCLIP);
 			return TRUE;
         }
         break;
@@ -709,116 +776,21 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 }
 
 
-void nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID)
+LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID)
 {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
     TVITEM item = getTreeItem(hTree, selectedTreeItem);
     optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
     if (!vFileOpt) {
-        return;
+        return false;
     }
 
     UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    npp(NPPM_MENUCOMMAND, bufferID, MENU_ID);
+    if (bufferID == -1) {
+        return false;
+	}
+    return npp(NPPM_MENUCOMMAND, bufferID, MENU_ID);
 
-}
-
-
-void toRecycleBin(HTREEITEM selectedTreeItem)
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_DELETE);
-
-}
-
-void openParentInExplorer(HTREEITEM selectedTreeItem) 
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_OPEN_FOLDER);
-}
-
-void openParentInCmd(HTREEITEM selectedTreeItem) 
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_OPEN_CMD);
-}
-
-void openParentAsWorkspace(HTREEITEM selectedTreeItem) 
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_CONTAININGFOLDERASWORKSPACE);
-
-}
-
-void openInDefaultViewer(HTREEITEM selectedTreeItem) 
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_OPEN_DEFAULT_VIEWER);
-}
-
-void saveBuffer(HTREEITEM selectedTreeItem) 
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-    
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    if (bufferID != -1) {
-        npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_SAVE);
-    }
-}
-
-void saveBufferAs(HTREEITEM selectedTreeItem) 
-{
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-    if (!vFileOpt) {
-        return;
-    }
-    
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    if (bufferID != -1) {
-        npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_SAVEAS);
-    }
 }
 
 void unwrapFolder(HTREEITEM selectedTreeItem)
@@ -1090,7 +1062,17 @@ HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMo
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
     wcscpy_s(buffer, 100, toWchar(vFile->name));
     tvis.item.pszText = buffer;
-    if (vFile->isEdited) {
+    if (vFile->isReadOnly) {
+        if (darkMode) {
+            tvis.item.iImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
+            tvis.item.iSelectedImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
+        }
+        else {
+            tvis.item.iImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
+            tvis.item.iSelectedImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
+        }
+    }
+	else if (vFile->isEdited) {
         tvis.item.iImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
         tvis.item.iSelectedImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
     }
@@ -1535,7 +1517,8 @@ FileLocation findFileLocation(VData& vData, int order) {
     return location;
 }
 
-void changeTreeItemIcon(UINT_PTR bufferID) {
+void changeTreeItemIcon(UINT_PTR bufferID) 
+{
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
     auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
 	optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder((int)position);
@@ -1550,7 +1533,23 @@ void changeTreeItemIcon(UINT_PTR bufferID) {
     wchar_t* name = toWchar(vFileOpt.value()->name);
     item.pszText = name;
 
-    if (!commonData.bufferStates[bufferID] || vFileOpt.value()->isEdited) {
+    if (vFileOpt.value()->isReadOnly && isDarkMode) 
+    {
+        item.iImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
+        item.iSelectedImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
+
+        TreeView_SetItem(commonData.hTree, &item);
+        return;
+    } else if (vFileOpt.value()->isReadOnly && !isDarkMode) 
+    {
+        item.iImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
+        item.iSelectedImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
+    
+        TreeView_SetItem(commonData.hTree, &item);
+        return;
+	}
+
+	if (vFileOpt.value()->isEdited || (commonData.bufferStates.find(bufferID) != commonData.bufferStates.end() && !commonData.bufferStates[bufferID])) {
         item.iImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
         item.iSelectedImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
     }

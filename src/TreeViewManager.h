@@ -37,7 +37,9 @@ enum IconType {
     ICON_FILE,
     ICON_FILE_LIGHT,
     ICON_FILE_DARK,
-    ICON_FILE_EDITED
+    ICON_FILE_EDITED,
+	ICON_FILE_READONLY_DARK,
+	ICON_FILE_READONLY_LIGHT
 };
 
 extern std::unordered_map<IconType, int> iconIndex;
@@ -48,17 +50,9 @@ extern std::string new_line;
 #define MENU_ID_TREE_DELETE 40001
 #define MENU_ID_FILE_CLOSE 40100
 #define MENU_ID_FILE_WRAP_IN_FOLDER 40101
-#define MENU_ID_FILE_RENAME 40102
 #define MENU_ID_FOLDER_RENAME 40103
 #define MENU_ID_FOLDER_UNWRAP 40104
-#define MENU_ID_FILE_SAVE 40105
-#define MENU_ID_FILE_SAVE_AS 40106
-#define MENU_ID_FILE_RECYCLE_BIN 40111
 
-#define MENU_ID_FILE_OPEN_PARENT_EXPLORER 40107
-#define MENU_ID_FILE_OPEN_PARENT_CMD 40108
-#define MENU_ID_FILE_OPEN_PARENT_WORKSPACE 40109
-#define MENU_ID_FILE_OPEN_DEFAULT_VIEWER 40110
 
 
 
@@ -99,7 +93,7 @@ wchar_t* toWchar(const std::string& str);
 std::wstring toWstring(const std::string& str);
 std::string fromWchar(const wchar_t* wstr);
 
-void changeTreeItemIcon(bool isDirty, VFile* vFile);
+void changeTreeItemIcon(UINT_PTR bufferID);
 FolderLocation findFolderLocation(VData& vData, int order);
 void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount);
 

@@ -28,8 +28,9 @@
 - [ ] Degisik temalarda insertion line
 - [ ] Internationalization
 - [ ] Context Menu
+	- [ ] Move to View Kaldı
 - [x] onBeforeFileClosed'da order docOrder ayari
-- [ ] 
+- [ ] Dark Mode - Light Mode Change Event
 
 
 

@@ -107,6 +107,9 @@
     <Image Include="..\..\..\Downloads\file_red.ico" />
     <Image Include="..\..\..\Downloads\folderyellow.ico" />
     <Image Include="..\..\..\Downloads\folder_icon.ico" />
+    <Image Include="..\..\..\Downloads\locked_dark_mode.ico" />
+    <Image Include="..\..\..\Downloads\locked_dark_mode.png" />
+    <Image Include="..\..\..\Downloads\locked_light_mode.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{821f38c0-d927-4c4f-a08c-717c485b0f95}</ProjectGuid>

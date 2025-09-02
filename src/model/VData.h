@@ -57,6 +57,7 @@ public:
 	string backupFilePath;
 	bool isActive = false;
 	bool isEdited = false;
+	bool isReadOnly = false;
 
 };
 
@@ -127,7 +128,8 @@ inline void to_json(json& j, const VFile& f) {
 		{"session", f.session},
 		{"backupFilePath", f.backupFilePath},
 		{"isActive", f.isActive},
-		{"isEdited", f.isEdited}
+		{"isEdited", f.isEdited},
+		{"isReadOnly", f.isReadOnly}
 	};
 }
 
@@ -160,6 +162,7 @@ inline void from_json(const json& j, VFile& f) {
 	if (j.contains("backupFilePath")) j.at("backupFilePath").get_to(f.backupFilePath);
 	if (j.contains("isActive")) j.at("isActive").get_to(f.isActive);
 	if (j.contains("isEdited")) j.at("isEdited").get_to(f.isEdited);
+	if (j.contains("isReadOnly")) j.at("isReadOnly").get_to(f.isReadOnly);
 }
 
 inline void from_json(const json& j, VFolder& folder) {

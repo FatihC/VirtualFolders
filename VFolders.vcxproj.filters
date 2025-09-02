@@ -177,5 +177,14 @@
     <Image Include="..\..\..\Downloads\file_red.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="..\..\..\Downloads\locked_dark_mode.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Downloads\locked_dark_mode.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\Downloads\locked_light_mode.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
