@@ -45,12 +45,21 @@ extern std::string new_line;
 
 
 // Menu command IDs
-#define ID_TREE_DELETE 40001
-#define ID_FILE_CLOSE 40100
-#define ID_FILE_WRAP_IN_FOLDER 40101
-#define ID_FILE_RENAME 40102
-#define ID_FOLDER_RENAME 40103
-#define ID_FOLDER_UNWRAP 40104
+#define MENU_ID_TREE_DELETE 40001
+#define MENU_ID_FILE_CLOSE 40100
+#define MENU_ID_FILE_WRAP_IN_FOLDER 40101
+#define MENU_ID_FILE_RENAME 40102
+#define MENU_ID_FOLDER_RENAME 40103
+#define MENU_ID_FOLDER_UNWRAP 40104
+#define MENU_ID_FILE_SAVE 40105
+#define MENU_ID_FILE_SAVE_AS 40106
+#define MENU_ID_FILE_RECYCLE_BIN 40111
+
+#define MENU_ID_FILE_OPEN_PARENT_EXPLORER 40107
+#define MENU_ID_FILE_OPEN_PARENT_CMD 40108
+#define MENU_ID_FILE_OPEN_PARENT_WORKSPACE 40109
+#define MENU_ID_FILE_OPEN_DEFAULT_VIEWER 40110
+
 
 
 // Global variables for TreeView management
@@ -77,6 +86,7 @@ void reorderFolders(int oldOrder, int newOrder);
 void refreshTree(HWND hTree, VData& vData);
 void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
+void adjustGlobalDocOrdersForFileMove(int oldOrder, int newOrder);
 
 // Helper functions
 FileLocation findFileLocation(VData& vData, int order);

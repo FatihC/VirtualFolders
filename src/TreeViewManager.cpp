@@ -50,11 +50,21 @@ DialogStretch stretch;
 void writeJsonFile();
 void updateWatcherPanelUnconditional(UINT_PTR bufferID);
 
+
+void nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
+void toRecycleBin(HTREEITEM selectedTreeItem);
+void openParentInExplorer(HTREEITEM selectedTreeItem);
+void openParentInCmd(HTREEITEM selectedTreeItem);
+void openParentAsWorkspace(HTREEITEM selectedTreeItem);
+void openInDefaultViewer(HTREEITEM selectedTreeItem);
+void saveBuffer(HTREEITEM selectedTreeItem);
+void saveBufferAs(HTREEITEM selectedTreeItem);
 void treeItemSelected(HTREEITEM selectedTreeItem);
 void moveFileIntoFolder(int dragOrder, int targetOrder);
 void moveFolderIntoFolder(int dragOrder, int targetOrder);
-void unwrapFolder();
-void wrapFileInFolder();
+void unwrapFolder(HTREEITEM selectedTreeItem);
+void wrapFileInFolder(HTREEITEM selectedTreeItem);
+
 
 
 // External variables
@@ -85,26 +95,52 @@ int calculateNewOrder(int targetOrder, const InsertionMark& mark) {
 // Add a new dialog procedure for the file view dialog (IDD_FILEVIEW)
 INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hTree = nullptr;
+    
     static HMENU hContextMenu = nullptr;
+    
     static HMENU fileContextMenu = nullptr;
+	static HMENU openContextSubMenu = nullptr;
+
 	static HMENU folderContextMenu = nullptr;
+    
     static InsertionMark lastMark = {};
+    
     switch (uMsg) {
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
         // Create context menu
         hContextMenu = CreatePopupMenu();
-        AppendMenu(hContextMenu, MF_STRING, ID_TREE_DELETE, L"Delete");
+        AppendMenu(hContextMenu, MF_STRING, MENU_ID_TREE_DELETE, L"Delete");
 
         fileContextMenu = CreatePopupMenu();
-        AppendMenu(fileContextMenu, MF_STRING, ID_FILE_CLOSE, L"Close");
-        AppendMenu(fileContextMenu, MF_STRING, ID_FILE_WRAP_IN_FOLDER, L"Wrap in folder");
-        AppendMenu(fileContextMenu, MF_STRING, ID_FILE_RENAME, L"Rename");
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_CLOSE, L"Close");
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_WRAP_IN_FOLDER, L"Wrap in folder");
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_RENAME, L"Rename");
+		AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
+		AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_SAVE, L"Save");
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_SAVE_AS, L"Save As");
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_RECYCLE_BIN, L"Move to Recycle Bin");
+
+
+		openContextSubMenu = CreatePopupMenu();
+        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_PARENT_EXPLORER, L"Open Containing Folder in Explorer");
+        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_PARENT_CMD, L"Open Containing Folder in cmd");
+        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, L"Open Containing Folder as Workspace");
+        //EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, MF_BYCOMMAND | MF_DISABLED);
+        AppendMenu(openContextSubMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenu(openContextSubMenu, MF_STRING, MENU_ID_FILE_OPEN_DEFAULT_VIEWER, L"Open in Default Viewer");
+
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, L"Open Into");
+
+        
+
 
 		folderContextMenu = CreatePopupMenu();
-		AppendMenu(folderContextMenu, MF_STRING, ID_FOLDER_UNWRAP, L"Unwrap");
-		AppendMenu(folderContextMenu, MF_STRING, ID_FOLDER_RENAME, L"Rename");
+		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_UNWRAP, L"Unwrap");
+		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_RENAME, L"Rename");
+
+
 
 
         HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
@@ -182,23 +218,43 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 TVHITTESTINFO hit = {0};
                 hit.pt = pt;
                 ScreenToClient(hTree, &hit.pt);
-                HTREEITEM hItem = TreeView_HitTest(hTree, &hit);
+                HTREEITEM selectedTreeItem = TreeView_HitTest(hTree, &hit);
 
-                TVITEM tvItem = getTreeItem(hTree, hItem);
+                TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
 
-                if (hItem && (hit.flags & TVHT_ONITEM))
+                if (selectedTreeItem && (hit.flags & TVHT_ONITEM))
                 {
-                    TreeView_SelectItem(hTree, hItem);
+                    TreeView_SelectItem(hTree, selectedTreeItem);
 
                     TVITEM item = { 0 };
                     item.mask = TVIF_IMAGE | TVIF_PARAM;
-                    item.hItem = hItem;
+                    item.hItem = selectedTreeItem;
                     if (TreeView_GetItem(hTree, &item)) {
                         // Check if this is a folder (not a file) by checking the image index
                         if (item.iImage == iconIndex[ICON_FOLDER]) {
                             TrackPopupMenu(folderContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
                         }
                         else {
+                            optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+                            if (vFileOpt) {
+                                VFile* vFile = vFileOpt.value();
+                                if (vFile->backupFilePath.empty()) 
+                                {
+                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_EXPLORER, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_CMD, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_ENABLED);
+                                    EnableMenuItem(fileContextMenu, MENU_ID_FILE_RECYCLE_BIN, MF_BYCOMMAND | MF_ENABLED);
+
+                                }
+                                else 
+                                {
+                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_EXPLORER, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_CMD, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_DISABLED);
+                                    EnableMenuItem(fileContextMenu, MENU_ID_FILE_RECYCLE_BIN, MF_BYCOMMAND | MF_DISABLED);
+                                    
+                                }
+                            }
                             TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
                         }
 					    contextMenuLoaded = true;
@@ -249,6 +305,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             if (TreeView_GetItem(hTree, &item)) {
                 // Check if this is a file (not a folder) by checking the image index
                 if (item.iImage != iconIndex[ICON_FOLDER]) {
+
                     return TRUE;  // This is a file item, no need to do anything here
                 }
             }
@@ -263,35 +320,30 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     }
     case WM_COMMAND: {
-        if (LOWORD(wParam) == ID_TREE_DELETE) {
-            HTREEITEM hSel = TreeView_GetSelection(hTree);
-            if (hSel) {
-                //TreeView_DeleteItem(hTree, hSel);
-            }
+        HTREEITEM selectedTreeItem = TreeView_GetSelection(hTree);
+        if (!selectedTreeItem) {
+            break;
+        }
+
+        if (LOWORD(wParam) == MENU_ID_TREE_DELETE) {
+            //TreeView_DeleteItem(hTree, selectedTreeItem);
             return TRUE;
         }
-        else if (LOWORD(wParam) == ID_FILE_CLOSE) {
-            HTREEITEM hSel = TreeView_GetSelection(hTree);
-            if (hSel) {
-				TVITEM item = getTreeItem(hTree, hSel);
-				optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
-                if (vFileOpt) {
-                    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-                    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_CLOSE);
-                }
+        else if (LOWORD(wParam) == MENU_ID_FILE_CLOSE) {
+			TVITEM item = getTreeItem(hTree, selectedTreeItem);
+			optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+            if (vFileOpt) {
+                UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+                npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_CLOSE);
             }
             return TRUE;
         } 
-        else if (LOWORD(wParam) == ID_FILE_WRAP_IN_FOLDER) {
-            wrapFileInFolder();
+        else if (LOWORD(wParam) == MENU_ID_FILE_WRAP_IN_FOLDER) {
+            wrapFileInFolder(selectedTreeItem);
             return TRUE;
         }
-        else if (LOWORD(wParam) == ID_FOLDER_RENAME) {
-            HTREEITEM treeItem = TreeView_GetSelection(hTree);
-            if (!treeItem) {
-				return TRUE;
-            }
-            TVITEM tvItem = getTreeItem(hTree, treeItem);
+        else if (LOWORD(wParam) == MENU_ID_FOLDER_RENAME) {
+            TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
             optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)tvItem.lParam);
             if (!vFolderOpt) {
 				return TRUE;
@@ -299,28 +351,49 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             VFolder* vFolder = vFolderOpt.value();
             
             // Show rename dialog for the folder
-            showRenameDialog(vFolder, treeItem, hTree);
+            showRenameDialog(vFolder, selectedTreeItem, hTree);
             return TRUE;
         }
-        else if (LOWORD(wParam) == ID_FILE_RENAME) {
-            HTREEITEM treeItem = TreeView_GetSelection(hTree);
-            if (!treeItem) {
-				return TRUE;
-            }
-            TVITEM tvItem = getTreeItem(hTree, treeItem);
-            optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)tvItem.lParam);
-            if (!vFileOpt) {
-				return TRUE;
-            }
-            VFile* vFile = vFileOpt.value();
-            
-            // Show notepad++ rename dialog for the file
-            UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFile->docOrder, vFile->view);
-            npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_RENAME);
+        else if (LOWORD(wParam) == MENU_ID_FILE_RENAME) 
+        {
+            nppMenuCall(selectedTreeItem, IDM_FILE_RENAME);
             return TRUE;
         }
-        else if (LOWORD(wParam) == ID_FOLDER_UNWRAP) {
-            unwrapFolder();
+        else if (LOWORD(wParam) == MENU_ID_FOLDER_UNWRAP) {
+            unwrapFolder(selectedTreeItem);
+			return TRUE;
+        }
+        else if (LOWORD(wParam) == MENU_ID_FILE_SAVE) {
+            saveBuffer(selectedTreeItem);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == MENU_ID_FILE_SAVE_AS) {
+            saveBufferAs(selectedTreeItem);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_PARENT_EXPLORER) 
+        {
+            openParentInExplorer(selectedTreeItem);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_PARENT_CMD) 
+        {
+            openParentInCmd(selectedTreeItem);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_PARENT_WORKSPACE) 
+        {
+            openParentAsWorkspace(selectedTreeItem);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == MENU_ID_FILE_OPEN_DEFAULT_VIEWER) 
+        {
+            openInDefaultViewer(selectedTreeItem);
+            return TRUE;
+		}
+        else if (LOWORD(wParam) == MENU_ID_FILE_RECYCLE_BIN)
+        {
+            toRecycleBin(selectedTreeItem);
 			return TRUE;
         }
         break;
@@ -635,14 +708,123 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     return FALSE;
 }
 
-void unwrapFolder()
+
+void nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID)
 {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    HTREEITEM treeItem = TreeView_GetSelection(hTree);
-    if (!treeItem) {
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
         return;
     }
-    TVITEM tvItem = getTreeItem(hTree, treeItem);
+
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    npp(NPPM_MENUCOMMAND, bufferID, MENU_ID);
+
+}
+
+
+void toRecycleBin(HTREEITEM selectedTreeItem)
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_DELETE);
+
+}
+
+void openParentInExplorer(HTREEITEM selectedTreeItem) 
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_OPEN_FOLDER);
+}
+
+void openParentInCmd(HTREEITEM selectedTreeItem) 
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_OPEN_CMD);
+}
+
+void openParentAsWorkspace(HTREEITEM selectedTreeItem) 
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_CONTAININGFOLDERASWORKSPACE);
+
+}
+
+void openInDefaultViewer(HTREEITEM selectedTreeItem) 
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_OPEN_DEFAULT_VIEWER);
+}
+
+void saveBuffer(HTREEITEM selectedTreeItem) 
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+    
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    if (bufferID != -1) {
+        npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_SAVE);
+    }
+}
+
+void saveBufferAs(HTREEITEM selectedTreeItem) 
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+    if (!vFileOpt) {
+        return;
+    }
+    
+    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
+    if (bufferID != -1) {
+        npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_SAVEAS);
+    }
+}
+
+void unwrapFolder(HTREEITEM selectedTreeItem)
+{
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
     optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)tvItem.lParam);
     if (!vFolderOpt) {
         return;
@@ -663,8 +845,26 @@ void unwrapFolder()
         fileTreeItem = TVI_FIRST;
     }
 
+    TreeView_DeleteItem(hTree, folderItemToDelete);
+    adjustGlobalOrdersForFileMove(folderCopy.getOrder(), commonData.vData.getLastOrder() + 1);
 
 
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+    folderCopy.move(-1);
+    vector<VBase*> allChildren = folderCopy.getAllChildren();
+    for (const auto& child : allChildren) {
+        if (!child) continue;
+        if (auto file = dynamic_cast<VFile*>(child)) {
+            fileTreeItem = addFileToTree(file, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, isDarkMode, fileTreeItem);
+            pos++;
+        }
+        else if (auto folder = dynamic_cast<VFolder*>(child)) {
+            fileTreeItem = addFolderToTree(folder, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, pos, fileTreeItem);
+        }
+    }
+
+    
+    // DONT FORGET:   tree operations first. vData organisations later.
     if (parentFolder) {
         parentFolder->removeChild(vFolder->getOrder());
 		parentFolder = commonData.vData.findFolderByOrder(parentFolderOrder).value();
@@ -676,35 +876,16 @@ void unwrapFolder()
         auto children = folderCopy.getAllChildren();
         commonData.vData.addChildren(children);
 	}
-    adjustGlobalOrdersForFileMove(folderCopy.getOrder(), commonData.vData.getLastOrder() + 1);
-    TreeView_DeleteItem(hTree, folderCopy.hTreeItem);
+    
+    
 
-    if (folderCopy.name == "New Folder 3") {
-		//return; // Prevents crash when unwrapping "New Folder 3"
-    }
-
-    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-    folderCopy.move(-1);
-    vector<VBase*> allChildren = folderCopy.getAllChildren();
-    for (const auto& child : allChildren) {
-        if (!child) continue;
-        if (auto file = dynamic_cast<VFile*>(child)) {
-            fileTreeItem = addFileToTree(file, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, isDarkMode, fileTreeItem);
-            pos++;
-        } else if (auto folder = dynamic_cast<VFolder*>(child)) {
-            fileTreeItem = addFolderToTree(folder, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, pos, fileTreeItem);
-		}
-    }
+    
 }
 
-void wrapFileInFolder()
+void wrapFileInFolder(HTREEITEM selectedTreeItem)
 {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    HTREEITEM hSel = TreeView_GetSelection(hTree);
-    if (!hSel) {
-        return;
-    }
-    TVITEM item = getTreeItem(hTree, hSel);
+    TVITEM item = getTreeItem(hTree, selectedTreeItem);
     optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
     if (!vFileOpt) {
         return;
@@ -723,7 +904,7 @@ void wrapFileInFolder()
     else {
         commonData.vData.removeFile(vFile->getOrder());
     }
-    TreeView_DeleteItem(hTree, hSel);
+    TreeView_DeleteItem(hTree, selectedTreeItem);
     commonData.vData.adjustOrders(oldOrder, NULL, 1);
 
 

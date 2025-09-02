@@ -166,9 +166,9 @@ void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder) {
     }
 }
 
-void adjustGlobalDocOrdersForFileMove(VData& vData, int oldOrder, int newOrder) {
+void adjustGlobalDocOrdersForFileMove(int oldOrder, int newOrder) {
     // Get all files across the entire hierarchy
-    vector<VFile*> allFiles = vData.getAllFiles();
+    vector<VFile*> allFiles = commonData.vData.getAllFiles();
 
     // Helper lambda to get all folders recursively
     std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders =
@@ -180,7 +180,7 @@ void adjustGlobalDocOrdersForFileMove(VData& vData, int oldOrder, int newOrder) 
     };
 
     vector<VFolder*> allFolders;
-    getAllFolders(vData.folderList, allFolders);
+    getAllFolders(commonData.vData.folderList, allFolders);
 
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
@@ -420,27 +420,28 @@ void onBeforeFileClosed(int docOrder) {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
-    optional<VFile*> vFile = commonData.vData.findFileByDocOrder(docOrder);
-    if (!vFile) {
+    optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder(docOrder);
+    if (!vFileOpt) {
         OutputDebugStringA("File not found in vData\n");
         return;
 	}
 
     
-    HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFile.value()->getOrder()));
+    HTREEITEM hSelectedItem = vFileOpt.value()->hTreeItem;
     if (hSelectedItem) {
         // Remove the item from the tree
         TreeView_DeleteItem(hTree, hSelectedItem);
         
-		VFile fileCopy = *(vFile.value());
+		VFile fileCopy = *(vFileOpt.value());
         VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
 
 
         // Also remove from vData
-        commonData.vData.removeFile(vFile.value()->getOrder());
+        commonData.vData.removeFile(vFileOpt.value()->getOrder());
 
-		adjustGlobalOrdersForFileMove(fileCopy.getOrder(), commonData.vData.getLastOrder() + 1);
-		adjustGlobalDocOrdersForFileMove(commonData.vData, fileCopy.docOrder - 1, commonData.vData.getLastOrder() + 2);
+		adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
+        // TODO: bu hatali buyuk ihtimal. test edilmeli
+		adjustGlobalDocOrdersForFileMove(fileCopy.docOrder - 1, INT_MAX);
 
         
         // Write updated vData to JSON file

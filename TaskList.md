@@ -23,10 +23,12 @@
 - [?] DOsya npp penceresinin üzerine bırakınca (bu normal document listte de çalışmıyor)
 - [x] Büyük dosyalarla test (200KB'lık side dosyası ile hata vermedi.)
 - [x] Folder moving
-- [ ] Folder deleting (Unwrap)
+- [x] Folder deleting (Unwrap)
 - [ ] Use std::list instead of vector
 - [ ] Degisik temalarda insertion line
 - [ ] Internationalization
+- [ ] Context Menu
+- [x] onBeforeFileClosed'da order docOrder ayari
 - [ ] 
 
 
