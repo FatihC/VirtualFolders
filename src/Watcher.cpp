@@ -166,40 +166,6 @@ void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder) {
     }
 }
 
-void adjustGlobalDocOrdersForFileMove(int oldOrder, int newOrder) {
-    // Get all files across the entire hierarchy
-    vector<VFile*> allFiles = commonData.vData.getAllFiles();
-
-    // Helper lambda to get all folders recursively
-    std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders =
-        [&](vector<VFolder>& folders, vector<VFolder*>& result) {
-        for (auto& folder : folders) {
-            result.push_back(&folder);
-            getAllFolders(folder.folderList, result);
-        }
-    };
-
-    vector<VFolder*> allFolders;
-    getAllFolders(commonData.vData.folderList, allFolders);
-
-    if (oldOrder < newOrder) {
-        // Moving down - decrease orders of items in between
-        for (auto* file : allFiles) {
-            if (file->docOrder > oldOrder && file->docOrder < newOrder) {
-                file->docOrder--;
-            }
-        }
-    }
-    else {
-        // Moving up - increase orders of items in between
-        for (auto* file : allFiles) {
-            if (file->docOrder >= newOrder && file->docOrder < oldOrder) {
-                file->docOrder++;
-            }
-        }
-    }
-}
-
 // Helper function to recursively adjust orders within a container
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder) {
     if (oldOrder < newOrder) {
@@ -311,22 +277,35 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
     
     
     // Get current buffer ID
-    if (bufferID == -1) {
+    if (bufferID <= 0) {
         bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
     }
-    LRESULT posId = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufferID, 0);
-    
-
-    optional<VFile*> vFileOption = commonData.vData.findFileByDocOrder(posId);
+    optional<VFile*> vFileOption = commonData.vData.findFileByBufferID(bufferID);
     if (!vFileOption) {
         int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
         wchar_t* filePath = new wchar_t[len + 1];
         ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
 
 
+		// Check if file already exists in vData by path or name
+        {
+            string nppFileName = fromWchar(filePath);
+            VFile* vFile = nullptr;
+            if (nppFileName.find_first_of("\\\\") != string::npos) {
+                vFile = commonData.vData.findFileByPath(nppFileName);
+            }
+            else {
+                vFile = commonData.vData.findFileByName(nppFileName);
+            }
+            if (vFile) return;
+        }
+
+
+
+
         // create vFile
 		VFile newFile;
-		newFile.docOrder = posId;
+		newFile.bufferID = bufferID;
 		newFile.setOrder(commonData.vData.getLastOrder() + 1);
 
         string filePathString = fromWchar(filePath);
@@ -334,13 +313,14 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
         newFile.name = lastSlash != string::npos ? filePathString.substr(lastSlash + 1) : filePathString;
 
 		newFile.path = fromWchar(filePath);
-		newFile.view = 0;
+		newFile.view = npp(NPPM_GETCURRENTVIEW, 0, 0);
 		newFile.session = 0;
 		newFile.backupFilePath = "";
 		newFile.isActive = true;
 		commonData.vData.fileList.push_back(newFile);
 
-		VFile* vFilePtr = commonData.vData.findFileByDocOrder(posId).value();
+        vFileOption = commonData.vData.findFileByBufferID(bufferID);
+		VFile* vFilePtr = vFileOption.value();
 
 
         // create treeItem
@@ -416,11 +396,11 @@ void updateWatcherPanel(UINT_PTR bufferID) {
     updateWatcherPanelUnconditional(bufferID);
 }
 
-void onBeforeFileClosed(int docOrder) {
+void onBeforeFileClosed(UINT_PTR bufferID) {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
-    optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder(docOrder);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
     if (!vFileOpt) {
         OutputDebugStringA("File not found in vData\n");
         return;
@@ -440,8 +420,6 @@ void onBeforeFileClosed(int docOrder) {
         commonData.vData.removeFile(vFileOpt.value()->getOrder());
 
 		adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
-        // TODO: bu hatali buyuk ihtimal. test edilmeli
-		adjustGlobalDocOrdersForFileMove(fileCopy.docOrder - 1, INT_MAX);
 
         
         // Write updated vData to JSON file
@@ -454,9 +432,9 @@ void onBeforeFileClosed(int docOrder) {
 	}
 }
 
-void onFileRenamed(int docOrder, wstring filepath, wstring fullpath) {
+void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath) {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder(docOrder);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
     if (!vFileOpt) {
         OutputDebugStringA("File not found in vData\n");
         return;
@@ -491,6 +469,51 @@ void onFileRenamed(int docOrder, wstring filepath, wstring fullpath) {
 	}
 }
 
+// TODO: get all open files and sync their bufferID's as well
+void syncVDataWithBufferIDs() 
+{
+    int nbFiles = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, ALL_OPEN_FILES);
+
+    std::vector<std::wstring> paths(nbFiles, std::wstring(MAX_PATH, L'\0'));
+
+    TCHAR** filePaths = new TCHAR * [nbFiles];
+    for (int i = 0; i < nbFiles; i++)
+        filePaths[i] = &paths[i][0];
+
+    nbFiles = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETOPENFILENAMES, (WPARAM)filePaths, (LPARAM)nbFiles);
+    for (int i = 0; i < nbFiles; i++) {
+        string nppFileName = fromWchar(filePaths[i]);
+        optional<VFile*> vFileOpt = nullptr;
+        if (nppFileName.find_first_of("\\\\") != string::npos) {
+            vFileOpt = commonData.vData.findFileByPath(nppFileName);
+        }
+        else {
+            vFileOpt = commonData.vData.findFileByName(nppFileName);
+        }
+        if (!vFileOpt) continue;
+        if (vFileOpt.value()->bufferID > 0) continue;
+
+        LOG("syncVDataWithBufferIDs index: {}, view: {}, filename: {}", i, vFileOpt.value()->view, vFileOpt.value()->name);
+        UINT_PTR bufferID = (UINT_PTR)SendMessage(plugin.nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, i, (LPARAM)vFileOpt.value()->view);
+
+
+        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)vFileOpt.value()->view);
+        wchar_t* fileFullPath = new wchar_t[len + 1];
+        SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)fileFullPath);
+
+        // check if fileFullPath is empty
+        if (fromWchar(fileFullPath).empty()) {
+            LOG("File full path is empty, skipping: [{}]", fromWchar(fileFullPath));
+            continue;
+        }
+        else {
+			vFileOpt.value()->bufferID = bufferID;
+        }
+    }
+
+    LOG("syncVDataWithBufferIDs finished");
+    
+}
 
 void toggleWatcherPanelWithList() {
     if (!watcherPanel) {
@@ -514,7 +537,6 @@ void toggleWatcherPanelWithList() {
         
         // Sync vData with open files
         syncVDataWithOpenFiles(commonData.vData, commonData.openFiles);
-        
 
 		
         writeJsonFile();

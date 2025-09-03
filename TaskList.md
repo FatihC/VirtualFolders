@@ -17,7 +17,7 @@
 	- [x] Bir üste giderken problem
 	- [x] Bir alta giderken
 	- [x] Inner folder outer folder'dan cikarilmali
-- [ ] NPPN_DOCORDERCHANGED 
+- [x] NPPN_DOCORDERCHANGED (FAILED) -> Doc Order yerine buffer ve path ile ilerlenecek
 - [x] Ortadan bir dosya silince tree'nin güncellenmesi
 - [x] Ust menuden dosya acma
 - [?] DOsya npp penceresinin üzerine bırakınca (bu normal document listte de çalışmıyor)

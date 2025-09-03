@@ -50,7 +50,7 @@ public:
 	// Add this inside the VFile class definition, after the private section
 	friend void from_json(const json& j, VFile& f);
 
-	int docOrder; // Order in the document list
+	UINT_PTR bufferID = 0;
 	
 	int view;
 	int session;
@@ -77,7 +77,7 @@ public:
 	vector<VFile*> getAllFiles() const;
 	void vFolderSort();
 	optional<VFile*> findFileByOrder(int order) const;
-	optional<VFile*> findFileByDocOrder(int docOrder) const;
+	optional<VFile*> findFileByBufferID(UINT_PTR bufferID) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
 	void move(int steps);
 	VFolder* findParentFolder(int order) const;
@@ -87,6 +87,7 @@ public:
 	void addFile(VFile* vFile);
 	int getLastOrder() const;
 	VFile* findFileByPath(const string& path) const;
+	VFile* findFileByName(const string& name) const;
 	int countItemsInFolder() const;
 	optional<VBase*> getChildByOrder(int order) const;
 	optional<VBase*> findAboveSibling(int order);
@@ -104,13 +105,14 @@ public:
 	void vDataSort();
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
-	optional<VFile*> findFileByDocOrder(int docOrder) const;
+	optional<VFile*> findFileByBufferID(UINT_PTR bufferID) const;
 	bool isInRoot(int order) const;
 	VFolder* findParentFolder(int order) const;
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void removeFile(int order);
 	void removeChild(int order);
 	VFile* findFileByPath(const string& path) const;
+	VFile* findFileByName(const string& name) const;
 	int getLastOrder() const;
 	optional<VBase*> findAboveSibling(int order);
 	vector<VBase*> getAllChildren();
@@ -121,7 +123,6 @@ public:
 inline void to_json(json& j, const VFile& f) {
 	j = json{ 
 		{"order", f.getOrder()},
-		{"docOrder", f.docOrder},
 		{"name", f.name}, 
 		{"path", f.path},
 		{"view", f.view},
@@ -153,7 +154,6 @@ inline void to_json(json& j, const VData& data) {
 
 inline void from_json(const json& j, VFile& f) {
 	if (j.contains("order")) j.at("order").get_to(f.order);
-	if (j.contains("docOrder")) j.at("docOrder").get_to(f.docOrder);
 	if (j.contains("name")) j.at("name").get_to(f.name);
 	if (j.contains("path")) j.at("path").get_to(f.path);
 	if (j.contains("view")) j.at("view").get_to(f.view);

@@ -137,6 +137,22 @@ VFile* VData::findFileByPath(const string& path) const {
 	return nullptr; // Return null if not found
 }
 
+VFile* VData::findFileByName(const string& name) const {
+	for (const auto& file : fileList) {
+		if (file.name == name) {
+			return const_cast<VFile*>(&file); // Return a non-const pointer
+		}
+	}
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		VFile* foundFile = folder.findFileByName(name);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+	return nullptr; // Return null if not found
+}
+
 VFile* VFolder::findFileByPath(const string& path) const {
 	for (const auto& file : fileList) {
 		if (file.path == path) {
@@ -146,6 +162,22 @@ VFile* VFolder::findFileByPath(const string& path) const {
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
 		VFile* foundFile = folder.findFileByPath(path);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+	return nullptr; // Return null if not found
+}
+
+VFile* VFolder::findFileByName(const string& name) const {
+	for (const auto& file : fileList) {
+		if (file.name == name) {
+			return const_cast<VFile*>(&file); // Return a non-const pointer
+		}
+	}
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		VFile* foundFile = folder.findFileByName(name);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -230,16 +262,16 @@ optional<VBase*> VFolder::findAboveSibling(int order) {
 	return aboveSibling;
 }
 
-optional<VFile*> VData::findFileByDocOrder(int docOrder) const {
+optional<VFile*> VData::findFileByBufferID(UINT_PTR bufferID) const {
 	for (const auto& file : fileList) {
-		if (file.docOrder == docOrder) {
+		if (file.bufferID == bufferID) {
 			return &const_cast<VFile&>(file);
 		}
 	}
 
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		optional<VFile*> foundFile = folder.findFileByDocOrder(docOrder);
+		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -267,16 +299,16 @@ optional<VFile*> VFolder::findFileByOrder(int order) const {
 	return std::nullopt; // Return null if not found  
 }
 
-optional<VFile*> VFolder::findFileByDocOrder(int docOrder) const {
+optional<VFile*> VFolder::findFileByBufferID(UINT_PTR bufferID) const {
 	for (const auto& file : fileList) {
-		if (file.docOrder == docOrder) {
+		if (file.bufferID == bufferID) {
 			return &const_cast<VFile&>(file);
 		}
 	}
 
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		optional<VFile*> foundFile = folder.findFileByDocOrder(docOrder);
+		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -554,6 +586,8 @@ json loadVDataFromFile(const std::wstring& filePath) {
     }
 }
 
+
+
 void syncVDataWithOpenFiles(VData& vData, vector<VFile>& openFiles) {
     // Create a map of existing files in vData for quick lookup using name and backupFilePath
     map<string, size_t> existingFileIndices;
@@ -586,7 +620,6 @@ void syncVDataWithOpenFiles(VData& vData, vector<VFile>& openFiles) {
 				}
 				else {
 					existingFile->isActive = openFiles[i].isActive;
-					existingFile->docOrder = i;
 				}
 				existingFile->isEdited = openFiles[i].isEdited;
 			}
@@ -606,3 +639,4 @@ void syncVDataWithOpenFiles(VData& vData, vector<VFile>& openFiles) {
         vData.fileList.end()
     );
 }
+

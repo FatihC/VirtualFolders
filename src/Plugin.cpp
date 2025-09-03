@@ -42,7 +42,6 @@ void beforeFileClose(const NMHDR*);
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
 void fileRenamed(const NMHDR*);
-void docOrderChanged(const NMHDR*);
 void modifyAll(const NMHDR*);
 void nppReady();
 void nppShutdown();
@@ -186,9 +185,6 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             }
             break;
         case NPPM_SHOWDOCLIST:
-            break;
-        case NPPN_DOCORDERCHANGED:
-            docOrderChanged(nmhdr);
             break;
         case NPPN_READY:
             // If you use Scintilla::Notification::Modified, send the following message to tell Notepad++

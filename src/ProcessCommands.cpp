@@ -71,8 +71,7 @@ std::vector<VFile> listOpenFiles() {
         const auto& sessionFile = session.mainView.files[i];
         VFile vFile = sessionFileToVFile(sessionFile, 0); // Main view
         vFile.setOrder(i);
-        vFile.docOrder = static_cast<int>(i);
-        vFile.isActive = session.mainView.activeIndex == vFile.docOrder;
+        //vFile.isActive = session.mainView.activeIndex == vFile.docOrder;
         fileList.push_back(vFile);
     }
     
@@ -81,8 +80,7 @@ std::vector<VFile> listOpenFiles() {
         const auto& sessionFile = session.subView.files[i];
         VFile vFile = sessionFileToVFile(sessionFile, 1); // Sub view
         vFile.setOrder(i);
-        vFile.docOrder = static_cast<int>(i);
-        vFile.isActive = session.subView.activeIndex == vFile.docOrder;
+        //vFile.isActive = session.subView.activeIndex == vFile.docOrder;
         fileList.push_back(vFile);
     }
     

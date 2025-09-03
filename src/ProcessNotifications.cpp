@@ -17,17 +17,17 @@
 #include "CommonData.h"
 #include "model/VData.h"
 #include "ProcessCommands.h"
-#include "DocumentListListener.h"
+
 
 
 
 extern void updateStatusDialog();
 extern void updateWatcherPanel(UINT_PTR bufferID);
-extern void onBeforeFileClosed(int pos);
-extern void onFileRenamed(int pos, wstring filepath, wstring fullpath);
+extern void onBeforeFileClosed(UINT_PTR bufferID);
+extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
 extern void changeTreeItemIcon(UINT_PTR bufferID);
-extern void docOrderChanged(UINT_PTR bufferID, int newIndex, wchar_t* filePath);
+extern void syncVDataWithBufferIDs();
 
 
 
@@ -85,13 +85,8 @@ void beforeFileClose(const NMHDR* nmhdr) {
     if (plugin.startupOrShutdown) {
         return;
     }
-    auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
-    if (position == -1) {
-        return;
-    }
 
-    // TODO: remove file from vData
-    onBeforeFileClosed(position);
+    onBeforeFileClosed(nmhdr->idFrom);
 }
 
 
@@ -128,19 +123,7 @@ void fileRenamed(const NMHDR* nmhdr) {
     std::wstring fullpath(fullpathPtr);
     delete[] fullpathPtr; // Clean up the allocated memory
 
-    auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
-    if (position == -1) {
-        return;
-    }
-    onFileRenamed(position, filepath, fullpath);
-}
-
-void docOrderChanged(const NMHDR* nmhdr) {
-    UINT_PTR bufferID = nmhdr->idFrom;
-    int newIndex = (int)nmhdr->hwndFrom;  // overloaded use
-
-    wchar_t* filePath = getFullPathFromBufferID(bufferID);
-    docOrderChanged(bufferID, newIndex, filePath);
+    onFileRenamed(nmhdr->idFrom, filepath, fullpath);
 }
 
 // Add this new notification handler for session loading
@@ -165,12 +148,9 @@ void nppReady() {
     if (commonData.virtualFoldersTabSelected.get()) {
         // Switch to Virtual Folders tab
         npp(NPPM_DMMVIEWOTHERTAB, 0, reinterpret_cast<LPARAM>(L"Virtual Folders"));
-        // Hook Document List
     }
     
-    //hookDocList(plugin.nppData._nppHandle);
-    
-    SetTimer(watcherPanel, 1, 1000, nullptr); // 1-second interval
+    syncVDataWithBufferIDs();
 
 }
 

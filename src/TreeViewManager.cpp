@@ -26,7 +26,6 @@
 #include <algorithm>
 #define NOMINMAX
 #include <windowsx.h>
-#include "DocumentListListener.h"
 
 
 #pragma comment(lib, "comctl32.lib")
@@ -51,7 +50,6 @@ DialogStretch stretch;
 // Forward declarations
 void writeJsonFile();
 void updateWatcherPanelUnconditional(UINT_PTR bufferID);
-void docOrderChanged(UINT_PTR bufferID, int newIndex);
 
 
 LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
@@ -104,17 +102,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     static InsertionMark lastMark = {};
     
     switch (uMsg) {
-    case WM_TIMER:
-        if (wParam == 1) { // our timer ID
-			bool isHooked = hookDocList(plugin.nppData._nppHandle);
-            if (isHooked) {
-                KillTimer(hwndDlg, 1); // stop checking
-            }
-        }
-        break;
-    case WM_DESTROY:
-        KillTimer(hwndDlg, 1); // clean up timer
-        break;
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
@@ -372,8 +359,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 			TVITEM item = getTreeItem(hTree, selectedTreeItem);
 			optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
             if (vFileOpt) {
-                UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-                npp(NPPM_MENUCOMMAND, bufferID, IDM_FILE_CLOSE);
+                npp(NPPM_MENUCOMMAND, vFileOpt.value()->bufferID, IDM_FILE_CLOSE);
             }
             return TRUE;
         } 
@@ -454,9 +440,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
                 vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
 
-
-                UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-                changeTreeItemIcon(bufferID);
+                changeTreeItemIcon(vFileOpt.value()->bufferID);
             }
 
             // TODO: change icon 
@@ -798,11 +782,10 @@ LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID)
         return false;
     }
 
-    UINT_PTR bufferID = npp(NPPM_GETBUFFERIDFROMPOS, vFileOpt.value()->docOrder, vFileOpt.value()->view);
-    if (bufferID == -1) {
+    if (vFileOpt.value()->bufferID == -1) {
         return false;
 	}
-    return npp(NPPM_MENUCOMMAND, bufferID, MENU_ID);
+    return npp(NPPM_MENUCOMMAND, vFileOpt.value()->bufferID, MENU_ID);
 
 }
 
@@ -950,33 +933,37 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
     int order = static_cast<int>(item.lParam);
 
     // Find the VFile using the helper function
-    optional<VFile*> selectedFile = commonData.vData.findFileByOrder(order);
+    optional<VFile*> selectedFileOpt = commonData.vData.findFileByOrder(order);
 
     // If file found and has a valid path, open it
-    if (selectedFile && !selectedFile.value()->path.empty()) {
-        std::wstring wideName(selectedFile.value()->name.begin(), selectedFile.value()->name.end()); // opens by name. not path. With path it opens as a new file
-        std::wstring widePath = std::wstring(selectedFile.value()->path.begin(), selectedFile.value()->path.end()); // opens by path.
-        if (selectedFile.value()->backupFilePath.empty()) {
-            wideName = std::wstring(selectedFile.value()->path.begin(), selectedFile.value()->path.end()); // opens by path.
+    if (selectedFileOpt && !selectedFileOpt.value()->path.empty()) {
+		VFile* selectedFile = selectedFileOpt.value();
+
+        std::wstring wideName(selectedFile->name.begin(), selectedFile->name.end()); // opens by name. not path. With path it opens as a new file
+        std::wstring widePath = std::wstring(selectedFile->path.begin(), selectedFile->path.end()); // opens by path.
+        if (selectedFile->backupFilePath.empty()) {
+            wideName = std::wstring(selectedFile->path.begin(), selectedFile->path.end()); // opens by path.
         }
 
-        LOG("Opening file: [{}]", selectedFile.value()->path);
+        LOG("Opening file: [{}]", selectedFile->path);
 
         // First, try to switch to the file if it's already open
         ignoreSelectionChange = true;
+        //std::optional<LRESULT> result = npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
+        //auto result = SendMessage(plugin.nppData._nppHandle, NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
         if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()))) {
             // If file is not open, open it
             npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
         }
-
+        int docOrder = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, (LPARAM)selectedFile->bufferID, selectedFile->view);
         // Optionally, switch to the appropriate view if specified
         // Switch to the specified view (0 = main view, 1 = sub view)
-        if (selectedFile.value()->view >= 0 && selectedFile.value()->view != currentView) {
-            npp(NPPM_ACTIVATEDOC, selectedFile.value()->view, selectedFile.value()->docOrder);
-            currentView = selectedFile.value()->view;
+        if (selectedFile->view >= 0 && selectedFile->view != currentView) {
+            npp(NPPM_ACTIVATEDOC, selectedFile->view, docOrder);
+            currentView = selectedFile->view;
         }
     }
-    else if (selectedFile && selectedFile.value()->path.empty()) {
+    else if (selectedFileOpt && selectedFileOpt.value()->path.empty()) {
         OutputDebugStringA("File has empty path, cannot open");
     }
     else {
@@ -1534,7 +1521,7 @@ void changeTreeItemIcon(UINT_PTR bufferID)
 {
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
     auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
-	optional<VFile*> vFileOpt = commonData.vData.findFileByDocOrder((int)position);
+	optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
     if (!vFileOpt) {
         return;
 	}
@@ -1577,15 +1564,4 @@ void changeTreeItemIcon(UINT_PTR bufferID)
 
 
     TreeView_SetItem(commonData.hTree, &item);
-}
-
-void docOrderChanged(UINT_PTR bufferID, int newDocOrder, wchar_t* filePath)
-{
-    optional<VFile*> vFileOpt = commonData.vData.findFileByPath(fromWchar(filePath));
-    if (!vFileOpt) {
-        return;
-    }
-
-    int oldDocOrder = vFileOpt.value()->docOrder;
-    return;
 }

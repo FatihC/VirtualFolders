@@ -80,7 +80,7 @@ void reorderFolders(int oldOrder, int newOrder);
 void refreshTree(HWND hTree, VData& vData);
 void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
-void adjustGlobalDocOrdersForFileMove(int oldOrder, int newOrder);
+
 
 // Helper functions
 FileLocation findFileLocation(VData& vData, int order);
@@ -97,7 +97,6 @@ void changeTreeItemIcon(UINT_PTR bufferID);
 FolderLocation findFolderLocation(VData& vData, int order);
 void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount);
 
-void docOrderChanged(UINT_PTR bufferID, int newIndex, wchar_t* filePath);
 
 // Dialog procedure for the file view dialog
 // INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

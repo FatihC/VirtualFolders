@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "PluginFramework.h"
-#include "DocumentListListener.h"
 
 PluginData plugin;
 
@@ -51,10 +50,6 @@ extern "C" __declspec(dllexport) void setInfo(NPP::NppData nppData) {
     plugin.nppData = nppData;
     plugin.directStatusScintilla = reinterpret_cast<Scintilla::FunctionDirect>
         (SendMessage(plugin.nppData._scintillaMainHandle, static_cast<UINT>(Scintilla::Message::GetDirectStatusFunction), 0, 0));
-}
-
-extern "C" __declspec(dllexport) void pluginCleanUp() {
-    unhookDocList();
 }
 
 extern "C" __declspec(dllexport) BOOL isUnicode() {return TRUE;}

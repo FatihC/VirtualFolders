@@ -85,9 +85,6 @@
     <ClInclude Include="src\model\VData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\DocumentListListener.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\About.cpp">
@@ -127,9 +124,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\TreeViewManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\DocumentListListener.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
