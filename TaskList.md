@@ -27,10 +27,17 @@
 - [ ] Use std::list instead of vector
 - [ ] Degisik temalarda insertion line
 - [ ] Internationalization
+	- [ ] NPPN_LANGCHANGED
 - [ ] Context Menu
 	- [ ] Move to View Kaldı
 - [x] onBeforeFileClosed'da order docOrder ayari
 - [ ] Dark Mode - Light Mode Change Event
+- [ ] View's
+- [ ] Session
+- [ ] Plugin Menu's
+- [ ] Template'in kodlarından kurtul
+- [ ] NPPN_READONLYCHANGED
+- [ ] No Document List. Just tabs
 
 
 

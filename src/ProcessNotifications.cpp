@@ -17,7 +17,7 @@
 #include "CommonData.h"
 #include "model/VData.h"
 #include "ProcessCommands.h"
-
+#include "DocumentListListener.h"
 
 
 
@@ -27,6 +27,7 @@ extern void onBeforeFileClosed(int pos);
 extern void onFileRenamed(int pos, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
 extern void changeTreeItemIcon(UINT_PTR bufferID);
+extern void docOrderChanged(UINT_PTR bufferID, int newIndex, wchar_t* filePath);
 
 
 
@@ -134,6 +135,14 @@ void fileRenamed(const NMHDR* nmhdr) {
     onFileRenamed(position, filepath, fullpath);
 }
 
+void docOrderChanged(const NMHDR* nmhdr) {
+    UINT_PTR bufferID = nmhdr->idFrom;
+    int newIndex = (int)nmhdr->hwndFrom;  // overloaded use
+
+    wchar_t* filePath = getFullPathFromBufferID(bufferID);
+    docOrderChanged(bufferID, newIndex, filePath);
+}
+
 // Add this new notification handler for session loading
 void sessionLoaded() {
     // This gets called when Notepad++ finishes loading the session
@@ -149,13 +158,20 @@ void nppReady() {
 
     commonData.isNppReady = true;
     
+    // Small delay to ensure docking system is ready
+    Sleep(200);
+
     // Restore tab selection if Virtual Folders tab was selected last time
     if (commonData.virtualFoldersTabSelected.get()) {
-        // Small delay to ensure docking system is ready
-        Sleep(200);
         // Switch to Virtual Folders tab
         npp(NPPM_DMMVIEWOTHERTAB, 0, reinterpret_cast<LPARAM>(L"Virtual Folders"));
+        // Hook Document List
     }
+    
+    //hookDocList(plugin.nppData._nppHandle);
+    
+    SetTimer(watcherPanel, 1, 1000, nullptr); // 1-second interval
+
 }
 
 void nppShutdown() {

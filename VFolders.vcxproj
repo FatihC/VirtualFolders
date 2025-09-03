@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CommonData.h" />
+    <ClInclude Include="src\DocumentListListener.h" />
     <ClInclude Include="src\RenameDialog.h" />
     <ClInclude Include="src\TreeViewManager.h" />
     <ClInclude Include="src\Framework\ConfigFramework.h" />
@@ -44,6 +45,7 @@
     <ClInclude Include="src\Host\Sci_Position.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\DocumentListListener.cpp" />
     <ClCompile Include="src\RenameDialog.cpp" />
     <ClCompile Include="src\TreeViewManager.cpp" />
     <ClCompile Include="src\About.cpp" />

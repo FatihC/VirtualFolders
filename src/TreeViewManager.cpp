@@ -26,6 +26,8 @@
 #include <algorithm>
 #define NOMINMAX
 #include <windowsx.h>
+#include "DocumentListListener.h"
+
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -49,6 +51,7 @@ DialogStretch stretch;
 // Forward declarations
 void writeJsonFile();
 void updateWatcherPanelUnconditional(UINT_PTR bufferID);
+void docOrderChanged(UINT_PTR bufferID, int newIndex);
 
 
 LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
@@ -101,6 +104,17 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     static InsertionMark lastMark = {};
     
     switch (uMsg) {
+    case WM_TIMER:
+        if (wParam == 1) { // our timer ID
+			bool isHooked = hookDocList(plugin.nppData._nppHandle);
+            if (isHooked) {
+                KillTimer(hwndDlg, 1); // stop checking
+            }
+        }
+        break;
+    case WM_DESTROY:
+        KillTimer(hwndDlg, 1); // clean up timer
+        break;
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
@@ -778,8 +792,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
 LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID)
 {
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+    TVITEM item = getTreeItem(commonData.hTree, selectedTreeItem);
     optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
     if (!vFileOpt) {
         return false;
@@ -1564,4 +1577,15 @@ void changeTreeItemIcon(UINT_PTR bufferID)
 
 
     TreeView_SetItem(commonData.hTree, &item);
+}
+
+void docOrderChanged(UINT_PTR bufferID, int newDocOrder, wchar_t* filePath)
+{
+    optional<VFile*> vFileOpt = commonData.vData.findFileByPath(fromWchar(filePath));
+    if (!vFileOpt) {
+        return;
+    }
+
+    int oldDocOrder = vFileOpt.value()->docOrder;
+    return;
 }
