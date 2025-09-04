@@ -6,6 +6,13 @@
 #include <commctrl.h>
 #include <string>
 
+
+
+#define TREEVIEW_TIMER_ID 1
+
+
+
+
 // Forward declarations
 struct InsertionMark {
     HTREEITEM hItem = nullptr;
@@ -80,6 +87,7 @@ void reorderFolders(int oldOrder, int newOrder);
 void refreshTree(HWND hTree, VData& vData);
 void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
+void checkReadOnlyStatus(VFile* selectedFile);
 
 
 // Helper functions

@@ -42,6 +42,7 @@ void beforeFileClose(const NMHDR*);
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
 void fileRenamed(const NMHDR*);
+void readOnlyChanged(const NMHDR*);
 void modifyAll(const NMHDR*);
 void nppReady();
 void nppShutdown();
@@ -184,7 +185,8 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
                 resizeWatcherPanel();
             }
             break;
-        case NPPM_SHOWDOCLIST:
+        case NPPN_READONLYCHANGED:
+			readOnlyChanged(nmhdr);
             break;
         case NPPN_READY:
             // If you use Scintilla::Notification::Modified, send the following message to tell Notepad++
@@ -248,4 +250,9 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
 // This is rarely used, but a few Notepad++ commands call this routine as part of their processing
 
-extern "C" __declspec(dllexport) LRESULT messageProc(UINT, WPARAM, LPARAM) {return TRUE;}
+extern "C" __declspec(dllexport) LRESULT messageProc(UINT uInt, WPARAM wParam, LPARAM lParam) {
+    /*LOG("UINT [{}]", uInt);
+    LOG("WPARAM [{}]", wParam);
+    LOG("LPARAM [{}]", lParam);*/
+    return TRUE;
+}

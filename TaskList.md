@@ -36,7 +36,7 @@
 - [ ] Session
 - [ ] Plugin Menu's
 - [ ] Template'in kodlarından kurtul
-- [ ] NPPN_READONLYCHANGED
+- [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
 - [ ] No Document List. Just tabs
 
 

@@ -61,6 +61,7 @@ void wrapFileInFolder(HTREEITEM selectedTreeItem);
 
 
 
+
 // External variables
 extern HWND watcherPanel;
 
@@ -102,6 +103,11 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     static InsertionMark lastMark = {};
     
     switch (uMsg) {
+    case WM_TIMER:
+        break;
+    case WM_DESTROY:
+        KillTimer(hwndDlg, 1); // clean up timer
+        break;
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
@@ -962,6 +968,8 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
             npp(NPPM_ACTIVATEDOC, selectedFile->view, docOrder);
             currentView = selectedFile->view;
         }
+
+        checkReadOnlyStatus(selectedFile);
     }
     else if (selectedFileOpt && selectedFileOpt.value()->path.empty()) {
         OutputDebugStringA("File has empty path, cannot open");
@@ -969,6 +977,20 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
     else {
         OutputDebugStringA("File not found in vData");
     }
+}
+
+void checkReadOnlyStatus(VFile* selectedFile) {
+    if (selectedFile == nullptr) return;
+    if (!selectedFile->backupFilePath.empty()) return;
+
+    if (selectedFile->view == 0) {
+        selectedFile->isReadOnly = SendMessage(plugin.nppData._scintillaMainHandle, SCI_GETREADONLY, 0, 0);
+    }
+    else {
+        selectedFile->isReadOnly = SendMessage(plugin.nppData._scintillaSecondHandle, SCI_GETREADONLY, 0, 0);
+    }
+
+    changeTreeItemIcon(selectedFile->bufferID);
 }
 
 void moveFileIntoFolder(int dragOrder, int targetOrder) {

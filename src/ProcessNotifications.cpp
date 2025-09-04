@@ -126,6 +126,16 @@ void fileRenamed(const NMHDR* nmhdr) {
     onFileRenamed(nmhdr->idFrom, filepath, fullpath);
 }
 
+void readOnlyChanged(const NMHDR* nmhdr) {
+    // This gets called when a file's read-only status changes
+    // You can check the current buffer's read-only status if needed
+	// bool isReadOnly = npp(NPPM_GETREADONLY, 0, 0);
+    HWND bufferID = nmhdr->hwndFrom;
+    //onReadOnlyChanged();
+    int i = 0;
+
+}
+
 // Add this new notification handler for session loading
 void sessionLoaded() {
     // This gets called when Notepad++ finishes loading the session
@@ -152,6 +162,7 @@ void nppReady() {
     
     syncVDataWithBufferIDs();
 
+    //SetTimer(watcherPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
 }
 
 void nppShutdown() {
