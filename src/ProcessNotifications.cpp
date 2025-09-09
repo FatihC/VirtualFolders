@@ -23,11 +23,12 @@
 
 extern void updateStatusDialog();
 extern void updateWatcherPanel(UINT_PTR bufferID);
-extern void onBeforeFileClosed(UINT_PTR bufferID);
+extern void onFileClosed(UINT_PTR bufferID);
 extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
 extern void changeTreeItemIcon(UINT_PTR bufferID);
-extern void syncVDataWithBufferIDs();
+extern void syncVDataWithBufferIDs(int view);
+extern void toggleViewOfVFile(UINT_PTR bufferID);
 
 
 
@@ -86,18 +87,25 @@ void beforeFileClose(const NMHDR* nmhdr) {
         return;
     }
 
-    onBeforeFileClosed(nmhdr->idFrom);
+    
 }
 
 
 void fileClosed(const NMHDR* nmhdr) {
-    if (!commonData.annoy) return;
+    if (!commonData.isNppReady) return;
     // If the file (buffer) is closed in one view but remains open in the other, or is moved from one view to the other,
     // we still get this notification. So we have to check to see if the buffer is still open in either view.
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
     if (position == -1) /* file is no longer open in either view */ {
         //MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
+
+        onFileClosed(nmhdr->idFrom);
+
+        return;
     }
+    UINT_PTR bufferID = nmhdr->idFrom;
+    toggleViewOfVFile(bufferID);
+
 }
 
 
@@ -160,7 +168,8 @@ void nppReady() {
         npp(NPPM_DMMVIEWOTHERTAB, 0, reinterpret_cast<LPARAM>(L"Virtual Folders"));
     }
     
-    syncVDataWithBufferIDs();
+    syncVDataWithBufferIDs(1);
+    //syncVDataWithBufferIDs(2);
 
     //SetTimer(watcherPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
 }

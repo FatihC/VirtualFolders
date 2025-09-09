@@ -95,7 +95,7 @@ namespace {
 
                         VFolder* vFolder = dynamic_cast<VFolder*>(itemToRename);
                         if (vFolder) {
-                            // TODO: write json file
+                            writeJsonFile();
                         }
                     }
                 }

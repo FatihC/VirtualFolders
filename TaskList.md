@@ -38,6 +38,7 @@
 - [ ] Template'in kodlarından kurtul
 - [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
 - [ ] No Document List. Just tabs
+- [ ] 
 
 
 
@@ -50,3 +51,5 @@
 - [ ] dosya ismi uzun olunca otomatik sağa kaydırıyor
 - [x] dosya isminde '\u0000' olusmasi
 - [ ] ctrl+pagedown secili item'i degistirmedi
+- [ ] Duplicate order - Add to the end
+- [ ] empty vData on exit

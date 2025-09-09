@@ -87,6 +87,8 @@ int calculateNewOrder(int targetOrder, const InsertionMark& mark) {
     }
 }
 
+
+
 // Add a new dialog procedure for the file view dialog (IDD_FILEVIEW)
 INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hTree = nullptr;
@@ -111,6 +113,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
+
+
+        DWORD exStyle = TreeView_GetExtendedStyle(hTree);
+        TreeView_SetExtendedStyle(hTree, exStyle | TVS_EX_AUTOHSCROLL, TVS_EX_AUTOHSCROLL);
+
+
         // Create context menu
         hContextMenu = CreatePopupMenu();
         AppendMenu(hContextMenu, MF_STRING, MENU_ID_TREE_DELETE, L"Delete");
@@ -151,10 +159,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)copyContextSubMenu, L"Copy to Clipboard");
 
 
-        /*moveContextSubMenu = CreatePopupMenu();
-        AppendMenu(moveContextSubMenu, MF_STRING, IDM_MOVE, L"Move to Start");
+
+
+        moveContextSubMenu = CreatePopupMenu();
+        AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_GOTO_ANOTHER_VIEW, L"Move to Other View");
         AppendMenu(moveContextSubMenu, MF_SEPARATOR, 0, NULL);
-        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, L"Move Document");*/
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, L"Move Document");
 
 
         /**********************************************************************************************************************/
@@ -167,25 +177,35 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
         HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
         //HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
+        HICON hIconApp = LoadIcon(NULL, IDI_APPLICATION);
         HICON hIconFolder = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
-        HICON hIconFile = LoadIcon(NULL, IDI_APPLICATION);
         HICON hIconFileLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LIGHT_ICON));
         HICON hIconFileDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_DARK_ICON));
         HICON hIconFileEdited = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_EDITED_ICON));
         HICON hIconFileReadOnlyDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_DARK_ICON));
         HICON hIconFileReadOnlyLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_LIGHT_ICON));
+        HICON hIconSecondaryViewIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_VIEW_2_ICON));
 
         
+        //HIMAGELIST stateImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
 
+        iconIndex[ICON_APP] = ImageList_AddIcon(hImages, hIconApp);
         iconIndex[ICON_FOLDER] = ImageList_AddIcon(hImages, hIconFolder);
-        iconIndex[ICON_FILE] = ImageList_AddIcon(hImages, hIconFile);
         iconIndex[ICON_FILE_LIGHT] = ImageList_AddIcon(hImages, hIconFileLight);
         iconIndex[ICON_FILE_DARK] = ImageList_AddIcon(hImages, hIconFileDark);
         iconIndex[ICON_FILE_EDITED] = ImageList_AddIcon(hImages, hIconFileEdited);
         iconIndex[ICON_FILE_READONLY_DARK] = ImageList_AddIcon(hImages, hIconFileReadOnlyDark);
         iconIndex[ICON_FILE_READONLY_LIGHT] = ImageList_AddIcon(hImages, hIconFileReadOnlyLight);
+        iconIndex[ICON_FILE_SECONDARY_VIEW] = ImageList_AddIcon(hImages, hIconSecondaryViewIcon);
 
         TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
+        TreeView_SetImageList(hTree, hImages, TVSIL_STATE);
+
+
+        //TreeView_SetImageList(hTree, stateImages, TVSIL_STATE);
+
+
+
 
         // Increase item height and indent for better spacing
         // TODO: make this dynamic based on the font size of the UI
@@ -213,7 +233,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     return TRUE;  // Skip processing if Notepad++ isn't ready yet
                 } else if (ignoreSelectionChange) {
                     ignoreSelectionChange = false;  // Reset the flag
-                    //return TRUE;  // Skip processing if we are ignoring this change
+                    return TRUE;  // Skip processing if we are ignoring this change
 				}
 				HTREEITEM selectedTreeItem = pnmtv->itemNew.hItem;
 				treeItemSelected(selectedTreeItem);
@@ -466,6 +486,11 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         {
 			nppMenuCall(selectedTreeItem, IDM_EDIT_CURRENTDIRTOCLIP);
 			return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_VIEW_GOTO_ANOTHER_VIEW)
+        {
+            nppMenuCall(selectedTreeItem, IDM_VIEW_GOTO_ANOTHER_VIEW);
+            return TRUE;
         }
         break;
     }
@@ -955,8 +980,6 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
 
         // First, try to switch to the file if it's already open
         ignoreSelectionChange = true;
-        //std::optional<LRESULT> result = npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
-        //auto result = SendMessage(plugin.nppData._nppHandle, NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
         if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()))) {
             // If file is not open, open it
             npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
@@ -1081,13 +1104,21 @@ HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMo
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = hPrevItem;
-    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
+    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM | TVIF_STATE;
     wcscpy_s(buffer, 100, toWchar(vFile->name));
     tvis.item.pszText = buffer;
+
+    
+    
+    if (vFile->view == 1) {
+        tvis.item.stateMask = TVIS_STATEIMAGEMASK;
+        tvis.item.state = INDEXTOSTATEIMAGEMASK(ICON_FILE_SECONDARY_VIEW); // 1-based index in state image list
+    }
+
     if (vFile->isReadOnly) {
         if (darkMode) {
             tvis.item.iImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
-            tvis.item.iSelectedImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
+            tvis.item.iSelectedImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon        
         }
         else {
             tvis.item.iImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
@@ -1549,20 +1580,34 @@ void changeTreeItemIcon(UINT_PTR bufferID)
 	}
 
     TVITEM item = { 0 };
-    item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+    item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE;
     item.hItem = vFileOpt.value()->hTreeItem;
 
     wchar_t* name = toWchar(vFileOpt.value()->name);
     item.pszText = name;
 
-    if (vFileOpt.value()->isReadOnly && isDarkMode) 
+
+    VFile* vFile = vFileOpt.value();
+
+    
+
+    if (vFile->view == 1) {
+        item.stateMask = TVIS_STATEIMAGEMASK;
+        item.state = INDEXTOSTATEIMAGEMASK(ICON_FILE_SECONDARY_VIEW); // 1-based index in state image list
+    }
+    else {
+        item.stateMask = TVIS_STATEIMAGEMASK;
+        item.state = 0;   // no state image
+    }
+
+    if (vFile->isReadOnly && isDarkMode) 
     {
         item.iImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
         item.iSelectedImage = iconIndex[ICON_FILE_READONLY_DARK]; // Use read-only icon
 
         TreeView_SetItem(commonData.hTree, &item);
         return;
-    } else if (vFileOpt.value()->isReadOnly && !isDarkMode) 
+    } else if (vFile->isReadOnly && !isDarkMode) 
     {
         item.iImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
         item.iSelectedImage = iconIndex[ICON_FILE_READONLY_LIGHT]; // Use read-only icon
@@ -1571,7 +1616,7 @@ void changeTreeItemIcon(UINT_PTR bufferID)
         return;
 	}
 
-	if (vFileOpt.value()->isEdited || (commonData.bufferStates.find(bufferID) != commonData.bufferStates.end() && !commonData.bufferStates[bufferID])) {
+	if (vFile->isEdited || (commonData.bufferStates.find(bufferID) != commonData.bufferStates.end() && !commonData.bufferStates[bufferID])) {
         item.iImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
         item.iSelectedImage = iconIndex[ICON_FILE_EDITED]; // Use edited icon
     }

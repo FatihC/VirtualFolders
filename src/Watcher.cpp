@@ -36,6 +36,8 @@ using json = nlohmann::json;
 #include "RenameDialog.h"
 #include "TreeViewManager.h"
 
+#include <stdlib.h>
+
 // External variables
 extern CommonData commonData;
 
@@ -268,13 +270,11 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
         return;
     }
 
-  //  if (ignoreSelectionChange) {
-  //      ignoreSelectionChange = false;
-		//return; // Ignore this update
-  //  }
+    if (ignoreSelectionChange) {
+        ignoreSelectionChange = false;
+		return; // Ignore this update
+    }
 
-
-    
     
     // Get current buffer ID
     if (bufferID <= 0) {
@@ -286,6 +286,19 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
         wchar_t* filePath = new wchar_t[len + 1];
         ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
 
+        auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
+        if (position == -1) {
+            return;
+        }
+
+        if (position > 256 * 256) { // I am assuming there can not be more than 65536 buffers open
+            int nbFiles = (int)npp(NPPM_GETNBOPENFILES, 0, currentView == 0 ? PRIMARY_VIEW : SECOND_VIEW);
+            if (nbFiles == 1) {
+                // Ignore this buffer-activated event
+                return;
+            }
+
+        }
 
 		// Check if file already exists in vData by path or name
         {
@@ -329,13 +342,16 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 		addFileToTree(vFilePtr, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
         return;
     }
+    
+    currentView = vFileOption.value()->view;
 
 
     if (!IsWindowVisible(watcherPanel)) {
         ignoreSelectionChange = true;
         HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-        HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOption.value()->getOrder()));
-        TreeView_SelectItem(hTree, hSelectedItem);
+        //HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOption.value()->getOrder()));
+        HTREEITEM selectedItem = vFileOption.value()->hTreeItem;
+        TreeView_SelectItem(hTree, selectedItem);
     }
 
 
@@ -396,7 +412,7 @@ void updateWatcherPanel(UINT_PTR bufferID) {
     updateWatcherPanelUnconditional(bufferID);
 }
 
-void onBeforeFileClosed(UINT_PTR bufferID) {
+void onFileClosed(UINT_PTR bufferID) {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
@@ -469,10 +485,24 @@ void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath) {
 	}
 }
 
-// TODO: get all open files and sync their bufferID's as well
-void syncVDataWithBufferIDs() 
+void toggleViewOfVFile(UINT_PTR bufferID)
 {
-    int nbFiles = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, ALL_OPEN_FILES);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
+    if (!vFileOpt) return;
+
+    VFile* vFile = vFileOpt.value();
+    vFile->view = vFile->view == 0 ? 1 : 0;
+    currentView = vFile->view;
+
+    changeTreeItemIcon(bufferID);
+
+    writeJsonFile();
+}
+
+// TODO: get all open files and sync their bufferID's as well
+void syncVDataWithBufferIDs2(int view) 
+{
+    int nbFiles = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, view);
 
     std::vector<std::wstring> paths(nbFiles, std::wstring(MAX_PATH, L'\0'));
 
@@ -512,7 +542,65 @@ void syncVDataWithBufferIDs()
     }
 
     LOG("syncVDataWithBufferIDs finished");
-    
+    paths.clear();
+    delete[] filePaths;
+}
+
+void syncVDataWithBufferIDs(int view)
+{
+    int nbMainViewFile = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, PRIMARY_VIEW);
+    int nbSubViewFile = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, SECOND_VIEW);
+    int nbFile = nbMainViewFile + nbSubViewFile;
+
+    wchar_t** fileNames = (wchar_t**)new wchar_t* [nbFile];
+    vector<UINT_PTR> bufferIDVec(nbFile);
+
+    int i = 0;
+    for (; i < nbMainViewFile; )
+    {
+        LRESULT bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, i, MAIN_VIEW);
+        bufferIDVec[i] = bufferID;
+        LRESULT len = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (WPARAM)nullptr);
+        fileNames[i] = new wchar_t[len + 1];
+        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (WPARAM)fileNames[i]);
+        ++i;
+    }
+
+
+    for (int j = 0; j < nbSubViewFile; ++j)
+    {
+        LRESULT bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, j, SUB_VIEW);
+        bufferIDVec[i] = bufferID;
+        LRESULT len = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (WPARAM)nullptr);
+        fileNames[i] = new wchar_t[len + 1];
+        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (WPARAM)fileNames[i]);
+        ++i;
+    }
+
+    for (int k = 0; k < nbFile; k++) {
+
+        string nppFileName = fromWchar(fileNames[k]);
+        optional<VFile*> vFileOpt = nullptr;
+        if (nppFileName.find_first_of("\\\\") != string::npos) {
+            vFileOpt = commonData.vData.findFileByPath(nppFileName);
+        }
+        else {
+            vFileOpt = commonData.vData.findFileByName(nppFileName);
+        }
+        if (!vFileOpt) continue;
+        if (vFileOpt.value()->bufferID > 0) continue;
+        vFileOpt.value()->bufferID = bufferIDVec[k];
+
+    }
+
+
+
+
+    for (int k = 0; k < nbFile; k++)
+    {
+        delete[] fileNames[k];
+    }
+    delete[] fileNames;
 }
 
 void toggleWatcherPanelWithList() {

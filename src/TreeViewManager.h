@@ -40,13 +40,14 @@ struct FolderLocation {
 
 
 enum IconType {
+    ICON_APP,
     ICON_FOLDER,
-    ICON_FILE,
     ICON_FILE_LIGHT,
     ICON_FILE_DARK,
     ICON_FILE_EDITED,
 	ICON_FILE_READONLY_DARK,
-	ICON_FILE_READONLY_LIGHT
+	ICON_FILE_READONLY_LIGHT,
+    ICON_FILE_SECONDARY_VIEW
 };
 
 extern std::unordered_map<IconType, int> iconIndex;

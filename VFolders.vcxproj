@@ -101,6 +101,7 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\Downloads\2_two_icon_blue.ico" />
     <Image Include="..\..\..\Downloads\file_dark.ico" />
     <Image Include="..\..\..\Downloads\file_edit.ico" />
     <Image Include="..\..\..\Downloads\file_light.ico" />

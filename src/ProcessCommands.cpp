@@ -65,9 +65,10 @@ std::vector<VFile> listOpenFiles() {
 
     std::vector<VFile> fileList;
     
+    size_t i = 0;
     // Convert SessionFile objects to VFile objects
     // Process main view files
-    for (size_t i = 0; i < session.mainView.files.size(); ++i) {
+    for (i = 0; i < session.mainView.files.size(); ++i) {
         const auto& sessionFile = session.mainView.files[i];
         VFile vFile = sessionFileToVFile(sessionFile, 0); // Main view
         vFile.setOrder(i);
@@ -76,22 +77,13 @@ std::vector<VFile> listOpenFiles() {
     }
     
     // Process sub view files
-    for (size_t i = 0; i < session.subView.files.size(); ++i) {
-        const auto& sessionFile = session.subView.files[i];
+    for (size_t j = 0; j < session.subView.files.size(); ++j) {
+        const auto& sessionFile = session.subView.files[j];
         VFile vFile = sessionFileToVFile(sessionFile, 1); // Sub view
-        vFile.setOrder(i);
+        vFile.setOrder(i + j);
         //vFile.isActive = session.subView.activeIndex == vFile.docOrder;
         fileList.push_back(vFile);
     }
-    
-    // Remove files where session is not 0
-    fileList.erase(
-        std::remove_if(fileList.begin(), fileList.end(),
-            [](const VFile& file) {
-                return file.view != 0;
-            }),
-        fileList.end()
-    );
     
     return fileList;
 }

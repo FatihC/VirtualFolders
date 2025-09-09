@@ -260,6 +260,11 @@ inline SessionView parseView(const string& xml, const string& viewName, size_t& 
     while (true) {
         size_t fileStart = xml.find("<File", filePos);
         if (fileStart == string::npos) break;
+
+        if (fileStart >= pos) {
+            // If we reached the end of the view, break
+            break;
+        }
         
         SessionFile file = parseFileElement(xml, filePos);
         if (!file.filename.empty()) {
