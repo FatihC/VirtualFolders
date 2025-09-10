@@ -38,7 +38,9 @@
 - [ ] Template'in kodlarından kurtul
 - [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
 - [ ] No Document List. Just tabs
-- [ ] 
+- [ ] new buffer uretildi ama restart olmadi. path'de sadece new 1 yaziyor. 
+	- [ ] restart olmuyor json'i silmezsen
+- [ ]
 
 
 
@@ -53,3 +55,5 @@
 - [ ] ctrl+pagedown secili item'i degistirmedi
 - [ ] Duplicate order - Add to the end
 - [ ] empty vData on exit
+- [x] Acilista view=1 olan ama subview'de olmayanlari view=0 yap
+- [ ] 

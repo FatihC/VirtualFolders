@@ -78,6 +78,7 @@ public:
 	void vFolderSort();
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFile*> findFileByBufferID(UINT_PTR bufferID) const;
+	optional<VFile*> findFileByBufferID(UINT_PTR bufferID, int view) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
 	void move(int steps);
 	VFolder* findParentFolder(int order) const;
@@ -93,6 +94,7 @@ public:
 	optional<VBase*> findAboveSibling(int order);
 	vector<VBase*> getAllChildren();
 	void addChildren(vector<VBase*>& allChildren);
+	vector<VFile*> getAllFilesByBufferID(UINT_PTR bufferID) const;
 };
 
 class VData
@@ -106,6 +108,7 @@ public:
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFolder*> findFolderByOrder(int order) const;
 	optional<VFile*> findFileByBufferID(UINT_PTR bufferID) const;
+	optional<VFile*> findFileByBufferID(UINT_PTR bufferID, int view) const;
 	bool isInRoot(int order) const;
 	VFolder* findParentFolder(int order) const;
 	void adjustOrders(int beginOrder, int endOrder, int step);
@@ -117,6 +120,7 @@ public:
 	optional<VBase*> findAboveSibling(int order);
 	vector<VBase*> getAllChildren();
 	void addChildren(vector<VBase*>& allChildren);
+	vector<VFile*> getAllFilesByBufferID(UINT_PTR bufferID) const;
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)

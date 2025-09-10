@@ -276,9 +276,9 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
     }
 
     
-    // Get current buffer ID
+    // Get current buffer ID. This is for if I lost the bufferID or could not get at the start
     if (bufferID <= 0) {
-        bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+        bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0); // does not take view as param
     }
     optional<VFile*> vFileOption = commonData.vData.findFileByBufferID(bufferID);
     if (!vFileOption) {
@@ -286,13 +286,13 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
         wchar_t* filePath = new wchar_t[len + 1];
         ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
 
-        auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
+        auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, currentView);
         if (position == -1) {
             return;
         }
 
         if (position > 256 * 256) { // I am assuming there can not be more than 65536 buffers open
-            int nbFiles = (int)npp(NPPM_GETNBOPENFILES, 0, currentView == 0 ? PRIMARY_VIEW : SECOND_VIEW);
+            int nbFiles = (int)npp(NPPM_GETNBOPENFILES, 0, currentView == MAIN_VIEW ? PRIMARY_VIEW : SECOND_VIEW);
             if (nbFiles == 1) {
                 // Ignore this buffer-activated event
                 return;
@@ -326,7 +326,7 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
         newFile.name = lastSlash != string::npos ? filePathString.substr(lastSlash + 1) : filePathString;
 
 		newFile.path = fromWchar(filePath);
-		newFile.view = npp(NPPM_GETCURRENTVIEW, 0, 0);
+		newFile.view = currentView;
 		newFile.session = 0;
 		newFile.backupFilePath = "";
 		newFile.isActive = true;
@@ -340,8 +340,38 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 		HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
         BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 		addFileToTree(vFilePtr, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
-        return;
+        
+        writeJsonFile();
     }
+    else {
+        // TODO: CHECK if it is a clone
+        // kaç tane var
+        vector<VFile*> allFilesWithBufferID = commonData.vData.getAllFilesByBufferID(bufferID);
+        if (allFilesWithBufferID.size() == 1 && allFilesWithBufferID[0]->view != currentView) { // it is cloned
+            VFile fileCopy = *allFilesWithBufferID[0];
+            fileCopy.hTreeItem = nullptr;
+            fileCopy.view = currentView;
+            fileCopy.incrementOrder();
+
+            adjustGlobalOrdersForFileMove(INT_MAX, fileCopy.getOrder());    // has to adjust orders to insert new item
+
+            VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+            
+
+            // create treeItem
+            HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+            BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+
+            addFileToTree(&fileCopy, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, isDarkMode, allFilesWithBufferID[0]->hTreeItem);
+
+            if (parentFolder) parentFolder->fileList.push_back(fileCopy);
+            else commonData.vData.fileList.push_back(fileCopy);
+            vFileOption = commonData.vData.findFileByBufferID(bufferID, currentView);
+            writeJsonFile();
+        }
+    }
+    
+
     
     currentView = vFileOption.value()->view;
 
@@ -406,9 +436,9 @@ void resizeWatcherPanel() {
     }
 }
 
-void updateWatcherPanel(UINT_PTR bufferID) {
-    if (watcherPanel && IsWindowVisible(watcherPanel)) {
-    }
+void updateWatcherPanel(UINT_PTR bufferID, int activeView) {
+    currentView = activeView;
+    if (watcherPanel && IsWindowVisible(watcherPanel)) {}
     updateWatcherPanelUnconditional(bufferID);
 }
 
@@ -499,53 +529,6 @@ void toggleViewOfVFile(UINT_PTR bufferID)
     writeJsonFile();
 }
 
-// TODO: get all open files and sync their bufferID's as well
-void syncVDataWithBufferIDs2(int view) 
-{
-    int nbFiles = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, view);
-
-    std::vector<std::wstring> paths(nbFiles, std::wstring(MAX_PATH, L'\0'));
-
-    TCHAR** filePaths = new TCHAR * [nbFiles];
-    for (int i = 0; i < nbFiles; i++)
-        filePaths[i] = &paths[i][0];
-
-    nbFiles = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETOPENFILENAMES, (WPARAM)filePaths, (LPARAM)nbFiles);
-    for (int i = 0; i < nbFiles; i++) {
-        string nppFileName = fromWchar(filePaths[i]);
-        optional<VFile*> vFileOpt = nullptr;
-        if (nppFileName.find_first_of("\\\\") != string::npos) {
-            vFileOpt = commonData.vData.findFileByPath(nppFileName);
-        }
-        else {
-            vFileOpt = commonData.vData.findFileByName(nppFileName);
-        }
-        if (!vFileOpt) continue;
-        if (vFileOpt.value()->bufferID > 0) continue;
-
-        LOG("syncVDataWithBufferIDs index: {}, view: {}, filename: {}", i, vFileOpt.value()->view, vFileOpt.value()->name);
-        UINT_PTR bufferID = (UINT_PTR)SendMessage(plugin.nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, i, (LPARAM)vFileOpt.value()->view);
-
-
-        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)vFileOpt.value()->view);
-        wchar_t* fileFullPath = new wchar_t[len + 1];
-        SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)fileFullPath);
-
-        // check if fileFullPath is empty
-        if (fromWchar(fileFullPath).empty()) {
-            LOG("File full path is empty, skipping: [{}]", fromWchar(fileFullPath));
-            continue;
-        }
-        else {
-			vFileOpt.value()->bufferID = bufferID;
-        }
-    }
-
-    LOG("syncVDataWithBufferIDs finished");
-    paths.clear();
-    delete[] filePaths;
-}
-
 void syncVDataWithBufferIDs(int view)
 {
     int nbMainViewFile = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, PRIMARY_VIEW);
@@ -578,19 +561,11 @@ void syncVDataWithBufferIDs(int view)
     }
 
     for (int k = 0; k < nbFile; k++) {
-
-        string nppFileName = fromWchar(fileNames[k]);
-        optional<VFile*> vFileOpt = nullptr;
-        if (nppFileName.find_first_of("\\\\") != string::npos) {
-            vFileOpt = commonData.vData.findFileByPath(nppFileName);
-        }
-        else {
-            vFileOpt = commonData.vData.findFileByName(nppFileName);
-        }
+        optional<VFile*> vFileOpt = commonData.vData.findFileByOrder(k);
         if (!vFileOpt) continue;
         if (vFileOpt.value()->bufferID > 0) continue;
-        vFileOpt.value()->bufferID = bufferIDVec[k];
 
+        vFileOpt.value()->bufferID = bufferIDVec[k];
     }
 
 

@@ -62,7 +62,8 @@ inline struct CommonData {
     VData vData;
     HWND hTree;
     UINT_PTR activeBufferID;
-    std::map<UINT_PTR, bool> bufferStates;
+    std::map<UINT_PTR, bool> bufferStates;  // for save points
+    std::map<UINT_PTR, int> bufferViewMap;  // to keep buffers view
 
 
 } commonData;

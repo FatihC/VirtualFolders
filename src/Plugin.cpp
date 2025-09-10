@@ -137,6 +137,9 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
         case NPPN_BUFFERACTIVATED:
             if (!plugin.startupOrShutdown && !plugin.fileIsOpening) {
                 plugin.getScintillaPointers();
+
+                
+
                 bufferActivated(nmhdr);
             }
             break;

@@ -163,7 +163,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
         moveContextSubMenu = CreatePopupMenu();
         AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_GOTO_ANOTHER_VIEW, L"Move to Other View");
-        AppendMenu(moveContextSubMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_CLONE_TO_ANOTHER_VIEW, L"Clone to Other View");
         AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, L"Move Document");
 
 
@@ -490,6 +490,11 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         else if (LOWORD(wParam) == IDM_VIEW_GOTO_ANOTHER_VIEW)
         {
             nppMenuCall(selectedTreeItem, IDM_VIEW_GOTO_ANOTHER_VIEW);
+            return TRUE;
+        }
+        else if (LOWORD(wParam) == IDM_VIEW_CLONE_TO_ANOTHER_VIEW)
+        {
+            nppMenuCall(selectedTreeItem, IDM_VIEW_CLONE_TO_ANOTHER_VIEW);
             return TRUE;
         }
         break;
@@ -979,18 +984,43 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
         LOG("Opening file: [{}]", selectedFile->path);
 
         // First, try to switch to the file if it's already open
-        ignoreSelectionChange = true;
-        if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()))) {
-            // If file is not open, open it
-            npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
-        }
-        int docOrder = (int)SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, (LPARAM)selectedFile->bufferID, selectedFile->view);
+        //ignoreSelectionChange = true;
+
+
+
+        //if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()))) {
+        //    // If file is not open, open it
+        //    npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
+        //}
+
+
+        //::OutputDebugStringW(
+        //    (L"[NPPM_GETPOSFROMBUFFERID] bufferID=" + std::to_wstring((UINT_PTR)selectedFile->bufferID) +
+        //        L" view=" + std::to_wstring(selectedFile->view) + L"\n").c_str());
+
+
+
+        intptr_t docOrder = SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, (WPARAM)selectedFile->bufferID, (LPARAM)selectedFile->view);
+        int docView = (docOrder >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
+        int docIndex = docOrder & 0x3FFFFFFF;    // 0-based index
+
+        selectedFile->view = docView;
+
         // Optionally, switch to the appropriate view if specified
         // Switch to the specified view (0 = main view, 1 = sub view)
-        if (selectedFile->view >= 0 && selectedFile->view != currentView) {
+        /*if (selectedFile->view >= 0 && selectedFile->view != currentView) {
             npp(NPPM_ACTIVATEDOC, selectedFile->view, docOrder);
-            currentView = selectedFile->view;
         }
+        currentView = selectedFile->view;*/
+
+
+        npp(NPPM_ACTIVATEDOC, selectedFile->view, docIndex);
+        currentView = selectedFile->view;
+
+        // move focus to the right editor
+        ::PostMessage(plugin.currentScintilla(), WM_SETFOCUS, 0, 0); // timing issue
+
+
 
         checkReadOnlyStatus(selectedFile);
     }
@@ -1338,6 +1368,10 @@ void reorderItems(int oldOrder, int newOrder) {
         
         
     } else if (!movingToRoot && !sourceFolder) {
+        if (targetFolder == nullptr) {
+            // TODO: exception
+            return;
+        }
         // Moving from root to folder
         // Store the file data before removing
         VFile fileData = *movedFile;

@@ -22,7 +22,7 @@
 
 
 extern void updateStatusDialog();
-extern void updateWatcherPanel(UINT_PTR bufferID);
+extern void updateWatcherPanel(UINT_PTR bufferID, int activeView);
 extern void onFileClosed(UINT_PTR bufferID);
 extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
@@ -37,6 +37,7 @@ extern HWND watcherPanel;
 
 
 wchar_t* getFullPathFromBufferID(UINT_PTR bufferID);
+int GetActiveViewForBuffer(UINT_PTR bufferID);
 
 
 void scnModified(const Scintilla::NotificationData* scnp) {
@@ -79,7 +80,14 @@ void scnZoom(const Scintilla::NotificationData* /* scnp */) {
 void bufferActivated(const NMHDR* nmhdr) {
     UINT_PTR bufferID = nmhdr->idFrom;
 	commonData.activeBufferID = bufferID;
-    updateWatcherPanel(bufferID);
+
+    long whichScintilla = 0;
+    npp(NPPM_GETCURRENTSCINTILLA, 0, (LPARAM)&whichScintilla);
+    int view = (whichScintilla == 0) ? MAIN_VIEW : SUB_VIEW;
+
+    //GetActiveViewForBuffer(bufferID);
+
+    updateWatcherPanel(bufferID, view);
 }
 
 void beforeFileClose(const NMHDR* nmhdr) {
@@ -93,6 +101,9 @@ void beforeFileClose(const NMHDR* nmhdr) {
 
 void fileClosed(const NMHDR* nmhdr) {
     if (!commonData.isNppReady) return;
+    if (plugin.startupOrShutdown) return;
+
+
     // If the file (buffer) is closed in one view but remains open in the other, or is moved from one view to the other,
     // we still get this notification. So we have to check to see if the buffer is still open in either view.
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
@@ -214,4 +225,24 @@ wchar_t* getFullPathFromBufferID(UINT_PTR bufferID) {
     ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
 
     return filePath;
+}
+
+
+/**
+* return MAIN_VIEW: 0
+*        SUB_VIEW: 1
+*/
+int GetActiveViewForBuffer(UINT_PTR bufferID)
+{
+    for (int view = SUB_VIEW; view >= MAIN_VIEW; --view)
+    {
+        int activeIndex = (int)npp(NPPM_GETCURRENTDOCINDEX, 0, (LPARAM)view);
+        if (activeIndex != -1)
+        {
+            UINT_PTR activeBufID = (int)npp(NPPM_GETBUFFERIDFROMPOS, (WPARAM)activeIndex, (LPARAM)view);
+            if (activeBufID == bufferID)
+                return view; // this view has the active buffer
+        }
+    }
+    return -1; // not active in either view
 }

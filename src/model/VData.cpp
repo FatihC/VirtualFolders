@@ -280,6 +280,60 @@ optional<VFile*> VData::findFileByBufferID(UINT_PTR bufferID) const {
 	return std::nullopt; // Return null if not found  
 }
 
+optional<VFile*> VData::findFileByBufferID(UINT_PTR bufferID, int view) const {
+	for (const auto& file : fileList) {
+		if (file.bufferID == bufferID && file.view == view) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID, view);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+
+	return std::nullopt; // Return null if not found  
+}
+
+vector<VFile*> VData::getAllFilesByBufferID(UINT_PTR bufferID) const {
+	vector<VFile*> foundedFiles;
+	for (const auto& file : fileList) {
+		if (file.bufferID == bufferID) {
+			foundedFiles.push_back(const_cast<VFile*>(&file));
+		}
+	}
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		vector<VFile*> foundedFilesFromFolder = folder.getAllFilesByBufferID(bufferID);
+		foundedFiles.insert(foundedFiles.end(), foundedFilesFromFolder.begin(), foundedFilesFromFolder.end());
+
+	}
+
+	return foundedFiles;
+}
+
+vector<VFile*> VFolder::getAllFilesByBufferID(UINT_PTR bufferID) const {
+	vector<VFile*> foundedFiles;
+	for (const auto& file : fileList) {
+		if (file.bufferID == bufferID) {
+			foundedFiles.push_back(const_cast<VFile*>(&file));
+		}
+	}
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		vector<VFile*> foundedFilesFromFolder = folder.getAllFilesByBufferID(bufferID);
+		foundedFiles.insert(foundedFiles.end(), foundedFilesFromFolder.begin(), foundedFilesFromFolder.end());
+
+	}
+
+	return foundedFiles;
+}
+
 
 optional<VFile*> VFolder::findFileByOrder(int order) const {
 	for (const auto& file : fileList) {
@@ -309,6 +363,24 @@ optional<VFile*> VFolder::findFileByBufferID(UINT_PTR bufferID) const {
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
 		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID);
+		if (foundFile) {
+			return foundFile;
+		}
+	}
+
+	return std::nullopt; // Return null if not found  
+}
+
+optional<VFile*> VFolder::findFileByBufferID(UINT_PTR bufferID, int view) const {
+	for (const auto& file : fileList) {
+		if (file.bufferID == bufferID && file.view == view) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+
+	// If not found in root, search in folders
+	for (const auto& folder : folderList) {
+		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID, view);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -622,6 +694,7 @@ void syncVDataWithOpenFiles(VData& vData, vector<VFile>& openFiles) {
 					existingFile->isActive = openFiles[i].isActive;
 				}
 				existingFile->isEdited = openFiles[i].isEdited;
+				existingFile->view = openFiles[i].view;
 			}
 		}
 		else {
