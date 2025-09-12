@@ -489,6 +489,18 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         }
         else if (LOWORD(wParam) == IDM_VIEW_GOTO_ANOTHER_VIEW)
         {
+            TVITEM item = getTreeItem(commonData.hTree, selectedTreeItem);
+            optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
+            if (!vFileOpt) {
+                return false;
+            }
+
+            auto position = npp(NPPM_GETPOSFROMBUFFERID, vFileOpt.value()->bufferID, vFileOpt.value()->view);
+            int docView = (position >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
+            int docIndex = position & 0x3FFFFFFF;    // 0-based index
+
+            npp(NPPM_ACTIVATEDOC, vFileOpt.value()->view, docIndex);
+
             nppMenuCall(selectedTreeItem, IDM_VIEW_GOTO_ANOTHER_VIEW);
             return TRUE;
         }

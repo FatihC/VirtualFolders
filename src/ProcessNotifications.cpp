@@ -23,7 +23,7 @@
 
 extern void updateStatusDialog();
 extern void updateWatcherPanel(UINT_PTR bufferID, int activeView);
-extern void onFileClosed(UINT_PTR bufferID);
+extern void onFileClosed(UINT_PTR bufferID, int view = 0);
 extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
 extern void changeTreeItemIcon(UINT_PTR bufferID);
@@ -114,9 +114,9 @@ void fileClosed(const NMHDR* nmhdr) {
 
         return;
     }
-    UINT_PTR bufferID = nmhdr->idFrom;
-    toggleViewOfVFile(bufferID);
+    
 
+    toggleViewOfVFile(nmhdr->idFrom);
 }
 
 

@@ -348,6 +348,8 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
         // kaç tane var
         vector<VFile*> allFilesWithBufferID = commonData.vData.getAllFilesByBufferID(bufferID);
         if (allFilesWithBufferID.size() == 1 && allFilesWithBufferID[0]->view != currentView) { // it is cloned
+            VFolder* parentFolder = commonData.vData.findParentFolder(allFilesWithBufferID[0]->getOrder());
+            
             VFile fileCopy = *allFilesWithBufferID[0];
             fileCopy.hTreeItem = nullptr;
             fileCopy.view = currentView;
@@ -355,7 +357,7 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 
             adjustGlobalOrdersForFileMove(INT_MAX, fileCopy.getOrder());    // has to adjust orders to insert new item
 
-            VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+            
             
 
             // create treeItem
@@ -442,11 +444,11 @@ void updateWatcherPanel(UINT_PTR bufferID, int activeView) {
     updateWatcherPanelUnconditional(bufferID);
 }
 
-void onFileClosed(UINT_PTR bufferID) {
+void onFileClosed(UINT_PTR bufferID, int view) {
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
-    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, view);
     if (!vFileOpt) {
         OutputDebugStringA("File not found in vData\n");
         return;
@@ -460,10 +462,12 @@ void onFileClosed(UINT_PTR bufferID) {
         
 		VFile fileCopy = *(vFileOpt.value());
         VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
-
-
-        // Also remove from vData
-        commonData.vData.removeFile(vFileOpt.value()->getOrder());
+        if (parentFolder) {
+            parentFolder->removeFile(fileCopy.getOrder());
+        }
+        else {
+            commonData.vData.removeFile(fileCopy.getOrder());
+        }
 
 		adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
 
@@ -517,12 +521,70 @@ void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath) {
 
 void toggleViewOfVFile(UINT_PTR bufferID)
 {
-    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
-    if (!vFileOpt) return;
+    auto position1 = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
+    int docView1 = (position1 >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
+    int docIndex1 = position1 & 0x3FFFFFFF;    // 0-based index
 
-    VFile* vFile = vFileOpt.value();
-    vFile->view = vFile->view == 0 ? 1 : 0;
-    currentView = vFile->view;
+    auto position2 = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 1);
+    int docView2 = (position2 >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
+    int docIndex2 = position2 & 0x3FFFFFFF;    // 0-based index
+
+
+    optional<VFile*> vFileMainOpt = commonData.vData.findFileByBufferID(bufferID, MAIN_VIEW);
+    optional<VFile*> vFileSubOpt = commonData.vData.findFileByBufferID(bufferID, SUB_VIEW);
+
+    if (docView1 == 0 && docView2 == 0) {
+		// Main'de var sub'da yok
+        if (!vFileMainOpt && vFileSubOpt) {
+            LOG("TOGGLE sub to main");
+            vFileSubOpt.value()->view = 0;
+			currentView = 0;
+		} else if (vFileMainOpt && vFileSubOpt) {
+            LOG("REMOVE sub");
+			onFileClosed(bufferID, 1);
+            currentView = 0;
+        } else {
+            LOG("IMPOSSIBLE situation 1");
+        }
+    }
+    else if (docView1 == 0 && docView2 == 1) {
+		// Main'de var sub'da var
+        LOG("IMPOSSIBLE situation 2");
+    }
+    else if (docView1 == 1 && docView2 == 1) {
+        // Main'de yok sub'da var
+        if (vFileMainOpt && !vFileSubOpt) {
+            LOG("TOGGLE main to sub");
+			vFileMainOpt.value()->view = 1;
+            currentView = 1;
+        }
+        else if (vFileMainOpt && vFileSubOpt) {
+            LOG("REMOVE main");
+			onFileClosed(bufferID, 0);
+            currentView = 1;
+        }
+        else {
+            LOG("IMPOSSIBLE situation 3");
+		}
+    }
+    
+
+    // 1. Buffer moved
+	//      position is from view=1. Main one closed already    view=0 var  view=1 yok
+    //      -> toggle
+    // 2. Clone moved
+	//      position is from view=0. Sub one closed already     view=0 var  view=1 var
+    //      -> remove view=1
+    // 3. Clone closed
+	//      position is from view=0. Sub one closed already     view=0 var  view=1 var
+	//      -> remove view=1
+    // 4. Cloned original moved
+	//      position is from view=1. Main one closed already    view=0 var view=1 var
+	//      -> remove view=0
+    // 5. Cloned Original closed
+    //      position is from view=1. Main one closed already
+	//      -> remove view=0
+
 
     changeTreeItemIcon(bufferID);
 
@@ -561,10 +623,17 @@ void syncVDataWithBufferIDs(int view)
     }
 
     for (int k = 0; k < nbFile; k++) {
-        optional<VFile*> vFileOpt = commonData.vData.findFileByOrder(k);
+		// TODO: duplicate bufferID control
+        string nppFileName = fromWchar(fileNames[k]);
+        optional<VFile*> vFileOpt = nullptr;
+        if (nppFileName.find_first_of("\\\\") != string::npos) {
+            vFileOpt = commonData.vData.findFileByPath(nppFileName);
+        }
+        else {
+            vFileOpt = commonData.vData.findFileByName(nppFileName);
+        }
         if (!vFileOpt) continue;
         if (vFileOpt.value()->bufferID > 0) continue;
-
         vFileOpt.value()->bufferID = bufferIDVec[k];
     }
 
