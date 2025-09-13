@@ -159,34 +159,25 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\Downloads\folder_icon.ico">
+    <Image Include="resources\file_light.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\Downloads\folderyellow.ico">
+    <Image Include="resources\file_red.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\Downloads\file_light.ico">
+    <Image Include="resources\folderyellow.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\Downloads\file_edit.ico">
+    <Image Include="resources\locked_light.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\Downloads\file_dark.ico">
+    <Image Include="resources\locked_dark.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\Downloads\file_red.ico">
+    <Image Include="resources\two_view.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="..\..\..\Downloads\locked_dark_mode.png">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="..\..\..\Downloads\locked_dark_mode.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="..\..\..\Downloads\locked_light_mode.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="..\..\..\Downloads\2_two_icon_blue.ico">
+    <Image Include="resources\file_dark.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

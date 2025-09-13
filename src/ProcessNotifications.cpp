@@ -27,7 +27,7 @@ extern void onFileClosed(UINT_PTR bufferID, int view = 0);
 extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
 extern void changeTreeItemIcon(UINT_PTR bufferID);
-extern void syncVDataWithBufferIDs(int view);
+extern void syncVDataWithBufferIDs();
 extern void toggleViewOfVFile(UINT_PTR bufferID);
 
 
@@ -179,8 +179,7 @@ void nppReady() {
         npp(NPPM_DMMVIEWOTHERTAB, 0, reinterpret_cast<LPARAM>(L"Virtual Folders"));
     }
     
-    syncVDataWithBufferIDs(1);
-    //syncVDataWithBufferIDs(2);
+    syncVDataWithBufferIDs();
 
     //SetTimer(watcherPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
 }

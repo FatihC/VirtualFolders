@@ -2,7 +2,6 @@
 // Microsoft Visual C++ generated include file.
 // Used by resource.rc
 //
-#define IDI_FILE_LOCKED_LIGHT_ICON      5
 #define IDD_SETTINGS                    101
 #define IDD_ABOUT                       102
 #define IDD_STATUS                      103
@@ -12,17 +11,19 @@
 #define IDD_RENAME                      107
 #define IDI_ICON1                       112
 #define IDI_FOLDER_ICON                 112
-#define IDI_FOLDER_WHITE_ICON           112
-#define IDI_FILE_LIGHT_ICON             114
-#define IDI_FILE_DARK_ICON              115
-#define IDI_FILE_EDITED_ICON            116
 #define IDI_ICON3                       119
 #define IDI_ICON2                       120
-#define IDI_FILE_LOCKED_DARK_ICON       122
 #define IDI_ICON4                       124
-#define IDI_FILE_VIEW_2_ICON            124
+#define IDI_ICON5                       125
+#define IDI_FILE_LIGHT_ICON             138
+#define IDI_FILE_EDITED_ICON            139
+#define IDI_FOLDER_YELLOW               140
+#define IDI_FILE_LOCKED_LIGHT_ICON      142
+#define IDI_FILE_LOCKED_DARK_ICON       143
+#define IDI_FILE_VIEW_2_ICON            144
+#define IDI_ICON6                       145
+#define IDI_FILE_DARK_ICON              145
 #define IDI_FOLDER                      201
-#define IDI_FOLDER_YELLOW               202
 #define IDC_ABOUT_VERSION               1001
 #define IDC_ABOUT_HELP                  1002
 #define IDC_ABOUT_MORE                  1003
@@ -47,7 +48,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        125
+#define _APS_NEXT_RESOURCE_VALUE        146
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1026
 #define _APS_NEXT_SYMED_VALUE           101

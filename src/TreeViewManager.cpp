@@ -1013,6 +1013,10 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
 
 
         intptr_t docOrder = SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, (WPARAM)selectedFile->bufferID, (LPARAM)selectedFile->view);
+        if (docOrder == -1) {
+            LOG("docOrder is -1");
+        }
+
         int docView = (docOrder >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
         int docIndex = docOrder & 0x3FFFFFFF;    // 0-based index
 

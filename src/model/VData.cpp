@@ -121,15 +121,15 @@ void VFolder::vFolderSort()
 	}
 }
 
-VFile* VData::findFileByPath(const string& path) const {
+VFile* VData::findFileByPath(const string& path, int view) const {
 	for (const auto& file : fileList) {
-		if (file.path == path) {
+		if (file.path == path && file.view == view) {
 			return const_cast<VFile*>(&file); // Return a non-const pointer
 		}
 	}
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		VFile* foundFile = folder.findFileByPath(path);
+		VFile* foundFile = folder.findFileByPath(path, view);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -137,15 +137,15 @@ VFile* VData::findFileByPath(const string& path) const {
 	return nullptr; // Return null if not found
 }
 
-VFile* VData::findFileByName(const string& name) const {
+VFile* VData::findFileByName(const string& name, int view) const {
 	for (const auto& file : fileList) {
-		if (file.name == name) {
+		if (file.name == name && file.view == view) {
 			return const_cast<VFile*>(&file); // Return a non-const pointer
 		}
 	}
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		VFile* foundFile = folder.findFileByName(name);
+		VFile* foundFile = folder.findFileByName(name, view);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -153,15 +153,15 @@ VFile* VData::findFileByName(const string& name) const {
 	return nullptr; // Return null if not found
 }
 
-VFile* VFolder::findFileByPath(const string& path) const {
+VFile* VFolder::findFileByPath(const string& path, int view) const {
 	for (const auto& file : fileList) {
-		if (file.path == path) {
+		if (file.path == path && file.view == view) {
 			return const_cast<VFile*>(&file); // Return a non-const pointer
 		}
 	}
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		VFile* foundFile = folder.findFileByPath(path);
+		VFile* foundFile = folder.findFileByPath(path, view);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -169,15 +169,15 @@ VFile* VFolder::findFileByPath(const string& path) const {
 	return nullptr; // Return null if not found
 }
 
-VFile* VFolder::findFileByName(const string& name) const {
+VFile* VFolder::findFileByName(const string& name, int view) const {
 	for (const auto& file : fileList) {
-		if (file.name == name) {
+		if (file.name == name && file.view == view) {
 			return const_cast<VFile*>(&file); // Return a non-const pointer
 		}
 	}
 	// If not found in root, search in folders
 	for (const auto& folder : folderList) {
-		VFile* foundFile = folder.findFileByName(name);
+		VFile* foundFile = folder.findFileByName(name, view);
 		if (foundFile) {
 			return foundFile;
 		}
@@ -658,58 +658,52 @@ json loadVDataFromFile(const std::wstring& filePath) {
     }
 }
 
-
-
 void syncVDataWithOpenFiles(VData& vData, vector<VFile>& openFiles) {
-    // Create a map of existing files in vData for quick lookup using name and backupFilePath
-    map<string, size_t> existingFileIndices;
-	vector<VFile*> allFilesOfVData = vData.getAllFiles();
-	
-	// Populate the map with existing files
-	for (size_t i = 0; i < allFilesOfVData.size(); ++i) {
-		string key = allFilesOfVData[i]->path;
-		existingFileIndices[key] = i;
-	}
-    
-    // Track which open files we've processed
-    std::set<string> processedOpenFiles;
-    
-    // Check each open file
-	for (int i = 0; i < openFiles.size(); i++) {
-    //for (const auto& openFile : openFiles) {
-        /*string key = openFiles[i].backupFilePath.length() == 0 ? openFiles[i] : "";*/
-		string key = openFiles[i].path;
-        processedOpenFiles.insert(key);
-        
-        // Check if this file exists in vData
-        auto it = existingFileIndices.find(key);
-		if (it != existingFileIndices.end()) {
-			size_t index = it->second;
-			if (index < allFilesOfVData.size()) {
-				VFile* existingFile = allFilesOfVData[index];
-				if (existingFile->backupFilePath != openFiles[i].backupFilePath) {
-					existingFile = &openFiles[i];
-				}
-				else {
-					existingFile->isActive = openFiles[i].isActive;
-				}
-				existingFile->isEdited = openFiles[i].isEdited;
-				existingFile->view = openFiles[i].view;
-			}
-		}
-		else {
-			vData.fileList.push_back(openFiles[i]);
-		}
-    }
-    
-    // Remove files from vData that are no longer in openFiles
-    vData.fileList.erase(
-        std::remove_if(vData.fileList.begin(), vData.fileList.end(),
-            [&processedOpenFiles](const VFile& file) {
-                string key = file.path;
-                return processedOpenFiles.find(key) == processedOpenFiles.end();
-            }),
-        vData.fileList.end()
-    );
-}
 
+	for (int i=0; i < openFiles.size(); i++) {
+		VFile* jsonVFile = vData.findFileByPath(openFiles[i].path, openFiles[i].view);
+		if (!jsonVFile) {
+			vData.fileList.push_back(openFiles[i]);
+			continue;
+		}
+
+		if (jsonVFile->path == openFiles[i].path) {
+			if (jsonVFile->backupFilePath != openFiles[i].backupFilePath) {
+				jsonVFile->name = openFiles[i].name;
+				jsonVFile->backupFilePath = openFiles[i].backupFilePath;
+			}
+			else {
+				jsonVFile->isActive = openFiles[i].isActive;
+			}
+			jsonVFile->isEdited = openFiles[i].isEdited;
+			jsonVFile->view = openFiles[i].view;
+		}
+	}
+
+	// Remove files from vData that are no longer in openFiles. Considering path and view.
+	vData.fileList.erase(
+		std::remove_if(vData.fileList.begin(), vData.fileList.end(),
+			[&openFiles](const VFile& file) {
+				auto it = std::find_if(openFiles.begin(), openFiles.end(),
+					[&file](const VFile& openFile) {
+						return openFile.path == file.path && openFile.view == file.view;
+					});
+				return it == openFiles.end();
+			}),
+		vData.fileList.end()
+	);
+
+	/*vData.fileList.erase(
+		std::remove_if(vData.fileList.begin(), vData.fileList.end(),
+			[&openFiles](const VFile& file) {
+				return std::none_of(openFiles.begin(), openFiles.end(),
+					[&file](const VFile& openFile) {
+						return file.path == openFile.path && file.view == openFile.view;
+					});
+			}),
+		vData.fileList.end()
+	);*/
+	
+
+
+}

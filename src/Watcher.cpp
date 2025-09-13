@@ -591,7 +591,7 @@ void toggleViewOfVFile(UINT_PTR bufferID)
     writeJsonFile();
 }
 
-void syncVDataWithBufferIDs(int view)
+void syncVDataWithBufferIDs()
 {
     int nbMainViewFile = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, PRIMARY_VIEW);
     int nbSubViewFile = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNBOPENFILES, 0, SECOND_VIEW);
@@ -622,19 +622,21 @@ void syncVDataWithBufferIDs(int view)
         ++i;
     }
 
+    int view = 0;
     for (int k = 0; k < nbFile; k++) {
-		// TODO: duplicate bufferID control
+		if (k == nbMainViewFile) view = 1;
+
         string nppFileName = fromWchar(fileNames[k]);
-        optional<VFile*> vFileOpt = nullptr;
+        VFile* vFile = nullptr;
         if (nppFileName.find_first_of("\\\\") != string::npos) {
-            vFileOpt = commonData.vData.findFileByPath(nppFileName);
+            vFile = commonData.vData.findFileByPath(nppFileName, view);
         }
         else {
-            vFileOpt = commonData.vData.findFileByName(nppFileName);
+            vFile = commonData.vData.findFileByName(nppFileName, view);
         }
-        if (!vFileOpt) continue;
-        if (vFileOpt.value()->bufferID > 0) continue;
-        vFileOpt.value()->bufferID = bufferIDVec[k];
+        if (!vFile) continue;
+        if (vFile->bufferID > 0) continue;
+        vFile->bufferID = bufferIDVec[k];
     }
 
 
@@ -675,6 +677,10 @@ void toggleWatcherPanelWithList() {
         
 
         commonData.vData.vDataSort();
+
+        syncVDataWithBufferIDs();
+
+
 		
         int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().getOrder();
 		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().getOrder());

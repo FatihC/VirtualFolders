@@ -87,8 +87,8 @@ public:
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void addFile(VFile* vFile);
 	int getLastOrder() const;
-	VFile* findFileByPath(const string& path) const;
-	VFile* findFileByName(const string& name) const;
+	VFile* findFileByPath(const string& path, int view = 0) const;
+	VFile* findFileByName(const string& name, int view = 0) const;
 	int countItemsInFolder() const;
 	optional<VBase*> getChildByOrder(int order) const;
 	optional<VBase*> findAboveSibling(int order);
@@ -114,8 +114,8 @@ public:
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void removeFile(int order);
 	void removeChild(int order);
-	VFile* findFileByPath(const string& path) const;
-	VFile* findFileByName(const string& name) const;
+	VFile* findFileByPath(const string& path, int view = 0) const;
+	VFile* findFileByName(const string& name, int view = 0) const;
 	int getLastOrder() const;
 	optional<VBase*> findAboveSibling(int order);
 	vector<VBase*> getAllChildren();

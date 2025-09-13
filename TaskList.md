@@ -40,7 +40,10 @@
 - [ ] No Document List. Just tabs
 - [ ] new buffer uretildi ama restart olmadi. path'de sadece new 1 yaziyor. 
 	- [ ] restart olmuyor json'i silmezsen
-- [ ]
+- [ ] File deleted from disk
+	- [ ] While notepad++ is running
+	- [ ] While notepad++ is NOT running
+- [ ] 
 
 
 
@@ -54,6 +57,6 @@
 - [x] dosya isminde '\u0000' olusmasi
 - [ ] ctrl+pagedown secili item'i degistirmedi
 - [ ] Duplicate order - Add to the end
-- [ ] empty vData on exit
+- [x] empty vData on exit
 - [x] Acilista view=1 olan ama subview'de olmayanlari view=0 yap
 - [ ] 

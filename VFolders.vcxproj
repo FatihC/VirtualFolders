@@ -101,16 +101,13 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\Downloads\2_two_icon_blue.ico" />
-    <Image Include="..\..\..\Downloads\file_dark.ico" />
-    <Image Include="..\..\..\Downloads\file_edit.ico" />
-    <Image Include="..\..\..\Downloads\file_light.ico" />
-    <Image Include="..\..\..\Downloads\file_red.ico" />
-    <Image Include="..\..\..\Downloads\folderyellow.ico" />
-    <Image Include="..\..\..\Downloads\folder_icon.ico" />
-    <Image Include="..\..\..\Downloads\locked_dark_mode.ico" />
-    <Image Include="..\..\..\Downloads\locked_dark_mode.png" />
-    <Image Include="..\..\..\Downloads\locked_light_mode.ico" />
+    <Image Include="resources\file_dark.ico" />
+    <Image Include="resources\file_light.ico" />
+    <Image Include="resources\file_red.ico" />
+    <Image Include="resources\folderyellow.ico" />
+    <Image Include="resources\locked_dark.ico" />
+    <Image Include="resources\locked_light.ico" />
+    <Image Include="resources\two_view.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{821f38c0-d927-4c4f-a08c-717c485b0f95}</ProjectGuid>
