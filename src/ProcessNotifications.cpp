@@ -26,7 +26,7 @@ extern void updateWatcherPanel(UINT_PTR bufferID, int activeView);
 extern void onFileClosed(UINT_PTR bufferID, int view = 0);
 extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
-extern void changeTreeItemIcon(UINT_PTR bufferID);
+extern void changeTreeItemIcon(UINT_PTR bufferID, int view);
 extern void syncVDataWithBufferIDs();
 extern void toggleViewOfVFile(UINT_PTR bufferID);
 
@@ -65,7 +65,10 @@ void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint) {
         // Document has been modified since last save
         commonData.bufferStates[bufferID] = false;
     }
-    changeTreeItemIcon(bufferID);
+
+    // TODO: active view
+    changeTreeItemIcon(bufferID, MAIN_VIEW);
+    changeTreeItemIcon(bufferID, SUB_VIEW);
 }
 
 
@@ -108,9 +111,9 @@ void fileClosed(const NMHDR* nmhdr) {
     // we still get this notification. So we have to check to see if the buffer is still open in either view.
     auto position = npp(NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
     if (position == -1) /* file is no longer open in either view */ {
-        //MessageBox(plugin.nppData._nppHandle, L"You closed a file, didn't you?", L"VFolders", 0);
 
-        onFileClosed(nmhdr->idFrom);
+        onFileClosed(nmhdr->idFrom, MAIN_VIEW);
+        onFileClosed(nmhdr->idFrom, SUB_VIEW);
 
         return;
     }
@@ -143,6 +146,45 @@ void fileRenamed(const NMHDR* nmhdr) {
     delete[] fullpathPtr; // Clean up the allocated memory
 
     onFileRenamed(nmhdr->idFrom, filepath, fullpath);
+}
+
+void fileSaved(const NMHDR* nmhdr) 
+{
+    if (!commonData.isNppReady) return;
+    UINT_PTR bufferID = nmhdr->idFrom;
+	//onFileSaved(bufferID);
+
+
+    for (int view = MAIN_VIEW; view <= SUB_VIEW; ++view) {
+        optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, view);
+        if (vFileOpt) {
+
+            wstring wFullPath = getFilePath(bufferID);
+            int len = WideCharToMultiByte(CP_UTF8, 0,
+                wFullPath.c_str(), -1,
+                nullptr, 0, nullptr, nullptr);
+            std::string fullPath(len - 1, 0); // exclude the null terminator
+            WideCharToMultiByte(CP_UTF8, 0,
+                wFullPath.c_str(), -1,
+                &fullPath[0], len, nullptr, nullptr);
+
+
+            vFileOpt.value()->path = fullPath;
+
+            std::filesystem::path file(fullPath);
+            vFileOpt.value()->name = file.filename().string();
+
+
+            vFileOpt.value()->isReadOnly = false; // After saving, the file is no longer read-only
+            vFileOpt.value()->isEdited = false;   // After saving, the file is no longer edited
+            vFileOpt.value()->backupFilePath = ""; // Clear backup path after saving
+            vFileOpt.value()->isActive = true; // Mark as active on save
+            changeTreeItemIcon(bufferID, view);
+        }
+	}
+	writeJsonFile();
+	
+
 }
 
 void readOnlyChanged(const NMHDR* nmhdr) {
@@ -194,6 +236,14 @@ void nppShutdown() {
     } else {
         commonData.virtualFoldersTabSelected = false;
     }
+
+	// Delete files from commonData.vData that does not have backupFilePath and path does not exist
+	vector<VFile*> fileList = commonData.vData.getAllFiles();
+    for (VFile* vFile : fileList) {
+        if (vFile->backupFilePath.empty() && !std::filesystem::exists(vFile->path)) {
+            commonData.vData.removeFile(vFile->getOrder());
+        }
+	}
 }
 
 

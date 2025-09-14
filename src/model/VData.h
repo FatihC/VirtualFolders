@@ -202,4 +202,3 @@ inline void from_json(const json& j, VData& data) {
 
 // Function declarations for functions implemented in VData.cpp
 json loadVDataFromFile(const std::wstring& filePath);
-void syncVDataWithOpenFiles(VData& vData, std::vector<VFile>& openFiles);

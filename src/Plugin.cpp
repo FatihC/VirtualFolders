@@ -42,6 +42,7 @@ void beforeFileClose(const NMHDR*);
 void fileClosed(const NMHDR*);
 void fileOpened(const NMHDR*);
 void fileRenamed(const NMHDR*);
+void fileSaved(const NMHDR*);
 void readOnlyChanged(const NMHDR*);
 void modifyAll(const NMHDR*);
 void nppReady();
@@ -167,7 +168,9 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
         case NPPN_FILERENAMED:
             fileRenamed(nmhdr);
 			break;
-
+        case NPPN_FILESAVED:
+            fileSaved(nmhdr);
+            break;
         case NPPN_GLOBALMODIFIED:
             modifyAll(nmhdr);
             break;
@@ -187,6 +190,8 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
                 // Resize the panel to match the new theme
                 resizeWatcherPanel();
             }
+            break;
+        case NPPN_WORDSTYLESUPDATED:
             break;
         case NPPN_READONLYCHANGED:
 			readOnlyChanged(nmhdr);

@@ -41,8 +41,43 @@ std::string new_line = "\n";
 
 DialogStretch stretch;
 
+static HBRUSH hBgBrush = NULL;
+
+WNDPROC oldTreeProc;
+
+static HTREEITEM hHoveredItem = nullptr;
 
 
+// TreeView subclass procedure
+LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+    case WM_MOUSEMOVE: {
+        // Your hover logic here
+        POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        TVHITTESTINFO hit = { 0 };
+        hit.pt = pt;
+        HTREEITEM hItem = TreeView_HitTest(hwnd, &hit);
+
+        if (hHoveredItem != hItem) {
+            hHoveredItem = hItem;
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+
+        // Track mouse leave
+        TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd, 0 };
+        TrackMouseEvent(&tme);
+        break;
+    }
+    case WM_MOUSELEAVE: {
+        if (hHoveredItem) {
+            hHoveredItem = nullptr;
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        break;
+    }
+	} // switch
+    return CallWindowProc(oldTreeProc, hwnd, msg, wParam, lParam);
+}
 
 
 
@@ -106,6 +141,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     
     switch (uMsg) {
     case WM_TIMER:
+
         break;
     case WM_DESTROY:
         KillTimer(hwndDlg, 1); // clean up timer
@@ -113,6 +149,12 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     case WM_INITDIALOG: {
         stretch.setup(hwndDlg);
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
+
+        oldTreeProc = (WNDPROC)SetWindowLongPtr(hTree, GWLP_WNDPROC, (LONG_PTR)TreeView_SubclassProc);
+
+        // initial color – match the current tree-view background
+        COLORREF bgColor = TreeView_GetBkColor(hTree);
+        hBgBrush = CreateSolidBrush(bgColor);
 
 
         DWORD exStyle = TreeView_GetExtendedStyle(hTree);
@@ -235,6 +277,16 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     ignoreSelectionChange = false;  // Reset the flag
                     return TRUE;  // Skip processing if we are ignoring this change
 				}
+
+
+                COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
+                COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
+                TreeView_SetBkColor(hTree, editorBg);
+                TreeView_SetTextColor(hTree, editorFg);
+                TreeView_SetLineColor(hTree, 0x99FF0000);
+
+
+
 				HTREEITEM selectedTreeItem = pnmtv->itemNew.hItem;
 				treeItemSelected(selectedTreeItem);
                 return TRUE;
@@ -315,7 +367,57 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 }
                 return TRUE;
             }
+            case NM_CUSTOMDRAW: {
+                LPNMTVCUSTOMDRAW tvcd = (LPNMTVCUSTOMDRAW)lParam;
+
+                switch (tvcd->nmcd.dwDrawStage) {
+                case CDDS_PREPAINT:
+                    return CDRF_NOTIFYITEMDRAW;
+
+                case CDDS_ITEMPREPAINT:
+                    HTREEITEM hItem = (HTREEITEM)tvcd->nmcd.dwItemSpec;
+                    COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
+                    tvcd->clrText = editorFg;
+
+                    if (hItem == hHoveredItem && !(tvcd->nmcd.uItemState & CDIS_SELECTED)) {
+                        // Set your hover colors here
+                        tvcd->clrText = RGB(30, 30, 30);      // Foreground (text) color
+                        tvcd->clrTextBk = RGB(200, 220, 255); // Background color
+
+                        // Optionally, custom background fill:
+                        RECT rc;
+                        TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
+                        FillRect(tvcd->nmcd.hdc, &rc, CreateSolidBrush(RGB(200, 220, 255)));
+                        return CDRF_SKIPDEFAULT; // We handled drawing
+                    }
+                    else if (tvcd->nmcd.uItemState & CDIS_SELECTED) {
+                        // draw selection background
+                        RECT rc;
+                        TreeView_GetItemRect(hTree, (HTREEITEM)tvcd->nmcd.dwItemSpec, &rc, TRUE);
+
+                        RECT client;
+                        GetClientRect(hTree, &client);
+						rc.left = client.left; // full row width
+                        rc.right = client.right; // full row width
+
+                        HBRUSH hBrush = CreateSolidBrush(RGB(152, 178, 227)); // selection bg
+                        FillRect(tvcd->nmcd.hdc, &rc, hBrush);
+                        DeleteObject(hBrush);
+                        
+                        // set text color for selected item
+                        tvcd->clrText = RGB(0, 0, 0);;
+                        tvcd->clrTextBk = RGB(152, 178, 227);
+
+                        return CDRF_SKIPPOSTPAINT; // let TreeView draw text & icons
+                    }
+                    else {
+                        // normal item
+                        return CDRF_DODEFAULT;
+                    }
+                }
+
             }
+            } // switch
         }
         if (nmhdr->code == TVN_ITEMEXPANDED) {
 			if (!commonData.isNppReady) return TRUE;  // Skip processing if Notepad++ isn't ready yet
@@ -460,16 +562,18 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         else if (LOWORD(wParam) == IDM_EDIT_SETREADONLY)
         {
             LRESULT result = nppMenuCall(selectedTreeItem, IDM_EDIT_SETREADONLY);
-
+            // TODO: consider view
             if (result) {
                 TVITEM item = getTreeItem(hTree, selectedTreeItem);
                 optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
                 vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
+                changeTreeItemIcon(vFileOpt.value()->bufferID, vFileOpt.value()->view);
 
-                changeTreeItemIcon(vFileOpt.value()->bufferID);
+
+                vFileOpt = commonData.vData.findFileByBufferID(vFileOpt.value()->bufferID, vFileOpt.value()->view == 0 ? 1 : 0);
+                vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
+                changeTreeItemIcon(vFileOpt.value()->bufferID, vFileOpt.value()->view);
             }
-
-            // TODO: change icon 
 			return TRUE;
         }
         else if (LOWORD(wParam) == IDM_EDIT_FULLPATHTOCLIP)
@@ -528,6 +632,25 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         return TRUE;
     }
     case WM_MOUSEMOVE: {
+        if (!isDragging) {
+            POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            if (pt.x == 0 && pt.y == 0) {
+                GetCursorPos(&pt);
+                ScreenToClient(hTree, &pt);
+            }
+            TVHITTESTINFO hit = { 0 };
+            hit.pt = pt;
+            HTREEITEM hItem = TreeView_HitTest(hTree, &hit);
+
+            if (hHoveredItem != hItem) {
+                hHoveredItem = hItem;
+                InvalidateRect(hTree, nullptr, FALSE); // Redraw tree to update hover effect
+            }
+
+            // Start tracking mouse leave
+            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hTree, 0 };
+            TrackMouseEvent(&tme);
+        }
         if (isDragging && hDragImage) {
             POINT pt;
             GetCursorPos(&pt); // screen coordinates
@@ -582,10 +705,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
             // Erase previous line if needed
             if (lastMark.valid && (!newMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
-                std::string debugMsg = "Erasing last mark: left=" + std::to_string(lastMark.lineLeft) + 
-                                     ", right=" + std::to_string(lastMark.lineRight) + 
-                                     ", y=" + std::to_string(lastMark.lineY) + new_line;
-                OutputDebugStringA(debugMsg.c_str());
                 HDC hdc = GetDC(hTree);
                 
                 // Get the actual background color from the tree control
@@ -629,7 +748,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 
                 // Draw the line with theme-appropriate color
                 BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-                COLORREF lineColor = isDarkMode ? RGB(255, 255, 255) : RGB(0, 0, 255);  // White line in dark mode, blue in light mode
+                //COLORREF lineColor = isDarkMode ? RGB(255, 255, 255) : RGB(0, 0, 255);  // White line in dark mode, blue in light mode
+				COLORREF lineColor = TreeView_GetTextColor(hTree); // Use text color for better visibility
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, lineColor));
                 HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(lineColor));
                 Rectangle(hdc, lineLeft, lineY, lineRight, lineY + 4);
@@ -666,10 +786,29 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 ReleaseDC(hTree, hdc);
                 lastMark = {};
             }
+            //POINT pt;
+            //GetCursorPos(&pt); // screen coordinates
+            //ImageList_DragMove(pt.x, pt.y);
+
+            //POINT ptClient = pt;
+            //ScreenToClient(hTree, &ptClient);
+            //TVHITTESTINFO hitTest = { 0 };
+            //hitTest.pt = ptClient;
+            //HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
+
+            //RECT rc;
+            //TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
+            //InvalidateRect(hTree, &rc, TRUE);
+            //UpdateWindow(hTree);
+
         }
         break;
     }
     case WM_MOUSELEAVE: {
+        if (hHoveredItem) {
+            hHoveredItem = nullptr;
+            InvalidateRect(hTree, nullptr, FALSE);
+        }
         // Clear insertion line when mouse leaves the tree area during dragging
         if (isDragging && lastMark.valid) {
             OutputDebugStringA("Mouse left tree area during drag - clearing line\n");
@@ -818,6 +957,8 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     }
     }
+
+    //return CallWindowProc(oldTreeProc, hwndDlg, uMsg, wParam, lParam);
     return FALSE;
 }
 
@@ -998,36 +1139,18 @@ void treeItemSelected(HTREEITEM selectedTreeItem)
         // First, try to switch to the file if it's already open
         //ignoreSelectionChange = true;
 
-
-
-        //if (!npp(NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(wideName.c_str()))) {
-        //    // If file is not open, open it
-        //    npp(NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(wideName.c_str()));
-        //}
-
-
-        //::OutputDebugStringW(
-        //    (L"[NPPM_GETPOSFROMBUFFERID] bufferID=" + std::to_wstring((UINT_PTR)selectedFile->bufferID) +
-        //        L" view=" + std::to_wstring(selectedFile->view) + L"\n").c_str());
-
-
-
         intptr_t docOrder = SendMessage(plugin.nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, (WPARAM)selectedFile->bufferID, (LPARAM)selectedFile->view);
         if (docOrder == -1) {
             LOG("docOrder is -1");
+            // TODO: bulamadysa ne yapmali
+            // OPTION 1: silent remove of tree item and vFile
+            return;
         }
 
         int docView = (docOrder >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
         int docIndex = docOrder & 0x3FFFFFFF;    // 0-based index
 
         selectedFile->view = docView;
-
-        // Optionally, switch to the appropriate view if specified
-        // Switch to the specified view (0 = main view, 1 = sub view)
-        /*if (selectedFile->view >= 0 && selectedFile->view != currentView) {
-            npp(NPPM_ACTIVATEDOC, selectedFile->view, docOrder);
-        }
-        currentView = selectedFile->view;*/
 
 
         npp(NPPM_ACTIVATEDOC, selectedFile->view, docIndex);
@@ -1059,7 +1182,7 @@ void checkReadOnlyStatus(VFile* selectedFile) {
         selectedFile->isReadOnly = SendMessage(plugin.nppData._scintillaSecondHandle, SCI_GETREADONLY, 0, 0);
     }
 
-    changeTreeItemIcon(selectedFile->bufferID);
+    changeTreeItemIcon(selectedFile->bufferID, selectedFile->view);
 }
 
 void moveFileIntoFolder(int dragOrder, int targetOrder) {
@@ -1249,6 +1372,7 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_
 }
 
 void updateTreeColors(HWND hTree) {
+    if (1 == 1) return;
     // Check if dark mode is enabled
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
     
@@ -1260,6 +1384,10 @@ void updateTreeColors(HWND hTree) {
         // Light mode colors
         TreeView_SetBkColor(hTree, RGB(255, 255, 255));  // White background
         TreeView_SetTextColor(hTree, RGB(0, 0, 0));  // Black text
+    }
+    vector<VFile*> allFiles = commonData.vData.getAllFiles();
+    for (VFile* file : allFiles) {
+        changeTreeItemIcon(file->bufferID, file->view);
     }
 }
 
@@ -1620,11 +1748,10 @@ FileLocation findFileLocation(VData& vData, int order) {
     return location;
 }
 
-void changeTreeItemIcon(UINT_PTR bufferID) 
+void changeTreeItemIcon(UINT_PTR bufferID, int view) 
 {
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-    auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, 0);
-	optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
+	optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, view);
     if (!vFileOpt) {
         return;
 	}

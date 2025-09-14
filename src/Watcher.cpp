@@ -53,6 +53,7 @@ extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 
 void writeJsonFile();
 void resizeWatcherPanel();
+void syncVDataWithOpenFiles(std::vector<VFile>& openFiles);
 
 
 
@@ -275,6 +276,9 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 		return; // Ignore this update
     }
 
+    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+
     
     // Get current buffer ID. This is for if I lost the bufferID or could not get at the start
     if (bufferID <= 0) {
@@ -337,8 +341,6 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 
 
         // create treeItem
-		HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-        BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 		addFileToTree(vFilePtr, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
         
         writeJsonFile();
@@ -359,11 +361,7 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 
             
             
-
             // create treeItem
-            HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-            BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-
             addFileToTree(&fileCopy, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, isDarkMode, allFilesWithBufferID[0]->hTreeItem);
 
             if (parentFolder) parentFolder->fileList.push_back(fileCopy);
@@ -377,11 +375,8 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
     
     currentView = vFileOption.value()->view;
 
-
-    if (!IsWindowVisible(watcherPanel)) {
+    if (TreeView_GetSelection(hTree) != vFileOption.value()->hTreeItem) {
         ignoreSelectionChange = true;
-        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
-        //HTREEITEM hSelectedItem = FindItemByLParam(hTree, TVI_ROOT, (LPARAM)(vFileOption.value()->getOrder()));
         HTREEITEM selectedItem = vFileOption.value()->hTreeItem;
         TreeView_SelectItem(hTree, selectedItem);
     }
@@ -586,7 +581,8 @@ void toggleViewOfVFile(UINT_PTR bufferID)
 	//      -> remove view=0
 
 
-    changeTreeItemIcon(bufferID);
+    changeTreeItemIcon(bufferID, MAIN_VIEW);
+    changeTreeItemIcon(bufferID, SUB_VIEW);
 
     writeJsonFile();
 }
@@ -670,7 +666,7 @@ void toggleWatcherPanelWithList() {
         commonData.openFiles = listOpenFiles();
         
         // Sync vData with open files
-        syncVDataWithOpenFiles(commonData.vData, commonData.openFiles);
+        syncVDataWithOpenFiles(commonData.openFiles);
 
 		
         writeJsonFile();
@@ -731,6 +727,76 @@ void toggleWatcherPanelWithList() {
     }
     HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
 	commonData.hTree = hTree;
+}
+
+void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
+
+    for (int i = 0; i < openFiles.size(); i++) {
+        VFile* jsonVFile = commonData.vData.findFileByPath(openFiles[i].path, openFiles[i].view);
+        if (!jsonVFile) {
+            commonData.vData.fileList.push_back(openFiles[i]);
+            continue;
+        }
+
+        if (jsonVFile->path == openFiles[i].path) {
+            if (jsonVFile->backupFilePath != openFiles[i].backupFilePath) {
+                jsonVFile->name = openFiles[i].name;
+                jsonVFile->backupFilePath = openFiles[i].backupFilePath;
+            }
+            else {
+                jsonVFile->isActive = openFiles[i].isActive;
+            }
+            jsonVFile->isEdited = openFiles[i].isEdited;
+            jsonVFile->view = openFiles[i].view;
+            jsonVFile->session = openFiles[i].session;
+            jsonVFile->isReadOnly = openFiles[i].isReadOnly;
+        }
+    }
+
+    // Collect all vFiles that are now in vData but not in openFiles.
+    vector<VFile*> allFiles = commonData.vData.getAllFiles();
+    for (int i = 0; i < allFiles.size(); i++) {
+        for (int j = 0; j < openFiles.size(); j++) {
+            if (allFiles[i]->path == openFiles[j].path && allFiles[i]->view == openFiles[j].view) {
+                break;
+            }
+            if (j == openFiles.size() - 1) {
+                // Not found in openFiles, remove it from vData
+                //commonData.vData.removeFile(allFiles[i]->getOrder());
+
+                VFile fileCopy = *(allFiles[i]);
+                VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+                if (parentFolder) {
+                    parentFolder->removeFile(fileCopy.getOrder());
+                }
+                else {
+                    commonData.vData.removeFile(fileCopy.getOrder());
+                }
+
+                adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
+
+
+            }
+        }
+    }
+
+    // TODO: fix orders
+
+
+    /*vData.fileList.erase(
+        std::remove_if(vData.fileList.begin(), vData.fileList.end(),
+            [&openFiles](const VFile& file) {
+                auto it = std::find_if(openFiles.begin(), openFiles.end(),
+                    [&file](const VFile& openFile) {
+                        return openFile.path == file.path && openFile.view == file.view;
+                    });
+                return it == openFiles.end();
+            }),
+        vData.fileList.end()
+    );*/
+
+
+
 }
 
 wchar_t* toWchar(const std::string& str) {

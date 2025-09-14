@@ -25,25 +25,28 @@
 - [x] Folder moving
 - [x] Folder deleting (Unwrap)
 - [ ] Use std::list instead of vector
-- [ ] Degisik temalarda insertion line
+- [ ] When Theme changed
+	- [ ] Degisik temalarda insertion line
 - [ ] Internationalization
 	- [ ] NPPN_LANGCHANGED
-- [ ] Context Menu
-	- [ ] Move to View Kaldı
+- [x] Context Menu
+	- [x] Move to View Kaldı
 - [x] onBeforeFileClosed'da order docOrder ayari
-- [ ] Dark Mode - Light Mode Change Event
-- [ ] View's
+- [x] Dark Mode - Light Mode Change Event
+- [x] View's
 - [ ] Session
 - [ ] Plugin Menu's
 - [ ] Template'in kodlarından kurtul
 - [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
 - [ ] No Document List. Just tabs
-- [ ] new buffer uretildi ama restart olmadi. path'de sadece new 1 yaziyor. 
-	- [ ] restart olmuyor json'i silmezsen
-- [ ] File deleted from disk
-	- [ ] While notepad++ is running
-	- [ ] While notepad++ is NOT running
-- [ ] 
+- [x] new buffer uretildi ama restart olmadi. path'de sadece new 1 yaziyor. 
+	- [x] restart olmuyor json'i silmezsen
+- [x] File deleted from disk
+	- [x] While notepad++ is running
+	- [x] While notepad++ is NOT running
+- [x] NPPN_FILEDELETEFAILED: gerek yok
+- [ ] If there is a problem with orders. fix at the start. don't crash
+- [ ] Hover color in different themes.
 
 
 
@@ -53,9 +56,9 @@
 - [x] Üst menüden dosya açınca tree'de görünmüyor
 - [x] Bir dosyayı notepad++'in üzerine getirip bırakınca tree'de tüm path gözüküyor. Restart edince düzeliyor.
 - [ ] Bir dosya bir klasörün hemen üstüne taşınırken klasör highlihted ise klasörün sonuna ekliyor. HATA MI?
-- [ ] dosya ismi uzun olunca otomatik sağa kaydırıyor
+- [x] dosya ismi uzun olunca otomatik sağa kaydırıyor
 - [x] dosya isminde '\u0000' olusmasi
-- [ ] ctrl+pagedown secili item'i degistirmedi
+- [x] ctrl+pagedown secili item'i degistirmedi
 - [ ] Duplicate order - Add to the end
 - [x] empty vData on exit
 - [x] Acilista view=1 olan ama subview'de olmayanlari view=0 yap

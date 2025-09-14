@@ -102,7 +102,7 @@ wchar_t* toWchar(const std::string& str);
 std::wstring toWstring(const std::string& str);
 std::string fromWchar(const wchar_t* wstr);
 
-void changeTreeItemIcon(UINT_PTR bufferID);
+void changeTreeItemIcon(UINT_PTR bufferID, int view);
 FolderLocation findFolderLocation(VData& vData, int order);
 void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount);
 

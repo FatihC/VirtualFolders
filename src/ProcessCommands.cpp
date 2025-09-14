@@ -70,25 +70,29 @@ std::vector<VFile> listOpenFiles() {
     // Process main view files
     for (i = 0; i < session.mainView.files.size(); ++i) {
         const auto& sessionFile = session.mainView.files[i];
-        VFile vFile = sessionFileToVFile(sessionFile, 0); // Main view
-        vFile.setOrder(i);
+        optional<VFile> vFileOpt = sessionFileToVFile(sessionFile, 0); // Main view
+		if (!vFileOpt) continue;
+
+        vFileOpt.value().setOrder(i);
         //vFile.isActive = session.mainView.activeIndex == vFile.docOrder;
-        fileList.push_back(vFile);
+        fileList.push_back(vFileOpt.value());
     }
     
     // Process sub view files
     for (size_t j = 0; j < session.subView.files.size(); ++j) {
         const auto& sessionFile = session.subView.files[j];
-        VFile vFile = sessionFileToVFile(sessionFile, 1); // Sub view
-        vFile.setOrder(i + j);
+        optional<VFile> vFileOpt = sessionFileToVFile(sessionFile, 1); // Sub view
+        if (!vFileOpt) continue;
+
+        vFileOpt.value().setOrder(i + j);
         //vFile.isActive = session.subView.activeIndex == vFile.docOrder;
-        fileList.push_back(vFile);
+        fileList.push_back(vFileOpt.value());
     }
     
     return fileList;
 }
 
-VFile sessionFileToVFile(const SessionFile& sessionFile, int view) {
+optional<VFile> sessionFileToVFile(const SessionFile& sessionFile, int view) {
     VFile vFile;
     vFile.setOrder(0); // Will be set by the caller
     
@@ -96,6 +100,9 @@ VFile sessionFileToVFile(const SessionFile& sessionFile, int view) {
     // Extract just the filename from the path
     if (sessionFile.backupFilePath.empty()) {
         std::filesystem::path filePath(sessionFile.filename);
+        if (!std::filesystem::exists(filePath)) {
+            return nullopt;
+        }
         vFile.name = filePath.filename().string();
         vFile.path = sessionFile.filename; // Keep original path
         vFile.isEdited = false;
@@ -115,8 +122,10 @@ VFile sessionFileToVFile(const SessionFile& sessionFile, int view) {
     vFile.view = view; // Use the passed view parameter
     vFile.session = 0; // Default session index
     vFile.backupFilePath = sessionFile.backupFilePath;
+	vFile.isReadOnly = sessionFile.userReadOnly;
 
     return vFile;
+    return const_cast<VFile&>(vFile);
 }
 
 
