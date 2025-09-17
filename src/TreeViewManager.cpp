@@ -1818,3 +1818,38 @@ void changeTreeItemIcon(UINT_PTR bufferID, int view)
 
     TreeView_SetItem(commonData.hTree, &item);
 }
+
+void activateSibling(bool aboveSibling) 
+{
+    UINT_PTR bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, currentView);
+    if (!vFileOpt) {
+        return;
+	}
+	VFile* vFile = vFileOpt.value();
+	int currentOrder = vFile->getOrder();
+    do {
+        if (aboveSibling) {
+            currentOrder--;
+        }
+        else {
+            currentOrder++;
+        }
+
+	    optional<VBase*> sibling = commonData.vData.getChildByOrder(currentOrder);
+        if (!sibling) {
+            if (aboveSibling) {
+                currentOrder = commonData.vData.getLastOrder() + 1;
+            }
+            else {
+				currentOrder = -1;
+            }
+            continue;
+		}
+        if (auto file = dynamic_cast<VFile*>(sibling.value())) {
+			treeItemSelected(file->hTreeItem);
+			return;
+        }
+		currentOrder = sibling.value()->getOrder();
+    } while (true);
+}

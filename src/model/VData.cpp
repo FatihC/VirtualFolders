@@ -399,6 +399,32 @@ optional<VBase*> VFolder::getChildByOrder(int order) const {
 		if (folder.getOrder() == order) {
 			return &const_cast<VFolder&>(folder);
 		}
+		else {
+			optional<VBase*> child = folder.getChildByOrder(order);
+			if (child) {
+				return child;
+			}
+		}
+	}
+	return std::nullopt; // Return null if not found
+}
+
+optional<VBase*> VData::getChildByOrder(int order) const {
+	for (const auto& file : fileList) {
+		if (file.getOrder() == order) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+	for (const auto& folder : folderList) {
+		if (folder.getOrder() == order) {
+			return &const_cast<VFolder&>(folder);
+		}
+		else {
+			optional<VBase*> child = folder.getChildByOrder(order);
+			if (child) {
+				return child;
+			}
+		}
 	}
 	return std::nullopt; // Return null if not found
 }

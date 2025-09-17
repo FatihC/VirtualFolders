@@ -36,6 +36,9 @@ namespace NPP {
 
 extern struct PluginData plugin;  // Instantiated in PluginFramework.cpp
 
+
+
+
 struct PluginData {
 
     NPP::NppData              nppData;                     // handles exposed by Notepad++
@@ -46,6 +49,9 @@ struct PluginData {
     bool                      bypassNotifications = false; // Avoid processing notifications, because we're causing them
     bool                      fileIsOpening       = false; // A new file is opening
     bool                      startupOrShutdown   = true;  // Notepad++ is starting up or shutting down
+	bool                      isShortcutOverridden = false;// True if we have overridden Notepad++ shortcuts
+
+
 
     HWND currentScintilla() const {
         int currentEdit = 0;

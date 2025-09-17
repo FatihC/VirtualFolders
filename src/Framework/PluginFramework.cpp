@@ -18,6 +18,12 @@
 
 PluginData plugin;
 
+extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
+extern int menuItem_ShortcutOverrider;       // Defined in Plugin.cpp
+
+extern void activateSibling(bool aboveSibling);
+
+
 // DLL standard interface and some Notepad++ plugin housekeeping that never changes
 
 BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reasonForCall, LPVOID) {
@@ -54,12 +60,12 @@ LRESULT CALLBACK SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
         case IDM_VIEW_TAB_PREV:
             // Ctrl+PgUp : your own behavior
-            //myPrevDocCommand();
+            activateSibling(true);
             return 0; // swallow so NPP doesn’t process it
 
         case IDM_VIEW_TAB_NEXT:
             // Ctrl+PgDn : your own behavior
-            //myNextDocCommand();
+            activateSibling(false);
             return 0; // swallow so NPP doesn’t process it
         }
     }
@@ -68,21 +74,37 @@ LRESULT CALLBACK SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 
-
+void toggleShortcutOverride() {
+    plugin.isShortcutOverridden = !plugin.isShortcutOverridden;
+    if (plugin.isShortcutOverridden)
+    {
+        oldWndProc = (WNDPROC)SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)SubclassProc);
+    }
+    else
+    {
+        if (oldWndProc)
+        {
+            SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)oldWndProc);
+            oldWndProc = nullptr;
+        }
+	}
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_SETMENUITEMCHECK, menuDefinition[menuItem_ShortcutOverrider]._cmdID, plugin.isShortcutOverridden ? 1 : 0);
+    //npp(NPPM_SETMENUITEMCHECK, menuDefinition[menuItem_ShortcutOverrider]._cmdID, 1);
+}
 
 extern "C" __declspec(dllexport) void setInfo(NPP::NppData nppData) {
     plugin.nppData = nppData;
     plugin.directStatusScintilla = reinterpret_cast<Scintilla::FunctionDirect>
         (SendMessage(plugin.nppData._scintillaMainHandle, static_cast<UINT>(Scintilla::Message::GetDirectStatusFunction), 0, 0));
 
-    oldWndProc = (WNDPROC)SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)SubclassProc);
-    RemoveWindowSubclass(plugin.nppData._nppHandle, SubclassProc, 0);
+    //oldWndProc = (WNDPROC)SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)SubclassProc);
+    ////RemoveWindowSubclass(plugin.nppData._nppHandle, SubclassProc, 0);
 
-    if (oldWndProc)
-    {
-        SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)oldWndProc);
-        oldWndProc = nullptr;
-    }
+    //if (oldWndProc)
+    //{
+    //    SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)oldWndProc);
+    //    oldWndProc = nullptr;
+    //}
 }
 
 extern "C" __declspec(dllexport) BOOL isUnicode() {return TRUE;}

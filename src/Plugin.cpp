@@ -58,6 +58,7 @@ void toggleStatusDialog();
 void toggleWatcherPanel();
 void toggleWatcherPanelWithList();
 void resizeWatcherPanel();
+void toggleShortcutOverride();
 
 
 // External variables
@@ -87,16 +88,18 @@ extern void updateTreeColorsExternal(HWND hTree);
 static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
 
 FuncItem menuDefinition[] = {
-    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);}, 0, false, 0               },
-    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);}, 0, false, &SKToggleStatus },
-    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, 0, false, 0               },
-    { 0                           , 0                                     , 0, false, 0               },
-    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);}, 0, false, 0               },
-    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );}, 0, false, 0               },
+    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);},         0, false,                   0               },
+    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);},         0, false,                   &SKToggleStatus },
+    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, 0, false,                   0               },
+    { 0                           , 0,                                              0, false,                   0               },
+    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         0, false,                   0               },
+    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     0, plugin.isShortcutOverridden,    0               },
+    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         0, false,                   0               },
 };
 
 int menuItem_ToggleStatus  = 1;
 int menuItem_ToggleWatcher = 2;
+int menuItem_ShortcutOverrider = 5;
 
 
 // Tell Notepad++ the plugin name
@@ -110,6 +113,14 @@ extern "C" __declspec(dllexport) const wchar_t* getName() {
 
 extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
     loadConfiguration();
+    
+    menuDefinition[menuItem_ShortcutOverrider]._init2Check = plugin.isShortcutOverridden;
+    if (plugin.isShortcutOverridden) {
+        plugin.isShortcutOverridden = false; // temporary
+        toggleShortcutOverride(); // PluginFrameWork.toggleShortcutOverride
+    }
+
+
     *n = sizeof(menuDefinition) / sizeof(FuncItem);
     return reinterpret_cast<FuncItem*>(&menuDefinition);
 }
