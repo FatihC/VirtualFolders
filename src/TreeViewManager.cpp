@@ -26,7 +26,8 @@
 #include <algorithm>
 #define NOMINMAX
 #include <windowsx.h>
-
+#include <uxtheme.h>
+#pragma comment(lib, "uxtheme.lib")
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -50,17 +51,27 @@ static HTREEITEM hHoveredItem = nullptr;
 
 // TreeView subclass procedure
 LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    static HTREEITEM lastHovered = nullptr;
     switch (msg) {
     case WM_MOUSEMOVE: {
-        // Your hover logic here
         POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
         TVHITTESTINFO hit = { 0 };
         hit.pt = pt;
         HTREEITEM hItem = TreeView_HitTest(hwnd, &hit);
 
         if (hHoveredItem != hItem) {
+            // Invalidate only the old and new hovered items
+            if (hHoveredItem) {
+                RECT rc;
+                if (TreeView_GetItemRect(hwnd, hHoveredItem, &rc, FALSE))
+                    InvalidateRect(hwnd, &rc, FALSE);
+            }
+            if (hItem) {
+                RECT rc;
+                if (TreeView_GetItemRect(hwnd, hItem, &rc, FALSE))
+                    InvalidateRect(hwnd, &rc, FALSE);
+            }
             hHoveredItem = hItem;
-            InvalidateRect(hwnd, nullptr, FALSE);
         }
 
         // Track mouse leave
@@ -70,12 +81,29 @@ LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
     }
     case WM_MOUSELEAVE: {
         if (hHoveredItem) {
+            RECT rc;
+            if (TreeView_GetItemRect(hwnd, hHoveredItem, &rc, FALSE))
+                InvalidateRect(hwnd, &rc, FALSE);
             hHoveredItem = nullptr;
-            InvalidateRect(hwnd, nullptr, FALSE);
         }
         break;
     }
-	} // switch
+    case WM_COMMAND:
+    {
+        switch (LOWORD(wParam))
+        {
+        case IDM_VIEW_TAB_PREV:
+            // Ctrl+PgUp : your own behavior
+            LOG("Keyboard Shortcut: [{}]", IDM_VIEW_TAB_PREV);
+            return 0; // swallow so NPP doesn’t process it
+
+        case IDM_VIEW_TAB_NEXT:
+            // Ctrl+PgDn : your own behavior
+            LOG("Keyboard Shortcut: [{}]", IDM_VIEW_TAB_NEXT);
+            return 0; // swallow so NPP doesn’t process it
+        }
+    }
+    }
     return CallWindowProc(oldTreeProc, hwnd, msg, wParam, lParam);
 }
 
@@ -151,14 +179,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         hTree = GetDlgItem(hwndDlg, IDC_TREE1);
 
         oldTreeProc = (WNDPROC)SetWindowLongPtr(hTree, GWLP_WNDPROC, (LONG_PTR)TreeView_SubclassProc);
+        SetWindowTheme(hTree, L"", L"");
 
         // initial color – match the current tree-view background
-        COLORREF bgColor = TreeView_GetBkColor(hTree);
-        hBgBrush = CreateSolidBrush(bgColor);
+        //COLORREF bgColor = TreeView_GetBkColor(hTree);
+        //hBgBrush = CreateSolidBrush(bgColor);
 
 
-        DWORD exStyle = TreeView_GetExtendedStyle(hTree);
-        TreeView_SetExtendedStyle(hTree, exStyle | TVS_EX_AUTOHSCROLL, TVS_EX_AUTOHSCROLL);
+        //DWORD exStyle = TreeView_GetExtendedStyle(hTree);
+        //TreeView_SetExtendedStyle(hTree, exStyle | TVS_EX_AUTOHSCROLL, TVS_EX_AUTOHSCROLL);
 
 
         // Create context menu
@@ -283,7 +312,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
                 TreeView_SetBkColor(hTree, editorBg);
                 TreeView_SetTextColor(hTree, editorFg);
-                TreeView_SetLineColor(hTree, 0x99FF0000);
+                //TreeView_SetLineColor(hTree, 0x99FF0000);
 
 
 
@@ -369,53 +398,56 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             }
             case NM_CUSTOMDRAW: {
                 LPNMTVCUSTOMDRAW tvcd = (LPNMTVCUSTOMDRAW)lParam;
+				static int hoverItemIndex = 0;
 
                 switch (tvcd->nmcd.dwDrawStage) {
                 case CDDS_PREPAINT:
                     return CDRF_NOTIFYITEMDRAW;
 
-                case CDDS_ITEMPREPAINT:
+                case CDDS_ITEMPREPAINT: {
                     HTREEITEM hItem = (HTREEITEM)tvcd->nmcd.dwItemSpec;
                     COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
-                    tvcd->clrText = editorFg;
+                    COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
 
-                    if (hItem == hHoveredItem && !(tvcd->nmcd.uItemState & CDIS_SELECTED)) {
-                        // Set your hover colors here
-                        tvcd->clrText = RGB(30, 30, 30);      // Foreground (text) color
-                        tvcd->clrTextBk = RGB(200, 220, 255); // Background color
+                    LOG("EditorBg: [{}]", editorBg);
 
-                        // Optionally, custom background fill:
-                        RECT rc;
-                        TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
-                        FillRect(tvcd->nmcd.hdc, &rc, CreateSolidBrush(RGB(200, 220, 255)));
-                        return CDRF_SKIPDEFAULT; // We handled drawing
-                    }
-                    else if (tvcd->nmcd.uItemState & CDIS_SELECTED) {
-                        // draw selection background
-                        RECT rc;
-                        TreeView_GetItemRect(hTree, (HTREEITEM)tvcd->nmcd.dwItemSpec, &rc, TRUE);
+                    COLORREF highlightBg = RGB(200, 220, 255);
 
-                        RECT client;
-                        GetClientRect(hTree, &client);
-						rc.left = client.left; // full row width
-                        rc.right = client.right; // full row width
 
-                        HBRUSH hBrush = CreateSolidBrush(RGB(152, 178, 227)); // selection bg
-                        FillRect(tvcd->nmcd.hdc, &rc, hBrush);
-                        DeleteObject(hBrush);
-                        
-                        // set text color for selected item
-                        tvcd->clrText = RGB(0, 0, 0);;
+                    RECT client;
+                    GetClientRect(hTree, &client);
+                    RECT rc;
+                    TreeView_GetItemRect(hTree, hItem, &rc, FALSE);
+                    rc.left = client.left;
+                    rc.right = client.right;
+
+                    HBRUSH hBrush = nullptr;
+
+
+                    if (tvcd->nmcd.uItemState & CDIS_SELECTED) {
+                        hBrush = CreateSolidBrush(RGB(152, 178, 227));
+                        tvcd->clrText = RGB(0, 0, 0);
                         tvcd->clrTextBk = RGB(152, 178, 227);
-
-                        return CDRF_SKIPPOSTPAINT; // let TreeView draw text & icons
+                    }
+                    else if (hItem == hHoveredItem) {
+                        hBrush = CreateSolidBrush(highlightBg);
+                        tvcd->clrText = editorFg;
+                        tvcd->clrTextBk = highlightBg;
                     }
                     else {
-                        // normal item
-                        return CDRF_DODEFAULT;
+                        hBrush = CreateSolidBrush(editorBg);
+                        tvcd->clrText = editorFg;
+                        tvcd->clrTextBk = editorBg;
                     }
-                }
+                    ++hoverItemIndex;
+                    FillRect(tvcd->nmcd.hdc, &rc, hBrush);
+                    DeleteObject(hBrush);
 
+                    SetBkMode(tvcd->nmcd.hdc, TRANSPARENT);
+
+                    return CDRF_SKIPDEFAULT;
+                }
+				} break;
             }
             } // switch
         }
@@ -632,25 +664,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         return TRUE;
     }
     case WM_MOUSEMOVE: {
-        if (!isDragging) {
-            POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            if (pt.x == 0 && pt.y == 0) {
-                GetCursorPos(&pt);
-                ScreenToClient(hTree, &pt);
-            }
-            TVHITTESTINFO hit = { 0 };
-            hit.pt = pt;
-            HTREEITEM hItem = TreeView_HitTest(hTree, &hit);
-
-            if (hHoveredItem != hItem) {
-                hHoveredItem = hItem;
-                InvalidateRect(hTree, nullptr, FALSE); // Redraw tree to update hover effect
-            }
-
-            // Start tracking mouse leave
-            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hTree, 0 };
-            TrackMouseEvent(&tme);
-        }
         if (isDragging && hDragImage) {
             POINT pt;
             GetCursorPos(&pt); // screen coordinates
@@ -805,10 +818,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         break;
     }
     case WM_MOUSELEAVE: {
-        if (hHoveredItem) {
-            hHoveredItem = nullptr;
-            InvalidateRect(hTree, nullptr, FALSE);
-        }
         // Clear insertion line when mouse leaves the tree area during dragging
         if (isDragging && lastMark.valid) {
             OutputDebugStringA("Mouse left tree area during drag - clearing line\n");

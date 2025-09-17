@@ -46,7 +46,8 @@
 	- [x] While notepad++ is NOT running
 - [x] NPPN_FILEDELETEFAILED: gerek yok
 - [ ] If there is a problem with orders. fix at the start. don't crash
-- [ ] Hover color in different themes.
+- [-] Hover color in different themes: seems not possible. In dark theme my color is ignored.
+- [ ] ctrl+pg dwn-up: catch these events. and switch to new buffer with order number not docOrder
 
 
 
