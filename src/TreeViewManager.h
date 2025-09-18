@@ -106,6 +106,11 @@ void changeTreeItemIcon(UINT_PTR bufferID, int view);
 FolderLocation findFolderLocation(VData& vData, int order);
 void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount);
 
+void activateSibling(bool aboveSibling);
+extern void increaseFontSize();
+extern void decreaseFontSize();
+extern void setFontSize();
+
 
 // Dialog procedure for the file view dialog
 // INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);

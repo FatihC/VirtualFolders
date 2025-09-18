@@ -81,6 +81,14 @@ void loadConfiguration() {
          }
     }
 
+    if (saved.contains("isShortcutOverridden")) {
+        plugin.isShortcutOverridden = saved["isShortcutOverridden"];
+    }
+
+    if (saved.contains("fontSize")) {
+        plugin.fontSize = saved["fontSize"];
+	}
+
     // If changes may be needed to accommodate old versions of the configuration file,
     // check saved["ConfigurationVersion"] here and make adjustments
 
@@ -120,6 +128,9 @@ void saveConfiguration() {
     configuration["*ConfigurationFor*"              ] = configFor;
     configuration["*ConfigurationVersion*"          ] = configVersion;
     configuration["*ConfigurationCompatibleVersion*"] = configCompatible;
+    configuration["isShortcutOverridden"] = plugin.isShortcutOverridden;
+	configuration["fontSize"] = plugin.fontSize;
+
 
     file << std::setw(4) << configuration;
 

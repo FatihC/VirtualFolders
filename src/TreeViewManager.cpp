@@ -33,8 +33,11 @@
 
 // External variables
 extern CommonData commonData;
-extern NPP::FuncItem menuDefinition[];
-extern int menuItem_ToggleWatcher;
+
+extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
+extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
+extern int menuItem_IncreaseFont;      // Defined in Plugin.cpp
+extern int menuItem_DecreaseFont;      // Defined in Plugin.cpp
 
 
 std::unordered_map<IconType, int> iconIndex;
@@ -426,7 +429,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
                     if (tvcd->nmcd.uItemState & CDIS_SELECTED) {
                         hBrush = CreateSolidBrush(RGB(152, 178, 227));
-                        tvcd->clrText = RGB(0, 0, 0);
+                        tvcd->clrText = RGB(255, 255, 255);
                         tvcd->clrTextBk = RGB(152, 178, 227);
                     }
                     else if (hItem == hHoveredItem) {
@@ -1817,4 +1820,112 @@ void changeTreeItemIcon(UINT_PTR bufferID, int view)
 
 
     TreeView_SetItem(commonData.hTree, &item);
+}
+
+void activateSibling(bool aboveSibling) 
+{
+    UINT_PTR bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
+    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, currentView);
+    if (!vFileOpt) {
+        return;
+	}
+	VFile* vFile = vFileOpt.value();
+	int currentOrder = vFile->getOrder();
+    do {
+        if (aboveSibling) {
+            currentOrder--;
+        }
+        else {
+            currentOrder++;
+        }
+
+	    optional<VBase*> sibling = commonData.vData.getChildByOrder(currentOrder);
+        if (!sibling) {
+            if (aboveSibling) {
+                currentOrder = commonData.vData.getLastOrder() + 1;
+            }
+            else {
+				currentOrder = -1;
+            }
+            continue;
+		}
+        if (auto file = dynamic_cast<VFile*>(sibling.value())) {
+			treeItemSelected(file->hTreeItem);
+			return;
+        }
+		currentOrder = sibling.value()->getOrder();
+    } while (true);
+}
+
+extern void increaseFontSize() {
+    if (!commonData.hTree) return;
+    plugin.fontSize++;
+	setFontSize();
+}
+
+extern void decreaseFontSize() {
+    if (!commonData.hTree) return;
+    if (plugin.fontSize > 6) {
+        plugin.fontSize--;
+    }
+	setFontSize();
+}
+
+extern void setFontSize() {
+    if (!commonData.hTree) return;
+    
+    LOGFONTW lf = {};
+    SystemParametersInfoW(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0);
+
+    // adjust font size (lfHeight is in *logical units* — negative means character height in pixels)
+    lf.lfHeight = -plugin.fontSize;  // e.g. -14 for 14px font
+
+    HFONT hFont = CreateFontIndirectW(&lf);
+    SendMessage(commonData.hTree, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+
+
+    // adjust item height to match new font
+    HDC hdc = GetDC(commonData.hTree);
+    TEXTMETRIC tm;
+    HFONT hOld = (HFONT)SelectObject(hdc, hFont);
+    GetTextMetrics(hdc, &tm);
+    SelectObject(hdc, hOld);
+    ReleaseDC(commonData.hTree, hdc);
+
+    // add some padding if desired
+    int newHeight = tm.tmHeight + 4;
+
+    SendMessage(commonData.hTree, TVM_SETITEMHEIGHT, (WPARAM)newHeight, 0);
+
+
+    LOG("Increasing font size");
+
+    std::wstring fontIncreaseLabel = L"Increase Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontDecreaseLabel = L"Decrease Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+
+
+
+
+    // update menu text
+    wchar_t buffer[256];
+    HMENU pluginMenu;
+    HMENU hMenu = (HMENU)npp(NPPM_GETMENUHANDLE, (WPARAM)NPPPLUGINMENU, (LPARAM)0);
+
+    int pluginMenuIndex = 0;
+	int pluginMenuSize = GetMenuItemCount(hMenu);
+    for (pluginMenuIndex = 0; pluginMenuIndex < pluginMenuSize; pluginMenuIndex++) {
+        int copied = GetMenuStringW(hMenu, pluginMenuIndex, buffer, _countof(buffer), MF_BYPOSITION);
+        LOG("menu title: [{}]", fromWchar(buffer));
+		if (fromWchar(buffer) == "VFolders") {  // TODO: change to dynamic plugin name
+            break;
+        }
+    }
+    if (pluginMenuIndex == pluginMenuSize) return;
+
+    pluginMenu = GetSubMenu(hMenu, pluginMenuIndex);
+    if (pluginMenu) {
+        ModifyMenuW(pluginMenu, menuItem_IncreaseFont, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_IncreaseFont]._cmdID, (LPCWSTR)(fontIncreaseLabel.c_str()));
+        ModifyMenuW(pluginMenu, menuItem_DecreaseFont, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_DecreaseFont]._cmdID, (LPCWSTR)(fontDecreaseLabel.c_str()));
+    }
 }

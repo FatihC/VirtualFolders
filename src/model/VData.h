@@ -117,6 +117,7 @@ public:
 	VFile* findFileByPath(const string& path, int view = 0) const;
 	VFile* findFileByName(const string& name, int view = 0) const;
 	int getLastOrder() const;
+	optional<VBase*> getChildByOrder(int order) const;
 	optional<VBase*> findAboveSibling(int order);
 	vector<VBase*> getAllChildren();
 	void addChildren(vector<VBase*>& allChildren);
