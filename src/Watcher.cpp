@@ -51,6 +51,7 @@ extern CommonData commonData;
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
 
+
 void writeJsonFile();
 void resizeWatcherPanel();
 void syncVDataWithOpenFiles(std::vector<VFile>& openFiles);
@@ -648,11 +649,18 @@ void syncVDataWithBufferIDs()
 void toggleWatcherPanelWithList() {
     if (!watcherPanel) {
         watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
+        
         NPP::tTbData dock;
         HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
 
         // Resize dialog to match left panel size
         resizeWatcherPanel();
+
+		commonData.hTree = hTree;
+
+        setFontSize();
+
+
 
         
         TCHAR configDir[MAX_PATH];

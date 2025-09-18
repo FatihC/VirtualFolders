@@ -25,8 +25,8 @@
 - [x] Folder moving
 - [x] Folder deleting (Unwrap)
 - [ ] Use std::list instead of vector
-- [ ] When Theme changed
-	- [ ] Degisik temalarda insertion line
+- [x] When Theme changed
+	- [x] Degisik temalarda insertion line: use text color as lineColor 
 - [ ] Internationalization
 	- [ ] NPPN_LANGCHANGED
 - [x] Context Menu
@@ -38,7 +38,7 @@
 - [ ] Plugin Menu's
 - [ ] Template'in kodlarından kurtul
 - [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
-- [ ] No Document List. Just tabs
+- [x] No Document List. Just tabs
 - [x] new buffer uretildi ama restart olmadi. path'de sadece new 1 yaziyor. 
 	- [x] restart olmuyor json'i silmezsen
 - [x] File deleted from disk
@@ -47,7 +47,8 @@
 - [x] NPPN_FILEDELETEFAILED: gerek yok
 - [ ] If there is a problem with orders. fix at the start. don't crash
 - [-] Hover color in different themes: seems not possible. In dark theme my color is ignored.
-- [ ] ctrl+pg dwn-up: catch these events. and switch to new buffer with order number not docOrder
+- [x] ctrl+pg dwn-up: catch these events. and switch to new buffer with order number not docOrder
+- [ ] Font resize.
 
 
 

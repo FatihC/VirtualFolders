@@ -59,6 +59,11 @@ void toggleWatcherPanel();
 void toggleWatcherPanelWithList();
 void resizeWatcherPanel();
 void toggleShortcutOverride();
+void increaseFontSize();
+void decreaseFontSize();
+void setFontSize();
+
+
 
 
 // External variables
@@ -87,19 +92,32 @@ extern void updateTreeColorsExternal(HWND hTree);
 
 static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
 
+int menuItem_PrintListOpenFiles = 0;
+int menuItem_ToggleStatus = 1;
+int menuItem_ToggleWatcher = 2;
+int menuItem_Separator1 = 3;
+int menuItem_Settings = 4;
+int menuItem_ShortcutOverrider = 5;
+int menuItem_IncreaseFont = 6;
+int menuItem_DecreaseFont = 7;
+int menuItem_About = 8;
+
+
+
 FuncItem menuDefinition[] = {
-    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);},         0, false,                   0               },
-    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);},         0, false,                   &SKToggleStatus },
-    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, 0, false,                   0               },
-    { 0                           , 0,                                              0, false,                   0               },
-    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         0, false,                   0               },
-    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     0, plugin.isShortcutOverridden,    0               },
-    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         0, false,                   0               },
+    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);},         menuItem_PrintListOpenFiles, false,                   0               },
+    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);},         menuItem_ToggleStatus, false,                   &SKToggleStatus },
+    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, menuItem_ToggleWatcher, false,                   0               },
+    { 0                           , 0,                                              menuItem_Separator1, false,                   0               },
+    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         menuItem_Settings, false,                   0               },
+    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     menuItem_ShortcutOverrider, plugin.isShortcutOverridden,0            },
+    { L"Increase Plugin Font Size: 9px", []() {plugin.cmd(increaseFontSize); },     menuItem_IncreaseFont, false,         0               },
+    { L"Decrease Plugin Font Size: 9px", []() {plugin.cmd(decreaseFontSize); },     menuItem_DecreaseFont, false,         0               },
+    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         menuItem_About, false,                   0               },
 };
 
-int menuItem_ToggleStatus  = 1;
-int menuItem_ToggleWatcher = 2;
-int menuItem_ShortcutOverrider = 5;
+
+
 
 
 // Tell Notepad++ the plugin name
@@ -119,6 +137,21 @@ extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
         plugin.isShortcutOverridden = false; // temporary
         toggleShortcutOverride(); // PluginFrameWork.toggleShortcutOverride
     }
+    std::wstring fontIncreaseLabel = L"Increase Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+    wcsncpy_s(menuDefinition[menuItem_IncreaseFont]._itemName,
+        menuItemSize,
+        fontIncreaseLabel.c_str(),
+        _TRUNCATE);
+
+    std::wstring fontDecreaseLabel = L"Decrease Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+    wcsncpy_s(menuDefinition[menuItem_DecreaseFont]._itemName,
+        menuItemSize,
+        fontDecreaseLabel.c_str(),
+        _TRUNCATE);
+
+
+
+	setFontSize();
 
 
     *n = sizeof(menuDefinition) / sizeof(FuncItem);
