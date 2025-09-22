@@ -22,6 +22,8 @@
 #include "model/VData.h"
 #include <CommCtrl.h>
 #include <format>
+#include "Translator.h"
+
 
 
 #define LOG(fmt, ...) { \
@@ -64,6 +66,8 @@ inline struct CommonData {
     UINT_PTR activeBufferID;
     std::map<UINT_PTR, bool> bufferStates;  // for save points
     std::map<UINT_PTR, int> bufferViewMap;  // to keep buffers view
+
+    std::unique_ptr<Translator> translator;
 
 
 } commonData;

@@ -21,6 +21,8 @@
   <ItemGroup>
     <ClInclude Include="src\CommonData.h" />
     <ClInclude Include="src\RenameDialog.h" />
+    <ClInclude Include="src\tinyxml2\tinyxml2.h" />
+    <ClInclude Include="src\Translator.h" />
     <ClInclude Include="src\TreeViewManager.h" />
     <ClInclude Include="src\Framework\ConfigFramework.h" />
     <ClInclude Include="src\Framework\PluginFramework.h" />
@@ -42,9 +44,12 @@
     <ClInclude Include="src\Host\ScintillaStructures.h" />
     <ClInclude Include="src\Host\ScintillaTypes.h" />
     <ClInclude Include="src\Host\Sci_Position.h" />
+    <ClInclude Include="src\Util.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\RenameDialog.cpp" />
+    <ClCompile Include="src\tinyxml2\tinyxml2.cpp" />
+    <ClCompile Include="src\Translator.cpp" />
     <ClCompile Include="src\TreeViewManager.cpp" />
     <ClCompile Include="src\About.cpp" />
     <ClCompile Include="src\Configuration.cpp" />
@@ -56,6 +61,7 @@
     <ClCompile Include="src\Plugin.cpp" />
     <ClCompile Include="src\ProcessNotifications.cpp" />
     <ClCompile Include="src\Status.cpp" />
+    <ClCompile Include="src\Util.cpp" />
     <ClCompile Include="src\Watcher.cpp" />
     <None Include="packages.config" />
     <None Include="src\Host\ScintillaCall.cxx" />
@@ -108,6 +114,10 @@
     <Image Include="resources\locked_dark.ico" />
     <Image Include="resources\locked_light.ico" />
     <Image Include="resources\two_view.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="resources\lang\english.xml" />
+    <Xml Include="resources\lang\turkish.xml" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{821f38c0-d927-4c4f-a08c-717c485b0f95}</ProjectGuid>

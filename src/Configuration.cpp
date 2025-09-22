@@ -18,6 +18,11 @@
 #include <fstream>
 #include <iostream>
 #include "Shlwapi.h"
+#include "Translator.h"
+#include "resource.h"
+
+
+
 
 namespace {
 
@@ -136,4 +141,63 @@ void saveConfiguration() {
 
     
     writeJsonFile();
+}
+
+wchar_t* getPluginHomePath() {
+    int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, 0, 0);
+    wchar_t* pluginPath = new wchar_t[len + 1];
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, len + 1, (LPARAM)pluginPath);
+    return pluginPath;
+}
+
+void loadLocalization() {
+    wchar_t* pluginPath = getPluginHomePath();
+
+    // Get the native language file name from Notepad++
+    int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNATIVELANGFILENAME, 0, 0);
+    std::vector<char> langFilePathVector(len + 1);
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_GETNATIVELANGFILENAME, len + 1, (LPARAM)langFilePathVector.data());
+    langFilePathVector[len] = L'\0';
+    string langFilePath = langFilePathVector.data();
+
+    LOG("Native Lang file name: [{}]", langFilePath);
+
+    string fileName = langFilePath;
+    if (fileName.find_last_of("/\\") != string::npos) {
+        size_t lastSlash = fileName.find_last_of("/\\");
+        fileName = fileName.substr(lastSlash + 1);
+    }
+
+
+    // Check for external lang file in plugin's localization folder
+    std::string externalLangFilePath = fromWchar(pluginPath) + "\\VFolders\\localization\\" + fileName;
+    if (std::filesystem::exists(externalLangFilePath)) {
+        langFilePath = externalLangFilePath;
+
+        Translator translator(externalLangFilePath);
+        commonData.translator = std::make_unique<Translator>(externalLangFilePath);
+
+    }
+    else {
+        // If no external file, load from resources
+        std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
+        if (fileName == "turkish.xml") {
+            commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_TURKISH);
+        }
+        else if (fileName == "english.xml") {
+            commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_ENGLISH);
+
+        }
+    }
+
+
+
+    /*HRSRC hRes = FindResource(plugin.dllInstance, MAKEINTRESOURCE(IDR_LANG_ENGLISH), RT_RCDATA);
+    HGLOBAL hData = LoadResource(plugin.dllInstance, hRes);
+    DWORD size = SizeofResource(plugin.dllInstance, hRes);
+    const char* xmlData = static_cast<const char*>(LockResource(hData));
+
+
+    std::string langXml(xmlData, size);*/
+
 }

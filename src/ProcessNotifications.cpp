@@ -17,6 +17,8 @@
 #include "CommonData.h"
 #include "model/VData.h"
 #include "ProcessCommands.h"
+#include "resource.h"
+#include "Translator.h"
 
 
 
@@ -34,10 +36,13 @@ extern void toggleViewOfVFile(UINT_PTR bufferID);
 
 // External variables
 extern HWND watcherPanel;
+extern string fromWchar(const wchar_t* wstr);
 
 
 wchar_t* getFullPathFromBufferID(UINT_PTR bufferID);
+wchar_t* getPluginHomePath();
 int GetActiveViewForBuffer(UINT_PTR bufferID);
+void loadLocalization();
 
 
 void scnModified(const Scintilla::NotificationData* scnp) {
@@ -202,6 +207,7 @@ void sessionLoaded() {
     // This gets called when Notepad++ finishes loading the session
     // Sync vData with all loaded files
     //syncVDataWithOpenFilesNotification();
+    LOG("Session loaded");
 }
 
 void nppReady() {
@@ -223,7 +229,13 @@ void nppReady() {
     
     syncVDataWithBufferIDs();
 
+
     //SetTimer(watcherPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
+}
+
+
+void nppBeforeShutdown() {
+    
 }
 
 void nppShutdown() {
@@ -237,13 +249,6 @@ void nppShutdown() {
         commonData.virtualFoldersTabSelected = false;
     }
 
-	// Delete files from commonData.vData that does not have backupFilePath and path does not exist
-	vector<VFile*> fileList = commonData.vData.getAllFiles();
-    for (VFile* vFile : fileList) {
-        if (vFile->backupFilePath.empty() && !std::filesystem::exists(vFile->path)) {
-            commonData.vData.removeFile(vFile->getOrder());
-        }
-	}
 }
 
 

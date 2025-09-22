@@ -218,6 +218,8 @@ optional<VFile*> VData::findFileByOrder(int order) const {
     return std::nullopt; // Return null if not found  
 }
 
+// Make sure if the given order is in the root level.
+// We don't check folders recursively, just the root level.
 optional<VBase*> VData::findAboveSibling(int order) {
 	// Find the above sibling of the item with the given order
 	optional<VBase*> aboveSibling = std::nullopt;

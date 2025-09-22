@@ -26,6 +26,8 @@ using namespace NPP;
 
 void loadConfiguration();
 void saveConfiguration();
+void loadLocalization();
+
 
 // Routines that process Scintilla notifications
 
@@ -46,6 +48,7 @@ void fileSaved(const NMHDR*);
 void readOnlyChanged(const NMHDR*);
 void modifyAll(const NMHDR*);
 void nppReady();
+void nppBeforeShutdown();
 void nppShutdown();
 
 // Routines that process menu commands
@@ -131,19 +134,24 @@ extern "C" __declspec(dllexport) const wchar_t* getName() {
 
 extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
     loadConfiguration();
+	loadLocalization();
+
+    std::wstring shortcutMenuLabel = commonData.translator->getTextW("IDM_SHORTCUT_OVERRIDE");
+    wcsncpy_s(menuDefinition[menuItem_ShortcutOverrider]._itemName, menuItemSize, shortcutMenuLabel.c_str(), _TRUNCATE);
+
     
     menuDefinition[menuItem_ShortcutOverrider]._init2Check = plugin.isShortcutOverridden;
     if (plugin.isShortcutOverridden) {
         plugin.isShortcutOverridden = false; // temporary
         toggleShortcutOverride(); // PluginFrameWork.toggleShortcutOverride
     }
-    std::wstring fontIncreaseLabel = L"Increase Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(plugin.fontSize) + L" px";
     wcsncpy_s(menuDefinition[menuItem_IncreaseFont]._itemName,
         menuItemSize,
         fontIncreaseLabel.c_str(),
         _TRUNCATE);
 
-    std::wstring fontDecreaseLabel = L"Decrease Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(plugin.fontSize) + L" px";
     wcsncpy_s(menuDefinition[menuItem_DecreaseFont]._itemName,
         menuItemSize,
         fontDecreaseLabel.c_str(),
@@ -177,6 +185,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
         case NPPN_BEFORESHUTDOWN:
             plugin.startupOrShutdown = true;
+			nppBeforeShutdown();
             break;
 
         case NPPN_BUFFERACTIVATED:

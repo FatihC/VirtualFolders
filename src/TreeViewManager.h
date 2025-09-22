@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include <string>
+#include "Util.h"
 
 
 
@@ -56,6 +57,8 @@ extern std::string new_line;
 
 // Menu command IDs
 #define MENU_ID_TREE_DELETE 40001
+#define MENU_ID_INCREASEFONT 40002
+#define MENU_ID_DECREASEFONT 40003
 #define MENU_ID_FILE_CLOSE 40100
 #define MENU_ID_FILE_WRAP_IN_FOLDER 40101
 #define MENU_ID_FOLDER_RENAME 40103
@@ -97,10 +100,6 @@ int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem);
 TVITEM getTreeItem(HWND hTree, HTREEITEM hItem);
 HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam);
 
-// Utility functions
-wchar_t* toWchar(const std::string& str);
-std::wstring toWstring(const std::string& str);
-std::string fromWchar(const wchar_t* wstr);
 
 void changeTreeItemIcon(UINT_PTR bufferID, int view);
 FolderLocation findFolderLocation(VData& vData, int order);

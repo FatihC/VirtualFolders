@@ -85,6 +85,15 @@
     <ClInclude Include="src\model\VData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\tinyxml2\tinyxml2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Translator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\About.cpp">
@@ -124,6 +133,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\TreeViewManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tinyxml2\tinyxml2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Translator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Util.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -180,5 +198,13 @@
     <Image Include="resources\file_dark.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="resources\lang\turkish.xml">
+      <Filter>Resource Files</Filter>
+    </Xml>
+    <Xml Include="resources\lang\english.xml">
+      <Filter>Resource Files</Filter>
+    </Xml>
   </ItemGroup>
 </Project>

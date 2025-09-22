@@ -738,6 +738,38 @@ void toggleWatcherPanelWithList() {
 }
 
 void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
+    vector<VFile*> allJsonVFiles = commonData.vData.getAllFiles();
+    for (VFile* vFile : allJsonVFiles)
+    {
+        if (vFile->path != vFile->name) {
+            continue;
+        }
+        // newly created buffers backup files are unreachable during session
+        // so I here their name and path are equal (eg: new 1)
+		// Check if this file exists in openFiles
+        bool found = false;
+        for (const VFile& openFile : openFiles) {
+            if (openFile.name == vFile->name && openFile.view == vFile->view) {
+                found = true;
+				vFile->backupFilePath = openFile.backupFilePath;
+				vFile->path = openFile.path;
+                break;
+            }
+        }
+        if (!found) {
+            // File no longer open, remove it from vData
+            VFile fileCopy = *vFile;
+            VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+            if (parentFolder) {
+                parentFolder->removeFile(fileCopy.getOrder());
+            }
+            else {
+                commonData.vData.removeFile(fileCopy.getOrder());
+			}
+        }
+
+    }
+
 
     for (int i = 0; i < openFiles.size(); i++) {
         VFile* jsonVFile = commonData.vData.findFileByPath(openFiles[i].path, openFiles[i].view);
@@ -790,69 +822,8 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
 
     // TODO: fix orders
 
-
-    /*vData.fileList.erase(
-        std::remove_if(vData.fileList.begin(), vData.fileList.end(),
-            [&openFiles](const VFile& file) {
-                auto it = std::find_if(openFiles.begin(), openFiles.end(),
-                    [&file](const VFile& openFile) {
-                        return openFile.path == file.path && openFile.view == file.view;
-                    });
-                return it == openFiles.end();
-            }),
-        vData.fileList.end()
-    );*/
-
-
-
 }
 
-wchar_t* toWchar(const std::string& str) {
-	static wchar_t buffer[256];
-	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, 256);
-	return buffer;
-}
 
-string fromWchar(const wchar_t* wstr) {
-    if (!wstr) return {};
 
-    // length of wide string excluding the null terminator
-    int len = static_cast<int>(wcslen(wstr));
 
-    if (len == 0) return {};
-
-    // get required size for conversion
-    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wstr, len, nullptr, 0, nullptr, nullptr);
-
-    std::string result(sizeNeeded, '\0');
-
-    WideCharToMultiByte(CP_UTF8, 0, wstr, len, &result[0], sizeNeeded, nullptr, nullptr);
-
-    return result;
-}
-
-wstring toWstring(const string& str) {
-    if (str.empty()) return L"";
-
-    // Get required size (in wchar_t�s)
-    int size_needed = MultiByteToWideChar(
-        CP_UTF8,            // source is UTF-8
-        0,                  // no special flags
-        str.c_str(),        // input string
-        (int)str.size(),    // number of chars to convert
-        nullptr,            // don�t output yet
-        0                   // request size only
-    );
-
-    // Allocate std::wstring with proper size
-    wstring wstr(size_needed, 0);
-
-    // Do the actual conversion
-    MultiByteToWideChar(
-        CP_UTF8, 0,
-        str.c_str(), (int)str.size(),
-        &wstr[0], size_needed
-    );
-
-    return wstr;
-}

@@ -161,6 +161,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
     
     static HMENU hContextMenu = nullptr;
     
+    static HMENU fontSizeSubMenu = nullptr;
     static HMENU fileContextMenu = nullptr;
 	static HMENU openContextSubMenu = nullptr;
     static HMENU copyContextSubMenu = nullptr;
@@ -195,56 +196,64 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
         // Create context menu
         hContextMenu = CreatePopupMenu();
-        AppendMenu(hContextMenu, MF_STRING, MENU_ID_TREE_DELETE, L"Delete");
+        //AppendMenu(hContextMenu, MF_STRING, MENU_ID_TREE_DELETE, L"Delete");
+
+
+		fontSizeSubMenu = CreatePopupMenu();
+        std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(plugin.fontSize) + L" px";
+        AppendMenu(fontSizeSubMenu, MF_STRING, MENU_ID_INCREASEFONT, fontIncreaseLabel.c_str());
+        std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(plugin.fontSize) + L" px";
+        AppendMenu(fontSizeSubMenu, MF_STRING, MENU_ID_DECREASEFONT, fontDecreaseLabel.c_str());
+		AppendMenu(hContextMenu, MF_POPUP, (UINT_PTR)fontSizeSubMenu, L"Font Size");
+
 
         fileContextMenu = CreatePopupMenu();
-        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_CLOSE, L"Close");
-        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_WRAP_IN_FOLDER, L"Wrap in folder");
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_CLOSE, commonData.translator->getTextW("MENU_ID_FILE_CLOSE"));
+        AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_WRAP_IN_FOLDER, commonData.translator->getTextW("MENU_ID_FILE_WRAP_IN_FOLDER"));
 		AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
-		AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVE, L"Save");
-        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVEAS, L"Save As");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVE, commonData.translator->getTextW("IDM_FILE_SAVE"));
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVEAS, commonData.translator->getTextW("IDM_FILE_SAVEAS"));
         
 
 
 		openContextSubMenu = CreatePopupMenu();
-        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_FOLDER, L"Open Containing Folder in Explorer");
-        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_CMD, L"Open Containing Folder in cmd");
-        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_CONTAININGFOLDERASWORKSPACE, L"Open Containing Folder as Workspace");
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_FOLDER, commonData.translator->getTextW("IDM_FILE_OPEN_FOLDER"));
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_CMD, commonData.translator->getTextW("IDM_FILE_OPEN_CMD"));
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_CONTAININGFOLDERASWORKSPACE, commonData.translator->getTextW("IDM_FILE_CONTAININGFOLDERASWORKSPACE"));
         //EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, MF_BYCOMMAND | MF_DISABLED);
         AppendMenu(openContextSubMenu, MF_SEPARATOR, 0, NULL);
-        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_DEFAULT_VIEWER, L"Open in Default Viewer");
+        AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_DEFAULT_VIEWER, commonData.translator->getTextW("IDM_FILE_OPEN_DEFAULT_VIEWER"));
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, commonData.translator->getTextW("IDM_OPEN_CONTEXT_MENU"));
 
-        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, L"Open Into");
-        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RENAME, L"Rename");
-        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_DELETE, L"Move to Recycle Bin");
-        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RELOAD, L"Reload");
-        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, L"Print");
+
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RENAME, commonData.translator->getTextW("IDM_FILE_RENAME"));
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_DELETE, commonData.translator->getTextW("IDM_FILE_DELETE"));
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RELOAD, commonData.translator->getTextW("IDM_FILE_RELOAD"));
+        AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, commonData.translator->getTextW("IDM_FILE_PRINT"));
         AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
-
-        AppendMenu(fileContextMenu, MF_STRING, IDM_EDIT_SETREADONLY, L"Read-Only in Notepad++");
+        AppendMenu(fileContextMenu, MF_STRING, IDM_EDIT_SETREADONLY, commonData.translator->getTextW("IDM_EDIT_SETREADONLY"));
         //AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, L"Read-Only Attribute in Windows");
-
         AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
 
         copyContextSubMenu = CreatePopupMenu();
-        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FULLPATHTOCLIP, L"Copy Full File Path");
-        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FILENAMETOCLIP, L"Copy Filename");
-        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_CURRENTDIRTOCLIP, L"Copy Current Dir. Path");
-        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)copyContextSubMenu, L"Copy to Clipboard");
+        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FULLPATHTOCLIP, commonData.translator->getTextW("IDM_EDIT_FULLPATHTOCLIP"));
+        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FILENAMETOCLIP, commonData.translator->getTextW("IDM_EDIT_FILENAMETOCLIP"));
+        AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_CURRENTDIRTOCLIP, commonData.translator->getTextW("IDM_EDIT_CURRENTDIRTOCLIP"));
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)copyContextSubMenu, commonData.translator->getTextW("IDM_CLIPBOARD"));
 
 
 
 
         moveContextSubMenu = CreatePopupMenu();
-        AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_GOTO_ANOTHER_VIEW, L"Move to Other View");
-        AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_CLONE_TO_ANOTHER_VIEW, L"Clone to Other View");
-        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, L"Move Document");
+        AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_GOTO_ANOTHER_VIEW, commonData.translator->getTextW("IDM_VIEW_GOTO_ANOTHER_VIEW"));
+        AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_CLONE_TO_ANOTHER_VIEW, commonData.translator->getTextW("IDM_VIEW_CLONE_TO_ANOTHER_VIEW"));
+        AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, commonData.translator->getTextW("IDM_MOVE_MENU"));
 
 
         /**********************************************************************************************************************/
 		folderContextMenu = CreatePopupMenu();
-		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_UNWRAP, L"Unwrap");
-		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_RENAME, L"Rename");
+		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_UNWRAP, commonData.translator->getTextW("MENU_ID_FOLDER_UNWRAP"));
+		AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_RENAME, commonData.translator->getTextW("MENU_ID_FOLDER_RENAME"));
 
 
 
@@ -501,7 +510,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
             if (hItem) {
                 TreeView_SelectItem(hTree, hItem);
-            } 
+            }
+
+            std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(plugin.fontSize) + L" px";
+            ModifyMenuW(fontSizeSubMenu, 0, MF_BYPOSITION | MF_STRING, MENU_ID_INCREASEFONT, (LPCWSTR)(fontIncreaseLabel.c_str()));
+
+            std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(plugin.fontSize) + L" px";
+            ModifyMenuW(fontSizeSubMenu, 1, MF_BYPOSITION | MF_STRING, MENU_ID_DECREASEFONT, (LPCWSTR)(fontDecreaseLabel.c_str()));
+
+
             // Show context menu
             TrackPopupMenu(hContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
             return TRUE;
@@ -513,8 +530,15 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         if (!selectedTreeItem) {
             break;
         }
-
-        if (LOWORD(wParam) == MENU_ID_TREE_DELETE) {
+        if (LOWORD(wParam) == MENU_ID_INCREASEFONT) {
+			increaseFontSize();
+            break;
+        }
+        else if (LOWORD(wParam) == MENU_ID_DECREASEFONT) {
+			decreaseFontSize();
+			break;
+        }
+        else if (LOWORD(wParam) == MENU_ID_TREE_DELETE) {
             //TreeView_DeleteItem(hTree, selectedTreeItem);
             return TRUE;
         }
@@ -888,7 +912,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
             if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
 				TVITEM dropItem = getTreeItem(hTree, hDropTarget);
-                if (dropItem.iImage == iconIndex[ICON_FOLDER]) {
+                if (dropItem.iImage == iconIndex[ICON_FOLDER] && !insertion) {
                     // Move file into folder
                     int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
                     int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
@@ -1593,17 +1617,15 @@ void reorderItems(int oldOrder, int newOrder) {
         } else {
 			firstOrderOfFolder = commonData.vData.fileList[0].getOrder();
         }
-        TVINSERTSTRUCT tvis = { 0 };
-
+        
 		// What if newOrder is the first item in the folder?
         if (newOrder == firstOrderOfFolder) {
-            tvis.hInsertAfter = TVI_FIRST;
+			prevItem = TVI_FIRST;
         } else {
             prevItem = FindItemByLParam(hTree, hParent, (LPARAM)newOrder);
             if (newOrder < oldOrder) {
                 prevItem = FindItemByLParam(hTree, hParent, (LPARAM)newOrder - 1);
             }
-            tvis.hInsertAfter = prevItem;
 		}
         oldItem = FindItemByLParam(hTree, hParent, (LPARAM)movedFile->getOrder());
         TreeView_DeleteItem(hTree, oldItem);
@@ -1664,7 +1686,8 @@ void reorderFolders(int oldOrder, int newOrder) {
         prevItem = TVI_FIRST;
     } else {
         // Find the item that should come before the moved folder
-        optional<VBase*> aboveSibling = commonData.vData.findAboveSibling(newOrder);
+        VFolder* parentFolder = commonData.vData.findParentFolder(newOrder);
+        optional<VBase*> aboveSibling = parentFolder ? parentFolder->findAboveSibling(newOrder) : commonData.vData.findAboveSibling(newOrder);
         if (aboveSibling) {
             prevItem = aboveSibling.value()->hTreeItem;
         } else {
@@ -1901,8 +1924,8 @@ extern void setFontSize() {
 
     LOG("Increasing font size");
 
-    std::wstring fontIncreaseLabel = L"Increase Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
-    std::wstring fontDecreaseLabel = L"Decrease Plugin Font Size: " + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(plugin.fontSize) + L" px";
 
 
 

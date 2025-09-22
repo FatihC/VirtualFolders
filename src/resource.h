@@ -23,7 +23,11 @@
 #define IDI_FILE_VIEW_2_ICON            144
 #define IDI_ICON6                       145
 #define IDI_FILE_DARK_ICON              145
+#define IDR_LANG_ENGLISH_JSON1          146
+#define IDR_ACCELERATOR1                147
 #define IDI_FOLDER                      201
+#define IDR_LANG_ENGLISH                301
+#define IDR_LANG_TURKISH                302
 #define IDC_ABOUT_VERSION               1001
 #define IDC_ABOUT_HELP                  1002
 #define IDC_ABOUT_MORE                  1003
@@ -48,8 +52,8 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        146
-#define _APS_NEXT_COMMAND_VALUE         40001
+#define _APS_NEXT_RESOURCE_VALUE        148
+#define _APS_NEXT_COMMAND_VALUE         40002
 #define _APS_NEXT_CONTROL_VALUE         1026
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
