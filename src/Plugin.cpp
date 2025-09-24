@@ -27,6 +27,7 @@ using namespace NPP;
 void loadConfiguration();
 void saveConfiguration();
 void loadLocalization();
+void loadShortcuts(string langFilePath);
 
 
 // Routines that process Scintilla notifications
@@ -61,7 +62,6 @@ void toggleStatusDialog();
 void toggleWatcherPanel();
 void toggleWatcherPanelWithList();
 void resizeWatcherPanel();
-void toggleShortcutOverride();
 void increaseFontSize();
 void decreaseFontSize();
 void setFontSize();
@@ -74,6 +74,8 @@ extern HWND watcherPanel;
 
 // External functions
 extern void updateTreeColorsExternal(HWND hTree);
+extern void loadMenus();
+
 
 // Name and define any shortcut keys to be assigned as menu item defaults: Ctrl, Alt, Shift and the virtual key code
 //
@@ -94,6 +96,7 @@ extern void updateTreeColorsExternal(HWND hTree);
 // to get the menu item identifier assigned by Notepad++.
 
 static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
+NPP::ShortcutKey SKNextTab;
 
 int menuItem_PrintListOpenFiles = 0;
 int menuItem_ToggleStatus = 1;
@@ -108,15 +111,15 @@ int menuItem_About = 8;
 
 
 FuncItem menuDefinition[] = {
-    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);},         menuItem_PrintListOpenFiles, false,                   0               },
-    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);},         menuItem_ToggleStatus, false,                   &SKToggleStatus },
-    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, menuItem_ToggleWatcher, false,                   0               },
-    { 0                           , 0,                                              menuItem_Separator1, false,                   0               },
-    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         menuItem_Settings, false,                   0               },
-    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     menuItem_ShortcutOverrider, plugin.isShortcutOverridden,0            },
-    { L"Increase Plugin Font Size: 9px", []() {plugin.cmd(increaseFontSize); },     menuItem_IncreaseFont, false,         0               },
-    { L"Decrease Plugin Font Size: 9px", []() {plugin.cmd(decreaseFontSize); },     menuItem_DecreaseFont, false,         0               },
-    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         menuItem_About, false,                   0               },
+    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);},         menuItem_PrintListOpenFiles,                    false,      0},
+    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);},         menuItem_ToggleStatus,                          false,      &SKToggleStatus },
+    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, menuItem_ToggleWatcher,                         false,      0},
+    { 0                           , 0,                                              menuItem_Separator1,                            false,      0},
+    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         menuItem_Settings,                              false,      0},
+    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     menuItem_ShortcutOverrider, plugin.isShortcutOverridden,    0},
+    { L"Increase Plugin Font Size: 9px", []() {plugin.cmd(increaseFontSize); },     menuItem_IncreaseFont,                          false,      0},
+    { L"Decrease Plugin Font Size: 9px", []() {plugin.cmd(decreaseFontSize); },     menuItem_DecreaseFont,                          false,      0},
+    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         menuItem_About,                                 false,      0},
 };
 
 
@@ -142,16 +145,16 @@ extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
     
     menuDefinition[menuItem_ShortcutOverrider]._init2Check = plugin.isShortcutOverridden;
     if (plugin.isShortcutOverridden) {
-        plugin.isShortcutOverridden = false; // temporary
+		plugin.isShortcutOverridden = false; // temporary
         toggleShortcutOverride(); // PluginFrameWork.toggleShortcutOverride
     }
-    std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(commonData.fontSize) + L" px";
     wcsncpy_s(menuDefinition[menuItem_IncreaseFont]._itemName,
         menuItemSize,
         fontIncreaseLabel.c_str(),
         _TRUNCATE);
 
-    std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(plugin.fontSize) + L" px";
+    std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(commonData.fontSize) + L" px";
     wcsncpy_s(menuDefinition[menuItem_DecreaseFont]._itemName,
         menuItemSize,
         fontDecreaseLabel.c_str(),
@@ -191,9 +194,6 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
         case NPPN_BUFFERACTIVATED:
             if (!plugin.startupOrShutdown && !plugin.fileIsOpening) {
                 plugin.getScintillaPointers();
-
-                
-
                 bufferActivated(nmhdr);
             }
             break;
@@ -248,6 +248,10 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             break;
         case NPPN_READONLYCHANGED:
 			readOnlyChanged(nmhdr);
+            break;
+        case NPPN_NATIVELANGCHANGED:
+			loadLocalization();
+            loadMenus();
             break;
         case NPPN_READY:
             // If you use Scintilla::Notification::Modified, send the following message to tell Notepad++

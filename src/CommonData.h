@@ -53,11 +53,10 @@ inline struct CommonData {
 
     // Data to be saved in the configuration file
 
-    config<int>          option1 = { "option1", 10 };
-    config_history       option2 = { "option2", {L"This remembers history."} };
-    config<std::wstring> heading = { "Heading", L"List of open files:" };
-    config<bool>         annoy   = { "Annoy"  , false };
-    config<MyPreference> myPref  = { "MyPreference", MyPreference::Bacon };
+    config<int>          fontSize = { "fontSize", 10 };
+    //config_history       fontFamily = { "option2", {L"Consolas"} };
+	config<std::wstring> fontFamily = { "fontFamily", L"Segoe UI" };
+    //config<MyPreference> myPref  = { "MyPreference", MyPreference::Bacon };
     config<bool>         virtualFoldersTabSelected = { "VirtualFoldersTabSelected", false };
 
     std::vector<VFile> openFiles;
@@ -67,6 +66,8 @@ inline struct CommonData {
     std::map<UINT_PTR, bool> bufferStates;  // for save points
     std::map<UINT_PTR, int> bufferViewMap;  // to keep buffers view
 
+	std::unique_ptr<Translator> nativeTranslator;
+    std::unique_ptr<Translator> shortcutTranslator;
     std::unique_ptr<Translator> translator;
 
 

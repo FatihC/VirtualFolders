@@ -89,7 +89,6 @@ void toggleShortcutOverride() {
         }
 	}
     ::SendMessage(plugin.nppData._nppHandle, NPPM_SETMENUITEMCHECK, menuDefinition[menuItem_ShortcutOverrider]._cmdID, plugin.isShortcutOverridden ? 1 : 0);
-    //npp(NPPM_SETMENUITEMCHECK, menuDefinition[menuItem_ShortcutOverrider]._cmdID, 1);
 }
 
 extern "C" __declspec(dllexport) void setInfo(NPP::NppData nppData) {

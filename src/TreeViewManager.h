@@ -52,7 +52,6 @@ enum IconType {
 };
 
 extern std::unordered_map<IconType, int> iconIndex;
-extern std::string new_line;
 
 
 // Menu command IDs

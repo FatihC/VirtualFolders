@@ -35,9 +35,7 @@ namespace NPP {
 
 
 extern struct PluginData plugin;  // Instantiated in PluginFramework.cpp
-
-
-
+void toggleShortcutOverride();
 
 struct PluginData {
 
@@ -50,9 +48,7 @@ struct PluginData {
     bool                      fileIsOpening       = false; // A new file is opening
     bool                      startupOrShutdown   = true;  // Notepad++ is starting up or shutting down
 	bool                      isShortcutOverridden = false;// True if we have overridden Notepad++ shortcuts
-	int                       fontSize = 9;                 // Current plugin font size adjustment; 0 is default
-
-
+	//int                       fontSize = 9;                 // Current plugin font size adjustment; 0 is default
 
 
     HWND currentScintilla() const {

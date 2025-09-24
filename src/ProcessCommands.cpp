@@ -34,7 +34,7 @@ void printListOpenFiles() {
     std::wstring eol = eolMode == Scintilla::EndOfLine::Cr ? L"\r"
         : eolMode == Scintilla::EndOfLine::Lf ? L"\n"
         : L"\r\n";
-    std::wstring filenames = commonData.heading.get() + eol;
+    std::wstring filenames = L"commonData.heading.get()" + eol;
     for (int view = 0; view < 2; ++view) {
         if (npp(NPPM_GETCURRENTDOCINDEX, 0, view)) {
             size_t n = npp(NPPM_GETNBOPENFILES, 0, view + 1);

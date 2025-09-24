@@ -34,11 +34,15 @@
 		<Item id="MENU_ID_FOLDER_RENAME" text="Yeniden Adlandır..."/>
 
 		<Item id="IDM_FONT_INCREASE" text="Eklenti Yazı Boyutunu Arttır: " />
-		<Item id="IDM_FONT_DECREASE" text="Eklenti Yazı Boyutunu Azalttır: " />
+		<Item id="IDM_FONT_DECREASE" text="Eklenti Yazı Boyutunu Azalt: " />
 		
 		
 		<Item id="about" text="Eklenti Hakkında" />
 	</Menu>
+
+	<Labels>
+		<Item id="NEW_FOLDER" text="Yeni Klasör"/>
+	</Labels>
 
 	<Dialogs>
 		<Dialog id="aboutDialog" title="VFolder Hakkında">

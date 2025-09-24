@@ -41,6 +41,8 @@ namespace {
 using json = nlohmann::json;
 
 json configuration;
+void loadShortcuts(string langFilePath);
+
 
 
 void loadConfiguration() {
@@ -86,12 +88,12 @@ void loadConfiguration() {
          }
     }
 
-    if (saved.contains("isShortcutOverridden")) {
-        plugin.isShortcutOverridden = saved["isShortcutOverridden"];
+    if (saved.contains("overrideShortcuts")) {
+        plugin.isShortcutOverridden = saved["overrideShortcuts"];
     }
 
     if (saved.contains("fontSize")) {
-        plugin.fontSize = saved["fontSize"];
+        commonData.fontSize = saved["fontSize"];
 	}
 
     // If changes may be needed to accommodate old versions of the configuration file,
@@ -133,8 +135,8 @@ void saveConfiguration() {
     configuration["*ConfigurationFor*"              ] = configFor;
     configuration["*ConfigurationVersion*"          ] = configVersion;
     configuration["*ConfigurationCompatibleVersion*"] = configCompatible;
-    configuration["isShortcutOverridden"] = plugin.isShortcutOverridden;
-	configuration["fontSize"] = plugin.fontSize;
+    configuration["overrideShortcuts"] = plugin.isShortcutOverridden;
+	configuration["fontSize"] = commonData.fontSize.get();
 
 
     file << std::setw(4) << configuration;
@@ -155,36 +157,45 @@ void loadLocalization() {
 
     // Get the native language file name from Notepad++
     int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETNATIVELANGFILENAME, 0, 0);
-    std::vector<char> langFilePathVector(len + 1);
-    ::SendMessage(plugin.nppData._nppHandle, NPPM_GETNATIVELANGFILENAME, len + 1, (LPARAM)langFilePathVector.data());
-    langFilePathVector[len] = L'\0';
-    string langFilePath = langFilePathVector.data();
+    std::vector<char> langFileNameVector(len + 1);
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_GETNATIVELANGFILENAME, len + 1, (LPARAM)langFileNameVector.data());
+    langFileNameVector[len] = L'\0';
+    string langFileName = langFileNameVector.data();
 
-    LOG("Native Lang file name: [{}]", langFilePath);
+    LOG("Native Lang file name: [{}]", langFileName);
 
-    string fileName = langFilePath;
-    if (fileName.find_last_of("/\\") != string::npos) {
-        size_t lastSlash = fileName.find_last_of("/\\");
-        fileName = fileName.substr(lastSlash + 1);
+	string langFilePath;
+    if (langFileName.find_last_of("/\\") != string::npos) {
+		langFilePath = langFileName;
+        size_t lastSlash = langFileName.find_last_of("/\\");
+        langFileName = langFileName.substr(lastSlash + 1);
     }
+    else {
+        TCHAR nppDir[MAX_PATH];
+        SendMessage(plugin.nppData._nppHandle, NPPM_GETNPPDIRECTORY, (WPARAM)MAX_PATH, (LPARAM)nppDir);
+        langFilePath = fromWchar(nppDir) + "\\localization\\" + langFileName;
+    }
+
+	// Parse commands from native lang file
+	commonData.nativeTranslator = std::make_unique<Translator>(langFilePath);
+
+    loadShortcuts(langFilePath);
+    
 
 
     // Check for external lang file in plugin's localization folder
-    std::string externalLangFilePath = fromWchar(pluginPath) + "\\VFolders\\localization\\" + fileName;
+    std::string externalLangFilePath = fromWchar(pluginPath) + "\\VFolders\\localization\\" + langFileName;
     if (std::filesystem::exists(externalLangFilePath)) {
-        langFilePath = externalLangFilePath;
-
         Translator translator(externalLangFilePath);
         commonData.translator = std::make_unique<Translator>(externalLangFilePath);
-
     }
     else {
         // If no external file, load from resources
-        std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
-        if (fileName == "turkish.xml") {
+        std::transform(langFileName.begin(), langFileName.end(), langFileName.begin(), ::tolower);
+        if (langFileName == "turkish.xml") {
             commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_TURKISH);
         }
-        else if (fileName == "english.xml") {
+        else if (langFileName == "english.xml") {
             commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_ENGLISH);
 
         }
@@ -199,5 +210,21 @@ void loadLocalization() {
 
 
     std::string langXml(xmlData, size);*/
+
+}
+
+void loadShortcuts(string langFilePath)
+{
+    commonData.shortcutTranslator = std::make_unique<Translator>(langFilePath + "\\shortcuts.xml");
+
+    TCHAR configDir[MAX_PATH];
+    SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, (WPARAM)MAX_PATH, (LPARAM)configDir);
+    std::filesystem::path pluginDir = std::filesystem::path(configDir).parent_path();
+    std::filesystem::path userShortcuts = pluginDir.parent_path() / L"shortcuts.xml";
+    string shortcutPath = userShortcuts.string();
+    if (std::filesystem::exists(shortcutPath)) {
+        Translator translator(shortcutPath);
+		commonData.shortcutTranslator.get()->loadFile(shortcutPath);
+	}
 
 }

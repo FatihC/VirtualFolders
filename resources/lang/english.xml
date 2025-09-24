@@ -40,6 +40,10 @@
 		<Item id="about" text="About Plugin" />
 	</Menu>
 
+	<Labels>
+		<Item id="NEW_FOLDER" text="New Folder"/>
+	</Labels>
+
 	<Dialogs>
 		<Dialog id="aboutDialog" title="About VFolder">
 			<Text id="description">This plugin manages virtual folders in Notepad++.</Text>

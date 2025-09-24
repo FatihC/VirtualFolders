@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by resource.rc
 //
+#define IDAPPLY                         3
 #define IDD_SETTINGS                    101
 #define IDD_ABOUT                       102
 #define IDD_STATUS                      103
@@ -31,14 +32,12 @@
 #define IDC_ABOUT_VERSION               1001
 #define IDC_ABOUT_HELP                  1002
 #define IDC_ABOUT_MORE                  1003
-#define IDC_SETTINGS_OPTION1_EDIT       1004
-#define IDC_SETTINGS_OPTION1_SPIN       1005
-#define IDC_SETTINGS_OPTION2            1006
-#define IDC_SETTINGS_ANNOY              1007
-#define IDC_SETTINGS_HEADING            1008
-#define IDC_SETTINGS_PREFER_BACON       1009
-#define IDC_SETTINGS_PREFER_ICECREAM    1010
-#define IDC_SETTINGS_PREFER_PIZZA       1011
+#define IDC_FONT_SIZE_LABEL             1004
+#define IDC_SETTINGS_FONTSIZE_EDIT      1005
+#define IDC_SETTINGS_FONTSIZE_SPIN      1006
+#define IDC_FONT_FAMILY_LABEL           1007
+#define IDC_SETTINGS_FONT_FAMILY_EDIT   1008
+#define IDC_SETTINGS_SHORTCUT_EDIT      1009
 #define IDC_STATUS_INSERTS              1012
 #define IDC_STATUS_DELETES              1013
 #define IDC_WATCHER_RESULT              1015
@@ -47,6 +46,8 @@
 #define IDC_TREE1                       1023
 #define IDC_RENAME_NEWNAME              1024
 #define IDC_RENAME_OLDNAME              1025
+#define IDC_SETTINGS_ACTION_LIST		1026
+
 
 // Next default values for new objects
 // 
@@ -54,7 +55,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        148
 #define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1026
+#define _APS_NEXT_CONTROL_VALUE         1030
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
