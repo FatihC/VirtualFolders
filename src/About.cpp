@@ -62,11 +62,11 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
                 auto pnth = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<char*>(pidh) + pidh->e_lfanew);
                 auto timepoint = std::chrono::sys_seconds(std::chrono::seconds(pnth->FileHeader.TimeDateStamp));
                 version += std::format(L"Build time: {0:%Y} {0:%b} {0:%d} at {0:%H}:{0:%M}:{0:%S} UTC.", timepoint);
+
+                version += L"\n\nby Fatih COÞKUN\n";
             }
 
             SetDlgItemText(hwndDlg, IDC_ABOUT_VERSION, version.data());
-            SendDlgItemMessage(hwndDlg, IDC_ABOUT_HELP, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(
-                L"Open user documentation."));
             SendDlgItemMessage(hwndDlg, IDC_ABOUT_MORE, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(
                 L"Show change log, license and other information."));
 
@@ -80,37 +80,29 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
         case IDOK:
             EndDialog(hwndDlg, 0);
             return TRUE;
-        case IDC_ABOUT_HELP:
-            {
-                auto n = SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, 0, 0);
-                std::wstring path(n, 0);
-                SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, n + 1, reinterpret_cast<LPARAM>(path.data()));
-                path += L"\\VFolders\\help.htm";
-                ShellExecute(0, 0, path.data(), 0, 0, 0);
-            }
-            EndDialog(hwndDlg, 0);
-            return TRUE;
         case IDC_ABOUT_MORE:
             {
                 auto n = SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, 0, 0);
                 std::wstring path(n, 0);
                 SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, n + 1, reinterpret_cast<LPARAM>(path.data()));
-                std::wstring changes = path + L"\\VFolders\\CHANGELOG.md";
+
+                static std::wstring changes = path + L"\\VFolders\\CHANGELOG.md";
                 if (PathFileExists(changes.data()) == TRUE) {
-                    SendMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(changes.data()));
-                    SendMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
+                    PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(changes.data()));
+                    PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
                 }
-                std::wstring license = path + L"\\VFolders\\LICENSE.txt";
+                static std::wstring license = path + L"\\VFolders\\LICENSE.txt";
                 if (PathFileExists(license.data()) == TRUE) {
-                    SendMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(license.data()));
-                    SendMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
+                    PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(license.data()));
+                    PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
                 }
-                std::wstring readme = path + L"\\VFolders\\README.md";
+                static std::wstring readme = path + L"\\VFolders\\README.md";
                 if (PathFileExists(readme.data()) == TRUE) {
-                    SendMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(readme.data()));
-                    SendMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
+                    PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(readme.data()));
+                    PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
                 }
-                SendMessage(plugin.nppData._nppHandle, NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(changes.data()));
+
+                PostMessage(plugin.nppData._nppHandle, NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(changes.data()));
             }
             EndDialog(hwndDlg, 0);
             return TRUE;

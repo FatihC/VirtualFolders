@@ -54,14 +54,13 @@ void nppShutdown();
 
 // Routines that process menu commands
 
-void printListOpenFiles();
+
 std::vector<std::string> listOpenFiles();
 void showAboutDialog();
 void showSettingsDialog();
-void toggleStatusDialog();
-void toggleWatcherPanel();
-void toggleWatcherPanelWithList();
-void resizeWatcherPanel();
+void toggleVirtualPanelWithList();
+void toggleShortcutOverride();
+void resizeVirtualPanel();
 void increaseFontSize();
 void decreaseFontSize();
 void setFontSize();
@@ -70,7 +69,7 @@ void setFontSize();
 
 
 // External variables
-extern HWND watcherPanel;
+extern HWND virtualPanelWnd;
 
 // External functions
 extern void updateTreeColorsExternal(HWND hTree);
@@ -95,31 +94,26 @@ extern void loadMenus();
 //    menuDefinition[mnemonic]._cmdID
 // to get the menu item identifier assigned by Notepad++.
 
-static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
+//static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
 NPP::ShortcutKey SKNextTab;
 
-int menuItem_PrintListOpenFiles = 0;
-int menuItem_ToggleStatus = 1;
-int menuItem_ToggleWatcher = 2;
-int menuItem_Separator1 = 3;
-int menuItem_Settings = 4;
-int menuItem_ShortcutOverrider = 5;
-int menuItem_IncreaseFont = 6;
-int menuItem_DecreaseFont = 7;
-int menuItem_About = 8;
+
+int menuItem_ToggleVirtualPanel = 0;
+int menuItem_Settings = 1;
+int menuItem_ShortcutOverrider = 2;
+int menuItem_IncreaseFont = 3;
+int menuItem_DecreaseFont = 4;
+int menuItem_About = 5;
 
 
 
 FuncItem menuDefinition[] = {
-    { L"Insert List of Open Files", []() {plugin.cmd(printListOpenFiles);},         menuItem_PrintListOpenFiles,                    false,      0},
-    { L"Show Status"              , []() {plugin.cmd(toggleStatusDialog);},         menuItem_ToggleStatus,                          false,      &SKToggleStatus },
-    { L"Show Watcher Panel"       , []() {plugin.cmd(toggleWatcherPanelWithList);}, menuItem_ToggleWatcher,                         false,      0},
-    { 0                           , 0,                                              menuItem_Separator1,                            false,      0},
-    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         menuItem_Settings,                              false,      0},
-    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     menuItem_ShortcutOverrider, plugin.isShortcutOverridden,    0},
-    { L"Increase Plugin Font Size: 9px", []() {plugin.cmd(increaseFontSize); },     menuItem_IncreaseFont,                          false,      0},
-    { L"Decrease Plugin Font Size: 9px", []() {plugin.cmd(decreaseFontSize); },     menuItem_DecreaseFont,                          false,      0},
-    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         menuItem_About,                                 false,      0},
+    { L"Show Virtual Folder Panel", []() {plugin.cmd(toggleVirtualPanelWithList);},    menuItem_ToggleVirtualPanel,       false,      0},
+    { L"Settings..."              , []() {plugin.cmd(showSettingsDialog);},         menuItem_Settings,              false,      0},
+    { L"Override ShortCuts"       , []() {plugin.cmd(toggleShortcutOverride);},     menuItem_ShortcutOverrider,     plugin.isShortcutOverridden,    0},
+    { L"Increase Plugin Font Size: 9px", []() {plugin.cmd(increaseFontSize); },     menuItem_IncreaseFont,          false,      0},
+    { L"Decrease Plugin Font Size: 9px", []() {plugin.cmd(decreaseFontSize); },     menuItem_DecreaseFont,          false,      0},
+    { L"Help/About..."            , []() {plugin.cmd(showAboutDialog   );},         menuItem_About,                 false,      0},
 };
 
 
@@ -139,26 +133,35 @@ extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
     loadConfiguration();
 	loadLocalization();
 
-    std::wstring shortcutMenuLabel = commonData.translator->getTextW("IDM_SHORTCUT_OVERRIDE");
-    wcsncpy_s(menuDefinition[menuItem_ShortcutOverrider]._itemName, menuItemSize, shortcutMenuLabel.c_str(), _TRUNCATE);
+    if (virtualPanelWnd) {
+		wstring title = commonData.translator->getTextW("IDM_PLUGIN_TITLE");
+        ::SetWindowTextW(virtualPanelWnd, title.c_str());
+    }
 
-    
-    menuDefinition[menuItem_ShortcutOverrider]._init2Check = plugin.isShortcutOverridden;
+    std::wstring showVirtualPanelLabel = commonData.translator->getTextW("IDM_SHOW_VIRTUAL_PANEL");
+    wcsncpy_s(menuDefinition[menuItem_ToggleVirtualPanel]._itemName, menuItemSize, showVirtualPanelLabel.c_str(), _TRUNCATE);
+
+    std::wstring settingsLabel = commonData.translator->getTextW("IDM_SETTINGS");
+    wcsncpy_s(menuDefinition[menuItem_Settings]._itemName, menuItemSize, settingsLabel.c_str(), _TRUNCATE);
+
+    std::wstring shortcutsLabel = commonData.translator->getTextW("IDM_SHORTCUT_OVERRIDE");
+    wcsncpy_s(menuDefinition[menuItem_ShortcutOverrider]._itemName, menuItemSize, shortcutsLabel.c_str(), _TRUNCATE);
+
+    std::wstring aboutLabel = commonData.translator->getTextW("IDM_ABOUT");
+    wcsncpy_s(menuDefinition[menuItem_About]._itemName, menuItemSize, aboutLabel.c_str(), _TRUNCATE);
+
+
+
+       
     if (plugin.isShortcutOverridden) {
 		plugin.isShortcutOverridden = false; // temporary
         toggleShortcutOverride(); // PluginFrameWork.toggleShortcutOverride
     }
     std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(commonData.fontSize) + L" px";
-    wcsncpy_s(menuDefinition[menuItem_IncreaseFont]._itemName,
-        menuItemSize,
-        fontIncreaseLabel.c_str(),
-        _TRUNCATE);
+    wcsncpy_s(menuDefinition[menuItem_IncreaseFont]._itemName, menuItemSize, fontIncreaseLabel.c_str(),_TRUNCATE);
 
     std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(commonData.fontSize) + L" px";
-    wcsncpy_s(menuDefinition[menuItem_DecreaseFont]._itemName,
-        menuItemSize,
-        fontDecreaseLabel.c_str(),
-        _TRUNCATE);
+    wcsncpy_s(menuDefinition[menuItem_DecreaseFont]._itemName, menuItemSize, fontDecreaseLabel.c_str(), _TRUNCATE);
 
 
 
@@ -230,18 +233,18 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
         case NPPN_DARKMODECHANGED:
             // Handle dark mode change - update any open dialogs
-            if (watcherPanel && IsWindow(watcherPanel)) {
-                npp(NPPM_DARKMODESUBCLASSANDTHEME, NPP::NppDarkMode::dmfHandleChange, watcherPanel);
-                SetWindowPos(watcherPanel, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            if (virtualPanelWnd && IsWindow(virtualPanelWnd)) {
+                npp(NPPM_DARKMODESUBCLASSANDTHEME, NPP::NppDarkMode::dmfHandleChange, virtualPanelWnd);
+                SetWindowPos(virtualPanelWnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
                 
                 // Update tree colors
-                HWND hTree = GetDlgItem(watcherPanel, 1023);
+                HWND hTree = GetDlgItem(virtualPanelWnd, 1023);
                 if (hTree) {
                     updateTreeColorsExternal(hTree);
                 }
                 
                 // Resize the panel to match the new theme
-                resizeWatcherPanel();
+                resizeVirtualPanel();
             }
             break;
         case NPPN_WORDSTYLESUPDATED:

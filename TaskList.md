@@ -27,15 +27,15 @@
 - [ ] Use std::list instead of vector
 - [x] When Theme changed
 	- [x] Degisik temalarda insertion line: use text color as lineColor 
-- [ ] Internationalization
-	- [ ] NPPN_LANGCHANGED
+- [x] Internationalization
+	- [x] NPPN_LANGCHANGED
 - [x] Context Menu
 	- [x] Move to View Kaldı
 - [x] onBeforeFileClosed'da order docOrder ayari
 - [x] Dark Mode - Light Mode Change Event
 - [x] View's
 - [ ] Session
-- [ ] Plugin Menu's
+- [x] Plugin Menu's
 - [ ] Template'in kodlarından kurtul
 - [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
 - [x] No Document List. Just tabs
@@ -48,7 +48,7 @@
 - [ ] If there is a problem with orders. fix at the start. don't crash
 - [-] Hover color in different themes: seems not possible. In dark theme my color is ignored.
 - [x] ctrl+pg dwn-up: catch these events. and switch to new buffer with order number not docOrder
-- [ ] Font resize.
+- [x] Font resize.
 
 
 
@@ -57,7 +57,7 @@
 - [x] Opens some files some not: had to change static to inline
 - [x] Üst menüden dosya açınca tree'de görünmüyor
 - [x] Bir dosyayı notepad++'in üzerine getirip bırakınca tree'de tüm path gözüküyor. Restart edince düzeliyor.
-- [ ] Bir dosya bir klasörün hemen üstüne taşınırken klasör highlihted ise klasörün sonuna ekliyor. HATA MI?
+- [x] Bir dosya bir klasörün hemen üstüne taşınırken klasör highlihted ise klasörün sonuna ekliyor. HATA MI?
 - [x] dosya ismi uzun olunca otomatik sağa kaydırıyor
 - [x] dosya isminde '\u0000' olusmasi
 - [x] ctrl+pagedown secili item'i degistirmedi

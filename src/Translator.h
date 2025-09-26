@@ -18,8 +18,8 @@ public:
 	void loadFile(const std::string& filePath);
 
     // Get translated text by ID
-    std::string getText(const std::string& id) const;
-    wchar_t* getTextW(const std::string& id) const;
+    string getText(const std::string& id) const;
+    wstring getTextW(const std::string& id) const;
     
     std::string getCommand(const std::string& id) const;
     wchar_t* getCommandW(const std::string& id) const;
@@ -27,12 +27,14 @@ public:
     std::string getShortcut(const std::string& id) const;
     wchar_t* getShortcutW(const std::string& id) const;
 
+    void reload();
+
 
 private:
     tinyxml2::XMLDocument doc;
-    std::unordered_map<std::string, std::string> texts;
-    std::unordered_map<std::string, std::string> commands;
-    std::unordered_map<std::string, std::string> shortcuts;
+    unordered_map<std::string, std::string> texts;
+    unordered_map<std::string, std::string> commands;
+    unordered_map<std::string, std::string> shortcuts;
 
     void loadFromDoc();
     void loadItems(tinyxml2::XMLElement* parent);

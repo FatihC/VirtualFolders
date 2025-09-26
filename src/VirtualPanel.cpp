@@ -14,29 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "CommonData.h"
-#include "resource.h"
-#include "Shlwapi.h"
 
-#include "nlohmann/json.hpp"
-using json = nlohmann::json;
-
-#include <fstream>
-#include <iostream>
-#include <functional>
-#include <algorithm>
-
-#include <commctrl.h>
-#include "model/VData.h"
-#pragma comment(lib, "comctl32.lib")
-
-#define NOMINMAX
-#include <windowsx.h>
-#include "ProcessCommands.h"
-#include "RenameDialog.h"
 #include "TreeViewManager.h"
-
-#include <stdlib.h>
 
 // External variables
 extern CommonData commonData;
@@ -49,17 +28,17 @@ extern CommonData commonData;
 
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
-extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
+extern int menuItem_ToggleVirtualPanel;      // Defined in Plugin.cpp
 
 
 void writeJsonFile();
-void resizeWatcherPanel();
+void resizeVirtualPanel();
 void syncVDataWithOpenFiles(std::vector<VFile>& openFiles);
 
 
 
 
-HWND watcherPanel = 0;
+HWND virtualPanelWnd = 0;
 
 
 
@@ -267,7 +246,7 @@ void refreshTree(HWND hTree, VData& vData) {
     }
 }
 
-void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
+void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
     if(!commonData.isNppReady) {
         return;
     }
@@ -277,7 +256,7 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 		return; // Ignore this update
     }
 
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
     
@@ -388,12 +367,12 @@ void updateWatcherPanelUnconditional(UINT_PTR bufferID) {
 
 
 
-void resizeWatcherPanel() {
-    if (!watcherPanel || !IsWindow(watcherPanel)) return;
+void resizeVirtualPanel() {
+    if (!virtualPanelWnd || !IsWindow(virtualPanelWnd)) return;
     
     // Get the current dialog position and size
     RECT rcDialog;
-    GetWindowRect(watcherPanel, &rcDialog);
+    GetWindowRect(virtualPanelWnd, &rcDialog);
     
     // Get Notepad++ window dimensions
     RECT rcNpp;
@@ -415,14 +394,14 @@ void resizeWatcherPanel() {
     panelHeight = max(panelHeight, MIN_HEIGHT);
     
     // Resize the dialog to fill the available space
-    SetWindowPos(watcherPanel, nullptr, 0, 0, panelWidth, panelHeight, 
+    SetWindowPos(virtualPanelWnd, nullptr, 0, 0, panelWidth, panelHeight,
                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     
     // Resize the tree control to fill the dialog
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     if (hTree) {
         RECT rcClient;
-        GetClientRect(watcherPanel, &rcClient);
+        GetClientRect(virtualPanelWnd, &rcClient);
         SetWindowPos(hTree, nullptr, 0, 0, 
                     rcClient.right - rcClient.left, 
                     rcClient.bottom - rcClient.top, 
@@ -434,14 +413,14 @@ void resizeWatcherPanel() {
     }
 }
 
-void updateWatcherPanel(UINT_PTR bufferID, int activeView) {
+void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
     currentView = activeView;
-    if (watcherPanel && IsWindowVisible(watcherPanel)) {}
-    updateWatcherPanelUnconditional(bufferID);
+    if (virtualPanelWnd && IsWindowVisible(virtualPanelWnd)) {}
+    updateVirtualPanelUnconditional(bufferID);
 }
 
 void onFileClosed(UINT_PTR bufferID, int view) {
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
     optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, view);
@@ -472,17 +451,17 @@ void onFileClosed(UINT_PTR bufferID, int view) {
         writeJsonFile();
         
         
-        OutputDebugStringA("File closed and removed from watcher panel\n");
+        LOG("File closed and removed from tree panel");
 
 		
 	}
 }
 
 void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath) {
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
     if (!vFileOpt) {
-        OutputDebugStringA("File not found in vData\n");
+        LOG("File not found in vData");
         return;
     }
 	string oldName = vFileOpt.value()->name;
@@ -511,7 +490,7 @@ void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath) {
         // Write updated vData to JSON file
         writeJsonFile();
         
-        OutputDebugStringA("File renamed and watcher panel updated\n");
+        OutputDebugStringA("File renamed and tree panel updated\n");
 	}
 }
 
@@ -646,15 +625,15 @@ void syncVDataWithBufferIDs()
     delete[] fileNames;
 }
 
-void toggleWatcherPanelWithList() {
-    if (!watcherPanel) {
-        watcherPanel = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
+void toggleVirtualPanelWithList() {
+    if (!virtualPanelWnd) {
+        virtualPanelWnd = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
         
-        NPP::tTbData dock;
-        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        
+        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
 
         // Resize dialog to match left panel size
-        resizeWatcherPanel();
+        resizeVirtualPanel();
 
 		commonData.hTree = hTree;
 
@@ -684,7 +663,6 @@ void toggleWatcherPanelWithList() {
 
         syncVDataWithBufferIDs();
 
-
 		
         int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().getOrder();
 		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().getOrder());
@@ -705,11 +683,14 @@ void toggleWatcherPanelWithList() {
             }
 
         }
+        static std::wstring pluginTitleStr;
+        pluginTitleStr = commonData.translator->getTextW("IDM_PLUGIN_TITLE");
+        static const wchar_t* pluginTitle = pluginTitleStr.c_str();
         
 
-        dock.hClient = watcherPanel;
-        dock.pszName = L"Virtual Folders";  // title bar text (caption in dialog is replaced)
-        dock.dlgID = menuItem_ToggleWatcher;          // zero-based position in menu to recall dialog at next startup
+        dock.hClient = virtualPanelWnd;
+        dock.pszName = pluginTitle;  // title bar text (caption in dialog is replaced)
+        dock.dlgID = menuItem_ToggleVirtualPanel;          // zero-based position in menu to recall dialog at next startup
         dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
         dock.pszModuleName = L"VFolders.dll";        // plugin module name
         HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
@@ -718,22 +699,24 @@ void toggleWatcherPanelWithList() {
 
         npp(NPPM_DMMREGASDCKDLG, 0, &dock);
 
-        OutputDebugStringA("Watch Panel Create\n");
+        
+
+        LOG("Tree Panel Created");
     }
-    else if (IsWindowVisible(watcherPanel)) {
-        npp(NPPM_DMMHIDE, 0, watcherPanel);
-        OutputDebugStringA("Watch Panel Hide\n");
+    else if (IsWindowVisible(virtualPanelWnd)) {
+        npp(NPPM_DMMHIDE, 0, virtualPanelWnd);
+        LOG("Tree Panel Hide");
         // Update tab selection state
         commonData.virtualFoldersTabSelected = false;
     }
     else {
-        updateWatcherPanelUnconditional(-1);
-        npp(NPPM_DMMSHOW, 0, watcherPanel);
-        OutputDebugStringA("Watch Panel Show\n");
+        updateVirtualPanelUnconditional(-1);
+        npp(NPPM_DMMSHOW, 0, virtualPanelWnd);
+        LOG("Tree Panel Show");
         // Update tab selection state
         commonData.virtualFoldersTabSelected = true;
     }
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
 	commonData.hTree = hTree;
 }
 

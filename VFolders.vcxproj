@@ -60,14 +60,10 @@
     <ClCompile Include="src\Settings.cpp" />
     <ClCompile Include="src\Plugin.cpp" />
     <ClCompile Include="src\ProcessNotifications.cpp" />
-    <ClCompile Include="src\Status.cpp" />
     <ClCompile Include="src\Util.cpp" />
-    <ClCompile Include="src\Watcher.cpp" />
+    <ClCompile Include="src\VirtualPanel.cpp" />
     <None Include="packages.config" />
     <None Include="src\Host\ScintillaCall.cxx" />
-    <None Include="src\html1.htm">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
     <None Include="TaskList.md">
       <SubType>
       </SubType>

@@ -5,5 +5,4 @@
 
 
 std::vector<VFile> listOpenFiles();
-void printListOpenFiles();
 optional<VFile> sessionFileToVFile(const SessionFile& sessionFile, int view);

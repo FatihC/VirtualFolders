@@ -35,7 +35,7 @@
 extern CommonData commonData;
 
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
-extern int menuItem_ToggleWatcher;      // Defined in Plugin.cpp
+extern int menuItem_ToggleVirtualPanel;      // Defined in Plugin.cpp
 extern int menuItem_IncreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_DecreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_ShortcutOverrider;   // Defined in Plugin.cpp
@@ -104,6 +104,7 @@ LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
     }
     case WM_COMMAND:
     {
+		// It does not work here. Event goes to subclass procedure but not here.
         switch (LOWORD(wParam))
         {
         case IDM_VIEW_TAB_PREV:
@@ -126,7 +127,7 @@ LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 
 // Forward declarations
 void writeJsonFile();
-void updateWatcherPanelUnconditional(UINT_PTR bufferID);
+void updateVirtualPanelUnconditional(UINT_PTR bufferID);
 
 
 LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
@@ -140,7 +141,7 @@ void wrapFileInFolder(HTREEITEM selectedTreeItem);
 
 
 // External variables
-extern HWND watcherPanel;
+extern HWND virtualPanelWnd;
 
 
 
@@ -165,6 +166,20 @@ int calculateNewOrder(int targetOrder, const InsertionMark& mark) {
 }
 
 void loadMenus() {
+
+	// This does not work for some reason.
+    static std::wstring pluginTitleStr;
+    pluginTitleStr = commonData.translator->getTextW("IDM_PLUGIN_TITLE");
+    static const wchar_t* pluginTitle = pluginTitleStr.c_str();
+
+	dock.pszName = pluginTitle;  // title bar text (caption in dialog is replaced)
+
+    ::SendMessage(plugin.nppData._nppHandle, NPPM_DMMUPDATEDISPINFO, 0, (LPARAM)virtualPanelWnd);
+
+
+
+
+
     // Create context menu
     if (hContextMenu) {
         ::DestroyMenu(hContextMenu);
@@ -190,11 +205,11 @@ void loadMenus() {
         fileContextMenu = nullptr;
     }
     fileContextMenu = CreatePopupMenu();
-    AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_CLOSE, commonData.translator->getTextW("MENU_ID_FILE_CLOSE"));
-    AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_WRAP_IN_FOLDER, commonData.translator->getTextW("MENU_ID_FILE_WRAP_IN_FOLDER"));
+    AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_CLOSE, commonData.translator->getTextW("MENU_ID_FILE_CLOSE").c_str());
+    AppendMenu(fileContextMenu, MF_STRING, MENU_ID_FILE_WRAP_IN_FOLDER, commonData.translator->getTextW("MENU_ID_FILE_WRAP_IN_FOLDER").c_str());
     AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
-    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVE, commonData.translator->getTextW("IDM_FILE_SAVE"));
-    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVEAS, commonData.translator->getTextW("IDM_FILE_SAVEAS"));
+    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVE, commonData.translator->getTextW("IDM_FILE_SAVE").c_str());
+    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_SAVEAS, commonData.translator->getTextW("IDM_FILE_SAVEAS").c_str());
 
 
     if (openContextSubMenu) {
@@ -202,29 +217,29 @@ void loadMenus() {
         openContextSubMenu = nullptr;
     }
     openContextSubMenu = CreatePopupMenu();
-    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_FOLDER, commonData.translator->getTextW("IDM_FILE_OPEN_FOLDER"));
-    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_CMD, commonData.translator->getTextW("IDM_FILE_OPEN_CMD"));
-    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_CONTAININGFOLDERASWORKSPACE, commonData.translator->getTextW("IDM_FILE_CONTAININGFOLDERASWORKSPACE"));
+    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_FOLDER, commonData.translator->getTextW("IDM_FILE_OPEN_FOLDER").c_str());
+    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_CMD, commonData.translator->getTextW("IDM_FILE_OPEN_CMD").c_str());
+    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_CONTAININGFOLDERASWORKSPACE, commonData.translator->getTextW("IDM_FILE_CONTAININGFOLDERASWORKSPACE").c_str());
     //EnableMenuItem(openContextSubMenu, MENU_ID_FILE_OPEN_PARENT_WORKSPACE, MF_BYCOMMAND | MF_DISABLED);
     AppendMenu(openContextSubMenu, MF_SEPARATOR, 0, NULL);
-    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_DEFAULT_VIEWER, commonData.translator->getTextW("IDM_FILE_OPEN_DEFAULT_VIEWER"));
-    AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, commonData.translator->getTextW("IDM_OPEN_CONTEXT_MENU"));
+    AppendMenu(openContextSubMenu, MF_STRING, IDM_FILE_OPEN_DEFAULT_VIEWER, commonData.translator->getTextW("IDM_FILE_OPEN_DEFAULT_VIEWER").c_str());
+    AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)openContextSubMenu, commonData.translator->getTextW("IDM_OPEN_CONTEXT_MENU").c_str());
 
 
-    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RENAME, commonData.translator->getTextW("IDM_FILE_RENAME"));
-    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_DELETE, commonData.translator->getTextW("IDM_FILE_DELETE"));
-    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RELOAD, commonData.translator->getTextW("IDM_FILE_RELOAD"));
-    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, commonData.translator->getTextW("IDM_FILE_PRINT"));
+    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RENAME, commonData.translator->getTextW("IDM_FILE_RENAME").c_str());
+    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_DELETE, commonData.translator->getTextW("IDM_FILE_DELETE").c_str());
+    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_RELOAD, commonData.translator->getTextW("IDM_FILE_RELOAD").c_str());
+    AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, commonData.translator->getTextW("IDM_FILE_PRINT").c_str());
     AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
-    AppendMenu(fileContextMenu, MF_STRING, IDM_EDIT_SETREADONLY, commonData.translator->getTextW("IDM_EDIT_SETREADONLY"));
+    AppendMenu(fileContextMenu, MF_STRING, IDM_EDIT_SETREADONLY, commonData.translator->getTextW("IDM_EDIT_SETREADONLY").c_str());
     //AppendMenu(fileContextMenu, MF_STRING, IDM_FILE_PRINT, L"Read-Only Attribute in Windows");
     AppendMenu(fileContextMenu, MF_SEPARATOR, 0, NULL);
 
     copyContextSubMenu = CreatePopupMenu();
-    AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FULLPATHTOCLIP, commonData.translator->getTextW("IDM_EDIT_FULLPATHTOCLIP"));
-    AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FILENAMETOCLIP, commonData.translator->getTextW("IDM_EDIT_FILENAMETOCLIP"));
-    AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_CURRENTDIRTOCLIP, commonData.translator->getTextW("IDM_EDIT_CURRENTDIRTOCLIP"));
-    AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)copyContextSubMenu, commonData.translator->getTextW("IDM_CLIPBOARD"));
+    AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FULLPATHTOCLIP, commonData.translator->getTextW("IDM_EDIT_FULLPATHTOCLIP").c_str());
+    AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_FILENAMETOCLIP, commonData.translator->getTextW("IDM_EDIT_FILENAMETOCLIP").c_str());
+    AppendMenu(copyContextSubMenu, MF_STRING, IDM_EDIT_CURRENTDIRTOCLIP, commonData.translator->getTextW("IDM_EDIT_CURRENTDIRTOCLIP").c_str());
+    AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)copyContextSubMenu, commonData.translator->getTextW("IDM_CLIPBOARD").c_str());
 
 
 
@@ -233,9 +248,9 @@ void loadMenus() {
         moveContextSubMenu = nullptr;
     }
     moveContextSubMenu = CreatePopupMenu();
-    AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_GOTO_ANOTHER_VIEW, commonData.translator->getTextW("IDM_VIEW_GOTO_ANOTHER_VIEW"));
-    AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_CLONE_TO_ANOTHER_VIEW, commonData.translator->getTextW("IDM_VIEW_CLONE_TO_ANOTHER_VIEW"));
-    AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, commonData.translator->getTextW("IDM_MOVE_MENU"));
+    AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_GOTO_ANOTHER_VIEW, commonData.translator->getTextW("IDM_VIEW_GOTO_ANOTHER_VIEW").c_str());
+    AppendMenu(moveContextSubMenu, MF_STRING, IDM_VIEW_CLONE_TO_ANOTHER_VIEW, commonData.translator->getTextW("IDM_VIEW_CLONE_TO_ANOTHER_VIEW").c_str());
+    AppendMenu(fileContextMenu, MF_POPUP, (UINT_PTR)moveContextSubMenu, commonData.translator->getTextW("IDM_MOVE_MENU").c_str());
 
 
     /**********************************************************************************************************************/
@@ -244,8 +259,8 @@ void loadMenus() {
         folderContextMenu = nullptr;
     }
     folderContextMenu = CreatePopupMenu();
-    AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_UNWRAP, commonData.translator->getTextW("MENU_ID_FOLDER_UNWRAP"));
-    AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_RENAME, commonData.translator->getTextW("MENU_ID_FOLDER_RENAME"));
+    AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_UNWRAP, commonData.translator->getTextW("MENU_ID_FOLDER_UNWRAP").c_str());
+    AppendMenu(folderContextMenu, MF_STRING, MENU_ID_FOLDER_RENAME, commonData.translator->getTextW("MENU_ID_FOLDER_RENAME").c_str());
 
 
 
@@ -1074,7 +1089,7 @@ LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID)
 
 void unwrapFolder(HTREEITEM selectedTreeItem)
 {
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
     optional<VFolder*> vFolderOpt = commonData.vData.findFolderByOrder((int)tvItem.lParam);
     if (!vFolderOpt) {
@@ -1135,7 +1150,7 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
 
 void wrapFileInFolder(HTREEITEM selectedTreeItem)
 {
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     TVITEM item = getTreeItem(hTree, selectedTreeItem);
     optional<VFile*> vFileOpt = commonData.vData.findFileByOrder((int)item.lParam);
     if (!vFileOpt) {
@@ -1196,7 +1211,7 @@ void wrapFileInFolder(HTREEITEM selectedTreeItem)
 
 void treeItemSelected(HTREEITEM selectedTreeItem)
 {
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     // Handle file selection - open file when user clicks on a file item
     if (!selectedTreeItem) {
         return;
@@ -1288,7 +1303,7 @@ void moveFileIntoFolder(int dragOrder, int targetOrder) {
     VFile fileCopy = *file; // Create a copy of VFile*
 
 
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
 
     // Remove dragged item from tree
     TreeView_DeleteItem(hTree, hDragItem);
@@ -1348,7 +1363,7 @@ void moveFolderIntoFolder(int dragOrder, int targetOrder) {
     movedFolder = commonData.vData.findFolderByOrder(movedFolderCopy.getOrder()).value();
     
 	pos = movedFolder->getOrder();
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     
     HTREEITEM folderTreeItem = addFolderToTree(movedFolder, hTree, targetFolder->hTreeItem, pos, TVI_LAST);
 
@@ -1586,7 +1601,7 @@ void reorderItems(int oldOrder, int newOrder) {
         commonData.vData.fileList.push_back(fileData);
         movedFile = commonData.vData.findFileByOrder(newOrder).value();
 
-        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
         HTREEITEM oldItem = fileData.hTreeItem;
         HTREEITEM prevItem = nullptr;
         optional<VBase*> aboveSibling = commonData.vData.findAboveSibling(newOrder);
@@ -1630,7 +1645,7 @@ void reorderItems(int oldOrder, int newOrder) {
             movedFile = targetFolder->findFileByOrder(newOrder).value();
         }
 
-        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
         HTREEITEM oldItem = nullptr;
         HTREEITEM parentItem = targetFolder->hTreeItem;
         HTREEITEM prevItem = nullptr;
@@ -1661,7 +1676,7 @@ void reorderItems(int oldOrder, int newOrder) {
         
 
         //HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam);
-        HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
         HTREEITEM oldItem = nullptr;
         HTREEITEM hParent = nullptr;
 		HTREEITEM prevItem = nullptr;
@@ -1704,7 +1719,7 @@ void reorderFolders(int oldOrder, int newOrder) {
         return;  // Folder not found
     }
 
-    HWND hTree = GetDlgItem(watcherPanel, IDC_TREE1);
+    HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     optional<VFolder*> movedFolderOpt = commonData.vData.findFolderByOrder(oldOrder);
 	VFolder* movedFolder = movedFolderOpt.value();
     VFolder* sourceParentFolder = moveLocation.parentFolder;

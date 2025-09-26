@@ -81,6 +81,7 @@ void Translator::loadItems(tinyxml2::XMLElement* parent) {
         const char* id = item->Attribute("id");
         const char* text = item->Attribute("text");
         if (id && text) texts[id] = text;
+		LOG("Loaded item: id=[{}], text=[{}]", (id ? id : "null"), (text ? text : "null"));
     }
 }
 
@@ -138,8 +139,8 @@ std::string Translator::getText(const std::string& id) const {
     return ""; // fallback
 }
 
-wchar_t* Translator::getTextW(const std::string& id) const {
-    return toWchar(getText(id));
+wstring Translator::getTextW(const std::string& id) const {
+    return toWstring(getText(id));
 }
 
 std::string Translator::getCommand(const std::string& id) const {
@@ -175,4 +176,8 @@ bool Translator::loadXmlFromResource(HINSTANCE hInst, int resId, tinyxml2::XMLDo
     if (!data || size == 0) return false;
 
     return (doc.Parse(data, size) == tinyxml2::XML_SUCCESS);
+}
+
+void Translator::reload() {
+    texts.clear();
 }

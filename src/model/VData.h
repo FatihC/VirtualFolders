@@ -27,7 +27,7 @@ protected:
 public:
 	string name;
 	string path;
-	HTREEITEM hTreeItem = nullptr; // Pointer to the tree item in the watcher panel
+	HTREEITEM hTreeItem = nullptr; // Pointer to the tree item in the virtualpanel
 
 	friend void updateTreeItemLParam(VBase* vBase);
 

@@ -203,6 +203,7 @@ void applySettings(HWND hwndDlg) {
 
     //placement.get(hwndDlg);
 }
+
 struct FontEnumData {
     HWND hwndCombo;
     std::set<std::wstring> fontNames;

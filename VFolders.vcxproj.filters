@@ -120,10 +120,7 @@
     <ClCompile Include="src\Framework\PluginFramework.cpp">
       <Filter>Support Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Status.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Watcher.cpp">
+    <ClCompile Include="src\VirtualPanel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\model\VData.cpp">
@@ -167,9 +164,6 @@
   <ItemGroup>
     <None Include="src\Host\ScintillaCall.cxx">
       <Filter>Support Files</Filter>
-    </None>
-    <None Include="src\html1.htm">
-      <Filter>Documentation</Filter>
     </None>
     <None Include="packages.config" />
     <None Include="TaskList.md">

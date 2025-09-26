@@ -2,7 +2,12 @@
 <Language id="tr" name="Türkçe">
 
 	<Menu>
+		<Item id="IDM_PLUGIN_TITLE" text="Sanal Klasörler"/>
+		
+		<Item id="IDM_SHOW_VIRTUAL_PANEL" text="Sanal Klasörler Panelini Göster"/>
+		<Item id="IDM_SETTINGS" text="Ayarlar..."/>
 		<Item id="IDM_SHORTCUT_OVERRIDE" text="Kısayolları Devral"/>
+		<Item id="IDM_ABOUT" text="Yardım/Hakkımda..."/>
 		
 		<Item id="MENU_ID_FILE_CLOSE" text="Kapat"/>
 		<Item id="MENU_ID_FILE_WRAP_IN_FOLDER" text="Klasör İçine Al"/>

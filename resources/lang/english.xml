@@ -2,7 +2,13 @@
 <Language id="en" name="English">
 
 	<Menu>
+		<Item id="IDM_PLUGIN_TITLE" text="Virtual Folders"/>
+		
+		
+		<Item id="IDM_SHOW_VIRTUAL_PANEL" text="Show Virtual Folder Panel"/>
+		<Item id="IDM_SETTINGS" text="Settings..."/>
 		<Item id="IDM_SHORTCUT_OVERRIDE" text="Override ShortCuts"/>
+		<Item id="IDM_ABOUT" text="Help/About..."/>
 		
 		<Item id="MENU_ID_FILE_CLOSE" text="Close"/>
 		<Item id="MENU_ID_FILE_WRAP_IN_FOLDER" text="Wrap in folder"/>

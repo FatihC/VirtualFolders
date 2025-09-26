@@ -95,15 +95,6 @@ extern "C" __declspec(dllexport) void setInfo(NPP::NppData nppData) {
     plugin.nppData = nppData;
     plugin.directStatusScintilla = reinterpret_cast<Scintilla::FunctionDirect>
         (SendMessage(plugin.nppData._scintillaMainHandle, static_cast<UINT>(Scintilla::Message::GetDirectStatusFunction), 0, 0));
-
-    //oldWndProc = (WNDPROC)SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)SubclassProc);
-    ////RemoveWindowSubclass(plugin.nppData._nppHandle, SubclassProc, 0);
-
-    //if (oldWndProc)
-    //{
-    //    SetWindowLongPtr(plugin.nppData._nppHandle, GWLP_WNDPROC, (LONG_PTR)oldWndProc);
-    //    oldWndProc = nullptr;
-    //}
 }
 
 extern "C" __declspec(dllexport) BOOL isUnicode() {return TRUE;}

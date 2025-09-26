@@ -7,12 +7,37 @@
 #include <string>
 #include "Util.h"
 
+#include "CommonData.h"
+#include "resource.h"
+#include "Shlwapi.h"
+
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
+
+#include <fstream>
+#include <iostream>
+#include <functional>
+#include <algorithm>
+
+#include <commctrl.h>
+#include "model/VData.h"
+#pragma comment(lib, "comctl32.lib")
+
+#define NOMINMAX
+#include <windowsx.h>
+#include "ProcessCommands.h"
+#include "RenameDialog.h"
+#include "TreeViewManager.h"
+
+#include <stdlib.h>
+
 
 
 #define TREEVIEW_TIMER_ID 1
 
 
 
+inline NPP::tTbData dock;
 
 // Forward declarations
 struct InsertionMark {

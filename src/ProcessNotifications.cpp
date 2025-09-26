@@ -24,7 +24,7 @@
 
 
 extern void updateStatusDialog();
-extern void updateWatcherPanel(UINT_PTR bufferID, int activeView);
+extern void updateVirtualPanel(UINT_PTR bufferID, int activeView);
 extern void onFileClosed(UINT_PTR bufferID, int view = 0);
 extern void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath);
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint);
@@ -35,7 +35,7 @@ extern void toggleViewOfVFile(UINT_PTR bufferID);
 
 
 // External variables
-extern HWND watcherPanel;
+extern HWND virtualPanelWnd;
 extern string fromWchar(const wchar_t* wstr);
 
 
@@ -50,8 +50,7 @@ void scnModified(const Scintilla::NotificationData* scnp) {
     if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) ++commonData.insertsCounted;
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::DeleteText)) ++commonData.deletesCounted;
     else return;
-    //updateStatusDialog();
-    //updateWatcherPanel();
+    //updateVirtualPanel();
 }
 
 void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint) {
@@ -95,7 +94,7 @@ void bufferActivated(const NMHDR* nmhdr) {
 
     //GetActiveViewForBuffer(bufferID);
 
-    updateWatcherPanel(bufferID, view);
+    updateVirtualPanel(bufferID, view);
 }
 
 void beforeFileClose(const NMHDR* nmhdr) {
@@ -230,7 +229,7 @@ void nppReady() {
     syncVDataWithBufferIDs();
 
 
-    //SetTimer(watcherPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
+    //SetTimer(virtualPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
 }
 
 
@@ -243,7 +242,7 @@ void nppShutdown() {
     
     // Save the current tab selection state
     // Check if Virtual Folders tab is currently visible/selected
-    if (watcherPanel && IsWindowVisible(watcherPanel)) {
+    if (virtualPanelWnd && IsWindowVisible(virtualPanelWnd)) {
         commonData.virtualFoldersTabSelected = true;
     } else {
         commonData.virtualFoldersTabSelected = false;
