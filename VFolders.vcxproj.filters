@@ -165,7 +165,6 @@
     <None Include="src\Host\ScintillaCall.cxx">
       <Filter>Support Files</Filter>
     </None>
-    <None Include="packages.config" />
     <None Include="TaskList.md">
       <Filter>Documentation</Filter>
     </None>
