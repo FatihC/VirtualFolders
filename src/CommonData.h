@@ -60,7 +60,7 @@ inline struct CommonData {
     config<bool>         virtualFoldersTabSelected = { "VirtualFoldersTabSelected", false };
 
     std::vector<VFile> openFiles;
-    VData vData;
+    VFolder rootVFolder;
     HWND hTree;
     UINT_PTR activeBufferID;
     std::map<UINT_PTR, bool> bufferStates;  // for save points
@@ -76,7 +76,7 @@ inline struct CommonData {
 inline std::wstring jsonFilePath;
 
 inline void writeJsonFile() {
-    json vDataJson = commonData.vData;
+    json vDataJson = commonData.rootVFolder;
     std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
 }
 

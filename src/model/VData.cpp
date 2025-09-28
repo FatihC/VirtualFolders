@@ -30,23 +30,6 @@ vector<VFile*> VFolder::getAllFiles() const {
 	return allFiles;
 }
 
-vector<VFile*> VData::getAllFiles() const {
-    vector<VFile*> allFiles;
-    
-    // Add all files from this folder
-    for (const auto& file : fileList) {
-        allFiles.push_back(const_cast<VFile*>(&file));
-    }
-    
-    // Recursively add files from all subfolders
-    for (const auto& subFolder : folderList) {
-        vector<VFile*> subFolderFiles = subFolder.getAllFiles();
-        allFiles.insert(allFiles.end(), subFolderFiles.begin(), subFolderFiles.end());
-    }
-    
-    return allFiles;
-}
-
 int VFolder::getLastOrder() const {
 	// Get the last order in this folder
 	if (fileList.empty() && folderList.empty()) {
@@ -63,28 +46,7 @@ int VFolder::getLastOrder() const {
 		std::max_element(folderList.begin(), folderList.end(),
 			[](const VBase& a, const VBase& b) {
 				return a.getOrder() < b.getOrder();
-			})->getLastOrder();
-
-	return std::max(maxFileOrder, maxFolderOrder);
-}
-
-int VData::getLastOrder() const {
-	// Get the last order in this folder
-	if (fileList.empty() && folderList.empty()) {
-		return 0;
-	}
-
-	int maxFileOrder = fileList.empty() ? 0 :
-		std::max_element(fileList.begin(), fileList.end(),
-			[](const VBase& a, const VBase& b) {
-				return a.getOrder() < b.getOrder();
-			})->getOrder();
-
-	int maxFolderOrder = folderList.empty() ? 0 :
-		std::max_element(folderList.begin(), folderList.end(),
-			[](const VBase& a, const VBase& b) {
-				return a.getOrder() < b.getOrder();
-			})->getLastOrder();
+			})->getLastOrder();	// Recursive call to get last order in subfolder
 
 	return std::max(maxFileOrder, maxFolderOrder);
 }
@@ -121,38 +83,6 @@ void VFolder::vFolderSort()
 	}
 }
 
-VFile* VData::findFileByPath(const string& path, int view) const {
-	for (const auto& file : fileList) {
-		if (file.path == path && file.view == view) {
-			return const_cast<VFile*>(&file); // Return a non-const pointer
-		}
-	}
-	// If not found in root, search in folders
-	for (const auto& folder : folderList) {
-		VFile* foundFile = folder.findFileByPath(path, view);
-		if (foundFile) {
-			return foundFile;
-		}
-	}
-	return nullptr; // Return null if not found
-}
-
-VFile* VData::findFileByName(const string& name, int view) const {
-	for (const auto& file : fileList) {
-		if (file.name == name && file.view == view) {
-			return const_cast<VFile*>(&file); // Return a non-const pointer
-		}
-	}
-	// If not found in root, search in folders
-	for (const auto& folder : folderList) {
-		VFile* foundFile = folder.findFileByName(name, view);
-		if (foundFile) {
-			return foundFile;
-		}
-	}
-	return nullptr; // Return null if not found
-}
-
 VFile* VFolder::findFileByPath(const string& path, int view) const {
 	for (const auto& file : fileList) {
 		if (file.path == path && file.view == view) {
@@ -185,63 +115,6 @@ VFile* VFolder::findFileByName(const string& name, int view) const {
 	return nullptr; // Return null if not found
 }
 
-void VData::vDataSort() {
-	// Sort folders by order
-	std::sort(folderList.begin(), folderList.end(), [](const VFolder& a, const VFolder& b) {
-		return a.getOrder() < b.getOrder();
-		});
-	for (auto& folder : folderList) {
-		folder.vFolderSort();
-	}
-
-	// Optionally sort root-level files if you have any
-	std::sort(fileList.begin(), fileList.end(), [](const VFile& a, const VFile& b) {
-		return a.getOrder() < b.getOrder();
-		});
-}
-
-optional<VFile*> VData::findFileByOrder(int order) const {  
-    for (const auto& file : fileList) {  
-        if (file.getOrder() == order) {
-            return &const_cast<VFile&>(file);  
-        }  
-    }
-
-	// If not found in root, search in folders
-	for (const auto& folder : folderList) {
-		optional<VFile*> foundFile = folder.findFileByOrder(order);
-		if (foundFile) {
-			return foundFile;
-		}
-	}
-
-    return std::nullopt; // Return null if not found  
-}
-
-// Make sure if the given order is in the root level.
-// We don't check folders recursively, just the root level.
-optional<VBase*> VData::findAboveSibling(int order) {
-	// Find the above sibling of the item with the given order
-	optional<VBase*> aboveSibling = std::nullopt;
-	// Check root-level files
-	for (const auto& file : fileList) {
-		if (file.getOrder() < order) {
-			if (!aboveSibling || file.getOrder() > aboveSibling.value()->getOrder()) {
-				aboveSibling = &const_cast<VFile&>(file);
-			}
-		}
-	}
-	// Check root-level folders
-	for (const auto& folder : folderList) {
-		if (folder.getOrder() < order) {
-			if (!aboveSibling || folder.getOrder() > aboveSibling.value()->getOrder()) {
-				aboveSibling = &const_cast<VFolder&>(folder);
-			}
-		}
-	}
-	return aboveSibling;
-}
-
 optional<VBase*> VFolder::findAboveSibling(int order) {
 	// Find the above sibling of the item with the given order
 	optional<VBase*> aboveSibling = std::nullopt;
@@ -262,60 +135,6 @@ optional<VBase*> VFolder::findAboveSibling(int order) {
 		}
 	}
 	return aboveSibling;
-}
-
-optional<VFile*> VData::findFileByBufferID(UINT_PTR bufferID) const {
-	for (const auto& file : fileList) {
-		if (file.bufferID == bufferID) {
-			return &const_cast<VFile&>(file);
-		}
-	}
-
-	// If not found in root, search in folders
-	for (const auto& folder : folderList) {
-		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID);
-		if (foundFile) {
-			return foundFile;
-		}
-	}
-
-	return std::nullopt; // Return null if not found  
-}
-
-optional<VFile*> VData::findFileByBufferID(UINT_PTR bufferID, int view) const {
-	for (const auto& file : fileList) {
-		if (file.bufferID == bufferID && file.view == view) {
-			return &const_cast<VFile&>(file);
-		}
-	}
-
-	// If not found in root, search in folders
-	for (const auto& folder : folderList) {
-		optional<VFile*> foundFile = folder.findFileByBufferID(bufferID, view);
-		if (foundFile) {
-			return foundFile;
-		}
-	}
-
-	return std::nullopt; // Return null if not found  
-}
-
-vector<VFile*> VData::getAllFilesByBufferID(UINT_PTR bufferID) const {
-	vector<VFile*> foundedFiles;
-	for (const auto& file : fileList) {
-		if (file.bufferID == bufferID) {
-			foundedFiles.push_back(const_cast<VFile*>(&file));
-		}
-	}
-
-	// If not found in root, search in folders
-	for (const auto& folder : folderList) {
-		vector<VFile*> foundedFilesFromFolder = folder.getAllFilesByBufferID(bufferID);
-		foundedFiles.insert(foundedFiles.end(), foundedFilesFromFolder.begin(), foundedFilesFromFolder.end());
-
-	}
-
-	return foundedFiles;
 }
 
 vector<VFile*> VFolder::getAllFilesByBufferID(UINT_PTR bufferID) const {
@@ -411,44 +230,6 @@ optional<VBase*> VFolder::getChildByOrder(int order) const {
 	return std::nullopt; // Return null if not found
 }
 
-optional<VBase*> VData::getChildByOrder(int order) const {
-	for (const auto& file : fileList) {
-		if (file.getOrder() == order) {
-			return &const_cast<VFile&>(file);
-		}
-	}
-	for (const auto& folder : folderList) {
-		if (folder.getOrder() == order) {
-			return &const_cast<VFolder&>(folder);
-		}
-		else {
-			optional<VBase*> child = folder.getChildByOrder(order);
-			if (child) {
-				return child;
-			}
-		}
-	}
-	return std::nullopt; // Return null if not found
-}
-
-optional<VFolder*> VData::findFolderByOrder(int order) const {
-	for (const auto& folder : folderList) {
-		if (folder.getOrder() == order) {
-			return &const_cast<VFolder&>(folder);
-		}
-	}
-
-	// Recursively search in subfolders
-	for (const auto& subFolder : folderList) {
-		optional<VFolder*> foundFolder = subFolder.findFolderByOrder(order);
-		if (foundFolder) {
-			return foundFolder;
-		}
-	}
-
-	return std::nullopt; // Return null if not found
-}
-
 optional<VFolder*> VFolder::findFolderByOrder(int order) const {
 	for (const auto& folder : folderList) {
 		if (folder.getOrder() == order) {
@@ -484,7 +265,7 @@ void VFolder::move(int steps) {
 	vFolderSort();
 }
 
-bool VData::isInRoot(int order) const {
+bool VFolder::isInRoot(int order) const {
 	for (const auto& file : fileList) {
 		if (file.getOrder() == order) {
 			return true; // Found in root files
@@ -499,36 +280,13 @@ bool VData::isInRoot(int order) const {
 	return false;
 }
 
-VFolder* VData::findParentFolder(int order) const {
-	// Recursively search in all root folders
-	for (const auto& folder : folderList) {
-		// Check files in current folder
-		for (const auto& file : folder.fileList) {
-			if (file.getOrder() == order) {
-				return const_cast<VFolder*>(&folder); // Found the parent folder
-			}
-		}
-
-		// Check folders in current folder
-		for (const auto& subFolder : folder.folderList) {
-			if (subFolder.getOrder() == order) {
-				return const_cast<VFolder*>(&folder); // Found the parent folder
-			}
-		}
-
-		// Recursively search subfolders
-		VFolder* foundInSubfolder = folder.findParentFolder(order);
-		if (foundInSubfolder) {
-			return foundInSubfolder;
-		}
-	} 
-
-	return nullptr; // Not found in any folder
-}
-
 VFolder* VFolder::findParentFolder(int order) const {
 	// Recursively search in all root folders
 	for (const auto& folder : folderList) {
+		if (folder.getOrder() == order) {
+			return const_cast<VFolder*>(this); // Found the parent folder
+		}
+
 		// Check files in current folder
 		for (const auto& file : folder.fileList) {
 			if (file.getOrder() == order) {
@@ -559,34 +317,6 @@ void VFolder::removeChild(int order) {
 		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
 }
 
-
-void VData::removeFile(int order) {
-	// Remove file by order
-	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
-		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
-}
-
-void VData::removeChild(int order) {
-	// Remove file by order
-	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
-		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
-	folderList.erase(std::remove_if(folderList.begin(), folderList.end(),
-		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
-}
-
-vector<VBase*> VData::getAllChildren() {
-	vector<VBase*> allChildren;
-	// Add all root-level files
-	for (const auto& file : fileList) {
-		allChildren.push_back(const_cast<VFile*>(&file));
-	}
-	// Add all root-level folders
-	for (const auto& folder : folderList) {
-		allChildren.push_back(const_cast<VFolder*>(&folder));
-	}
-	return allChildren;
-}
-
 vector<VBase*> VFolder::getAllChildren() {
 	vector<VBase*> allChildren;
 	// Add all root-level files
@@ -606,17 +336,6 @@ vector<VBase*> VFolder::getAllChildren() {
 	return allChildren;
 }
 
-void VData::addChildren(vector<VBase*>& allChildren) {
-	for (const auto& base : allChildren) {
-		if (auto file = dynamic_cast<VFile*>(base)) {
-			fileList.push_back(*file); // makes a copy
-		}
-		else if (auto folder = dynamic_cast<VFolder*>(base)) {
-			folderList.push_back(*folder); // makes a copy
-		}
-	}
-}
-
 void VFolder::addChildren(vector<VBase*>& allChildren) {
 	for (const auto& base : allChildren) {
 		if (auto file = dynamic_cast<VFile*>(base)) {
@@ -625,25 +344,6 @@ void VFolder::addChildren(vector<VBase*>& allChildren) {
 		else if (auto folder = dynamic_cast<VFolder*>(base)) {
 			folderList.push_back(*folder); // makes a copy
 		}
-	}
-}
-
-void VData::adjustOrders(int beginOrder, int endOrder, int step) {
-	if (!endOrder) {
-		endOrder = INT_MAX; // If endOrder is not specified, adjust all orders
-	}
-	// Adjust orders of all files and folders in the range [beginOrder, endOrder]
-	for (auto& file : fileList) {
-		if (file.getOrder() >= beginOrder && file.getOrder() <= endOrder) {
-			file.setOrder(file.getOrder() + step);
-		}
-	}
-	for (auto& folder : folderList) {
-		if (folder.getOrder() >= beginOrder && folder.getOrder() <= endOrder) {
-			folder.setOrder(folder.getOrder() + step);
-		}
-		folder.adjustOrders(beginOrder, endOrder, step);
-
 	}
 }
 

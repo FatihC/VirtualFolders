@@ -51,7 +51,7 @@ Scintilla::Position terminal = -1;
 // Helper function to adjust global orders when moving a folder with all its contents
 void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount) {
     // Get all files across the entire hierarchy
-    vector<VFile*> allFiles = commonData.vData.getAllFiles();
+    vector<VFile*> allFiles = commonData.rootVFolder.getAllFiles();
     
     // Helper lambda to get all folders recursively
     std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders = 
@@ -63,7 +63,7 @@ void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemC
         };
     
     vector<VFolder*> allFolders;
-    getAllFolders(commonData.vData.folderList, allFolders);
+    getAllFolders(commonData.rootVFolder.folderList, allFolders);
     
     if (oldOrder < newOrder) {
         // Moving down - shift items in between to the left
@@ -108,7 +108,7 @@ void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemC
 // Helper function to adjust global orders for a single file move
 void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder) {
     // Get all files across the entire hierarchy
-    vector<VFile*> allFiles = commonData.vData.getAllFiles();
+    vector<VFile*> allFiles = commonData.rootVFolder.getAllFiles();
     
     // Helper lambda to get all folders recursively
     std::function<void(vector<VFolder>&, vector<VFolder*>&)> getAllFolders = 
@@ -120,7 +120,7 @@ void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder) {
         };
     
     vector<VFolder*> allFolders;
-    getAllFolders(commonData.vData.folderList, allFolders);
+    getAllFolders(commonData.rootVFolder.folderList, allFolders);
     
     if (oldOrder < newOrder) {
         // Moving down - decrease orders of items in between
@@ -180,11 +180,11 @@ void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int
 
 
 
-FolderLocation findFolderLocation(VData& vData, int order) {
+FolderLocation findFolderLocation(int order) {
     FolderLocation location;
     
     // Check root level first
-    for (auto& folder : vData.folderList) {
+    for (auto& folder : commonData.rootVFolder.folderList) {
         if (folder.getOrder() == order) {
             location.folder = &folder;
             location.parentFolder = nullptr;  // Root level
@@ -211,39 +211,13 @@ FolderLocation findFolderLocation(VData& vData, int order) {
     };
     
     // Search in all root-level folders
-    for (auto& rootFolder : vData.folderList) {
+    for (auto& rootFolder : commonData.rootVFolder.folderList) {
         if (searchInFolder(rootFolder)) {
             break;
         }
     }
     
     return location;
-}
-
-
-void refreshTree(HWND hTree, VData& vData) {
-    // Clear existing tree
-    TreeView_DeleteAllItems(hTree);
-    
-    // Rebuild tree with new order  
-	vData.vDataSort();
-
-    BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-    
-    int lastOrder = vData.folderList.empty() ? 0 : vData.folderList.back().getOrder();
-    lastOrder = std::max(lastOrder, vData.fileList.empty() ? 0 : vData.fileList.back().getOrder());
-    for (size_t pos = 0; pos <= lastOrder; pos) {
-        optional<VFile*> vFile = vData.findFileByOrder(pos);
-        if (!vFile) {
-            optional<VFolder*> vFolder = vData.findFolderByOrder(pos);
-            if (vFolder) {
-                addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos, TVI_LAST);
-            }
-        } else {
-            addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode, TVI_LAST);
-            pos++;
-        }
-    }
 }
 
 void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
@@ -264,7 +238,7 @@ void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
     if (bufferID <= 0) {
         bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0); // does not take view as param
     }
-    optional<VFile*> vFileOption = commonData.vData.findFileByBufferID(bufferID);
+    optional<VFile*> vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID);
     if (!vFileOption) {
         int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
         wchar_t* filePath = new wchar_t[len + 1];
@@ -289,10 +263,10 @@ void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
             string nppFileName = fromWchar(filePath);
             VFile* vFile = nullptr;
             if (nppFileName.find_first_of("\\\\") != string::npos) {
-                vFile = commonData.vData.findFileByPath(nppFileName);
+                vFile = commonData.rootVFolder.findFileByPath(nppFileName);
             }
             else {
-                vFile = commonData.vData.findFileByName(nppFileName);
+                vFile = commonData.rootVFolder.findFileByName(nppFileName);
             }
             if (vFile) return;
         }
@@ -303,7 +277,7 @@ void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
         // create vFile
 		VFile newFile;
 		newFile.bufferID = bufferID;
-		newFile.setOrder(commonData.vData.getLastOrder() + 1);
+		newFile.setOrder(commonData.rootVFolder.getLastOrder() + 1);
 
         string filePathString = fromWchar(filePath);
         size_t lastSlash = filePathString.find_last_of("/\\");
@@ -314,9 +288,9 @@ void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
 		newFile.session = 0;
 		newFile.backupFilePath = "";
 		newFile.isActive = true;
-		commonData.vData.fileList.push_back(newFile);
+		commonData.rootVFolder.fileList.push_back(newFile);
 
-        vFileOption = commonData.vData.findFileByBufferID(bufferID);
+        vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID);
 		VFile* vFilePtr = vFileOption.value();
 
 
@@ -328,9 +302,9 @@ void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
     else {
         // TODO: CHECK if it is a clone
         // kaç tane var
-        vector<VFile*> allFilesWithBufferID = commonData.vData.getAllFilesByBufferID(bufferID);
+        vector<VFile*> allFilesWithBufferID = commonData.rootVFolder.getAllFilesByBufferID(bufferID);
         if (allFilesWithBufferID.size() == 1 && allFilesWithBufferID[0]->view != currentView) { // it is cloned
-            VFolder* parentFolder = commonData.vData.findParentFolder(allFilesWithBufferID[0]->getOrder());
+            VFolder* parentFolder = commonData.rootVFolder.findParentFolder(allFilesWithBufferID[0]->getOrder());
             
             VFile fileCopy = *allFilesWithBufferID[0];
             fileCopy.hTreeItem = nullptr;
@@ -345,8 +319,8 @@ void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
             addFileToTree(&fileCopy, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, isDarkMode, allFilesWithBufferID[0]->hTreeItem);
 
             if (parentFolder) parentFolder->fileList.push_back(fileCopy);
-            else commonData.vData.fileList.push_back(fileCopy);
-            vFileOption = commonData.vData.findFileByBufferID(bufferID, currentView);
+            else commonData.rootVFolder.fileList.push_back(fileCopy);
+            vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID, currentView);
             writeJsonFile();
         }
     }
@@ -423,7 +397,7 @@ void onFileClosed(UINT_PTR bufferID, int view) {
     HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
-    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, view);
+    optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByBufferID(bufferID, view);
     if (!vFileOpt) {
         OutputDebugStringA("File not found in vData\n");
         return;
@@ -436,12 +410,12 @@ void onFileClosed(UINT_PTR bufferID, int view) {
         TreeView_DeleteItem(hTree, hSelectedItem);
         
 		VFile fileCopy = *(vFileOpt.value());
-        VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+        VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
         if (parentFolder) {
             parentFolder->removeFile(fileCopy.getOrder());
         }
         else {
-            commonData.vData.removeFile(fileCopy.getOrder());
+            commonData.rootVFolder.removeFile(fileCopy.getOrder());
         }
 
 		adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
@@ -459,7 +433,7 @@ void onFileClosed(UINT_PTR bufferID, int view) {
 
 void onFileRenamed(UINT_PTR bufferID, wstring filepath, wstring fullpath) {
     HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
-    optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID);
+    optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByBufferID(bufferID);
     if (!vFileOpt) {
         LOG("File not found in vData");
         return;
@@ -505,8 +479,8 @@ void toggleViewOfVFile(UINT_PTR bufferID)
     int docIndex2 = position2 & 0x3FFFFFFF;    // 0-based index
 
 
-    optional<VFile*> vFileMainOpt = commonData.vData.findFileByBufferID(bufferID, MAIN_VIEW);
-    optional<VFile*> vFileSubOpt = commonData.vData.findFileByBufferID(bufferID, SUB_VIEW);
+    optional<VFile*> vFileMainOpt = commonData.rootVFolder.findFileByBufferID(bufferID, MAIN_VIEW);
+    optional<VFile*> vFileSubOpt = commonData.rootVFolder.findFileByBufferID(bufferID, SUB_VIEW);
 
     if (docView1 == 0 && docView2 == 0) {
 		// Main'de var sub'da yok
@@ -605,10 +579,10 @@ void syncVDataWithBufferIDs()
         string nppFileName = fromWchar(fileNames[k]);
         VFile* vFile = nullptr;
         if (nppFileName.find_first_of("\\\\") != string::npos) {
-            vFile = commonData.vData.findFileByPath(nppFileName, view);
+            vFile = commonData.rootVFolder.findFileByPath(nppFileName, view);
         }
         else {
-            vFile = commonData.vData.findFileByName(nppFileName, view);
+            vFile = commonData.rootVFolder.findFileByName(nppFileName, view);
         }
         if (!vFile) continue;
         if (vFile->bufferID > 0) continue;
@@ -632,72 +606,81 @@ void toggleVirtualPanelWithList() {
         
         HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
 
-        // Resize dialog to match left panel size
-        resizeVirtualPanel();
+        try {
+            // Resize dialog to match left panel size
+            resizeVirtualPanel();
 
-		commonData.hTree = hTree;
+		    commonData.hTree = hTree;
 
-        setFontSize();
+            setFontSize();
 
 
 
         
-        TCHAR configDir[MAX_PATH];
-        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
-        jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
+            TCHAR configDir[MAX_PATH];
+            ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
+            jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
 
-        // read JSON
-        json vDataJson = loadVDataFromFile(jsonFilePath);
-        commonData.vData = vDataJson.get<VData>();
+            // read JSON
+            json rootVFolderJson = loadVDataFromFile(jsonFilePath);
+            commonData.rootVFolder = rootVFolderJson.get<VFolder>();
 
-        commonData.openFiles = listOpenFiles();
+            commonData.openFiles = listOpenFiles();
         
-        // Sync vData with open files
-        syncVDataWithOpenFiles(commonData.openFiles);
+            // Sync rootVFolder with open files
+            syncVDataWithOpenFiles(commonData.openFiles);
+
+            commonData.rootVFolder.vFolderSort();
+            commonData.rootVFolder.setOrder(-1);
+
+            writeJsonFile();
+
+            syncVDataWithBufferIDs();
 
 		
-        writeJsonFile();
-        
+            int lastOrder = commonData.rootVFolder.folderList.empty() ? 0 : commonData.rootVFolder.folderList.back().getOrder();
+		    lastOrder = std::max(lastOrder, commonData.rootVFolder.fileList.empty() ? 0 : commonData.rootVFolder.fileList.back().getOrder());
 
-        commonData.vData.vDataSort();
+            BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
-        syncVDataWithBufferIDs();
-
-		
-        int lastOrder = commonData.vData.folderList.empty() ? 0 : commonData.vData.folderList.back().getOrder();
-		lastOrder = std::max(lastOrder, commonData.vData.fileList.empty() ? 0 : commonData.vData.fileList.back().getOrder());
-
-        BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-
-        for (size_t pos = 0; pos <= lastOrder; pos) {
-			auto vFile = commonData.vData.findFileByOrder(pos);
-            if (!vFile) {
-                auto vFolder = commonData.vData.findFolderByOrder(pos);
-                if (vFolder) {
-                    addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos, TVI_LAST);
+            for (size_t pos = 0; pos <= lastOrder; pos) {
+			    auto vFile = commonData.rootVFolder.findFileByOrder(pos);
+                if (!vFile) {
+                    auto vFolder = commonData.rootVFolder.findFolderByOrder(pos);
+                    if (vFolder) {
+                        addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos, TVI_LAST);
+                    }
+                    else {
+                        pos++;
+                    }
                 }
-            }
-            else {
-                addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode, TVI_LAST);
-                pos++;
-            }
+                else {
+                    addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode, TVI_LAST);
+                    pos++;
+                }
 
-        }
-        static std::wstring pluginTitleStr;
-        pluginTitleStr = commonData.translator->getTextW("IDM_PLUGIN_TITLE");
-        static const wchar_t* pluginTitle = pluginTitleStr.c_str();
+            }
+            static std::wstring pluginTitleStr;
+            pluginTitleStr = commonData.translator->getTextW("IDM_PLUGIN_TITLE");
+            static const wchar_t* pluginTitle = pluginTitleStr.c_str();
         
 
-        dock.hClient = virtualPanelWnd;
-        dock.pszName = pluginTitle;  // title bar text (caption in dialog is replaced)
-        dock.dlgID = menuItem_ToggleVirtualPanel;          // zero-based position in menu to recall dialog at next startup
-        dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
-        dock.pszModuleName = L"VFolders.dll";        // plugin module name
-        HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
-        dock.hIconTab = hIcon;
+            dock.hClient = virtualPanelWnd;
+            dock.pszName = pluginTitle;  // title bar text (caption in dialog is replaced)
+            dock.dlgID = menuItem_ToggleVirtualPanel;          // zero-based position in menu to recall dialog at next startup
+            dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
+            dock.pszModuleName = L"VFolders.dll";        // plugin module name
+            HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
+            dock.hIconTab = hIcon;
 
 
-        npp(NPPM_DMMREGASDCKDLG, 0, &dock);
+            npp(NPPM_DMMREGASDCKDLG, 0, &dock);
+        }
+        catch (int x) 
+        {
+            LOG("We caught an int exception with value: [{}]", x);
+        }
+
 
         
 
@@ -721,7 +704,7 @@ void toggleVirtualPanelWithList() {
 }
 
 void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
-    vector<VFile*> allJsonVFiles = commonData.vData.getAllFiles();
+    vector<VFile*> allJsonVFiles = commonData.rootVFolder.getAllFiles();
     for (VFile* vFile : allJsonVFiles)
     {
         if (vFile->path != vFile->name) {
@@ -740,14 +723,14 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
             }
         }
         if (!found) {
-            // File no longer open, remove it from vData
+            // File no longer open, remove it from rootVFolder
             VFile fileCopy = *vFile;
-            VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+            VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
             if (parentFolder) {
                 parentFolder->removeFile(fileCopy.getOrder());
             }
             else {
-                commonData.vData.removeFile(fileCopy.getOrder());
+                commonData.rootVFolder.removeFile(fileCopy.getOrder());
 			}
         }
 
@@ -755,9 +738,9 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
 
 
     for (int i = 0; i < openFiles.size(); i++) {
-        VFile* jsonVFile = commonData.vData.findFileByPath(openFiles[i].path, openFiles[i].view);
+        VFile* jsonVFile = commonData.rootVFolder.findFileByPath(openFiles[i].path, openFiles[i].view);
         if (!jsonVFile) {
-            commonData.vData.fileList.push_back(openFiles[i]);
+            commonData.rootVFolder.fileList.push_back(openFiles[i]);
             continue;
         }
 
@@ -776,24 +759,24 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
         }
     }
 
-    // Collect all vFiles that are now in vData but not in openFiles.
-    vector<VFile*> allFiles = commonData.vData.getAllFiles();
+    // Collect all vFiles that are now in rootVFolder but not in openFiles.
+    vector<VFile*> allFiles = commonData.rootVFolder.getAllFiles();
     for (int i = 0; i < allFiles.size(); i++) {
         for (int j = 0; j < openFiles.size(); j++) {
             if (allFiles[i]->path == openFiles[j].path && allFiles[i]->view == openFiles[j].view) {
                 break;
             }
             if (j == openFiles.size() - 1) {
-                // Not found in openFiles, remove it from vData
-                //commonData.vData.removeFile(allFiles[i]->getOrder());
+                // Not found in openFiles, remove it from rootVFolder
+                //commonData.rootVFolder.removeFile(allFiles[i]->getOrder());
 
                 VFile fileCopy = *(allFiles[i]);
-                VFolder* parentFolder = commonData.vData.findParentFolder(fileCopy.getOrder());
+                VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
                 if (parentFolder) {
                     parentFolder->removeFile(fileCopy.getOrder());
                 }
                 else {
-                    commonData.vData.removeFile(fileCopy.getOrder());
+                    commonData.rootVFolder.removeFile(fileCopy.getOrder());
                 }
 
                 adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);

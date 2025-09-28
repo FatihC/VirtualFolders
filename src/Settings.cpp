@@ -56,6 +56,8 @@ INT_PTR CALLBACK settingsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         stretch.setup(hwndDlg);
         placement.put(hwndDlg);
 
+        config_rect::show(hwndDlg);  // centers dialog on owner client area, without saving position
+
 
         INITCOMMONCONTROLSEX icex{};
         icex.dwSize = sizeof(icex);

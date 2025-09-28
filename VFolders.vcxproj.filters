@@ -148,9 +148,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="help.htm">
-      <Filter>Documentation</Filter>
-    </CopyFileToFolders>
     <CopyFileToFolders Include="CHANGELOG.md">
       <Filter>Documentation</Filter>
     </CopyFileToFolders>

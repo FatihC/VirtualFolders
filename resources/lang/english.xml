@@ -25,7 +25,7 @@
 		<Item id="IDM_FILE_DELETE" text="Move to Recycle Bin"/>
 		<Item id="IDM_FILE_RELOAD" text="Reload"/>
 		<Item id="IDM_FILE_PRINT" text="Print"/>
-		<Item id="IDM_EDIT_SETREADONLY" text="Read-Only in Notepad++"/>
+		<Item id="IDM_EDIT_TOGGLEREADONLY" text="Read-Only in Notepad++"/>
 		
 		<Item id="IDM_EDIT_FULLPATHTOCLIP" text="Copy Full File Path"/>
 		<Item id="IDM_EDIT_FILENAMETOCLIP" text="Copy Filename"/>

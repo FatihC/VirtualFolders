@@ -24,7 +24,7 @@
 		<Item id="IDM_FILE_DELETE" text="Çöp Kutusuna Taşı"/>
 		<Item id="IDM_FILE_RELOAD" text="Yeniden Yükle"/>
 		<Item id="IDM_FILE_PRINT" text="Yazdır..."/>
-		<Item id="IDM_EDIT_SETREADONLY" text="Notepad++ Üzerinde Salt Okunur"/>
+		<Item id="IDM_EDIT_TOGGLEREADONLY" text="Notepad++ Üzerinde Salt Okunur"/>
 
 		<Item id="IDM_EDIT_FULLPATHTOCLIP" text="Tam Dosya Yolunu Kopyala"/>
 		<Item id="IDM_EDIT_FILENAMETOCLIP" text="Dosya Yolunu Kopyala"/>

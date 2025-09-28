@@ -160,7 +160,7 @@ void fileSaved(const NMHDR* nmhdr)
 
 
     for (int view = MAIN_VIEW; view <= SUB_VIEW; ++view) {
-        optional<VFile*> vFileOpt = commonData.vData.findFileByBufferID(bufferID, view);
+        optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByBufferID(bufferID, view);
         if (vFileOpt) {
 
             wstring wFullPath = getFilePath(bufferID);

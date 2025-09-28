@@ -112,21 +112,20 @@ void updateTreeColorsExternal(HWND hTree);
 // Drag & Drop and Reordering functions
 void reorderItems(int oldOrder, int newOrder);
 void reorderFolders(int oldOrder, int newOrder);
-void refreshTree(HWND hTree, VData& vData);
 void adjustGlobalOrdersForFileMove(int oldOrder, int newOrder);
 void adjustOrdersInContainer(vector<VFolder>& folders, vector<VFile>& files, int oldOrder, int newOrder);
 void checkReadOnlyStatus(VFile* selectedFile);
 
 
 // Helper functions
-FileLocation findFileLocation(VData& vData, int order);
+FileLocation findFileLocation(int order);
 int getOrderFromTreeItem(HWND hTree, HTREEITEM hItem);
 TVITEM getTreeItem(HWND hTree, HTREEITEM hItem);
 HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam);
 
 
 void changeTreeItemIcon(UINT_PTR bufferID, int view);
-FolderLocation findFolderLocation(VData& vData, int order);
+FolderLocation findFolderLocation(int order);
 void adjustGlobalOrdersForFolderMove(int oldOrder, int newOrder, int folderItemCount);
 
 void activateSibling(bool aboveSibling);

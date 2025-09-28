@@ -26,11 +26,11 @@
 // Sending messages to Notepad++ and to Scintilla
 
 template<typename W, typename L> LRESULT npp(UINT Msg, W wParam, L lParam) {
-    if constexpr (std::is_integral_v<W>)
-        if constexpr (std::is_integral_v<L>)
+    if constexpr (std::is_integral_v<W> || std::is_enum_v<W>)
+        if constexpr (std::is_integral_v<L> || std::is_enum_v<L>)
              return SendMessage(plugin.nppData._nppHandle, Msg, static_cast<WPARAM>(wParam), static_cast<LPARAM>(lParam));
         else return SendMessage(plugin.nppData._nppHandle, Msg, static_cast<WPARAM>(wParam), reinterpret_cast<LPARAM>(lParam));
-    else if constexpr (std::is_integral_v<L>)
+    else if constexpr (std::is_integral_v<L> || std::is_enum_v<L>)
          return SendMessage(plugin.nppData._nppHandle, Msg, reinterpret_cast<WPARAM>(wParam), static_cast<LPARAM>(lParam));
     else return SendMessage(plugin.nppData._nppHandle, Msg, reinterpret_cast<WPARAM>(wParam), reinterpret_cast<LPARAM>(lParam));
 }

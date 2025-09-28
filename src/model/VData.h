@@ -95,33 +95,8 @@ public:
 	vector<VBase*> getAllChildren();
 	void addChildren(vector<VBase*>& allChildren);
 	vector<VFile*> getAllFilesByBufferID(UINT_PTR bufferID) const;
-};
 
-class VData
-{
-public:
-	vector<VFolder> folderList;
-	vector<VFile> fileList;
-
-	vector<VFile*> getAllFiles() const;
-	void vDataSort();
-	optional<VFile*> findFileByOrder(int order) const;
-	optional<VFolder*> findFolderByOrder(int order) const;
-	optional<VFile*> findFileByBufferID(UINT_PTR bufferID) const;
-	optional<VFile*> findFileByBufferID(UINT_PTR bufferID, int view) const;
 	bool isInRoot(int order) const;
-	VFolder* findParentFolder(int order) const;
-	void adjustOrders(int beginOrder, int endOrder, int step);
-	void removeFile(int order);
-	void removeChild(int order);
-	VFile* findFileByPath(const string& path, int view = 0) const;
-	VFile* findFileByName(const string& name, int view = 0) const;
-	int getLastOrder() const;
-	optional<VBase*> getChildByOrder(int order) const;
-	optional<VBase*> findAboveSibling(int order);
-	vector<VBase*> getAllChildren();
-	void addChildren(vector<VBase*>& allChildren);
-	vector<VFile*> getAllFilesByBufferID(UINT_PTR bufferID) const;
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)
@@ -150,13 +125,6 @@ inline void to_json(json& j, const VFolder& folder) {
 	};
 }
 
-inline void to_json(json& j, const VData& data) {
-	j = json{ 
-		{"folderList", data.folderList},
-		{"fileList", data.fileList}
-	};
-}
-
 inline void from_json(const json& j, VFile& f) {
 	if (j.contains("order")) j.at("order").get_to(f.order);
 	if (j.contains("name")) j.at("name").get_to(f.name);
@@ -177,28 +145,6 @@ inline void from_json(const json& j, VFolder& folder) {
 	if (j.contains("isExpanded")) j.at("isExpanded").get_to(folder.isExpanded);
 	if (j.contains("folderList")) j.at("folderList").get_to(folder.folderList);
 	if (j.contains("fileList")) j.at("fileList").get_to(folder.fileList);
-}
-
-inline void from_json(const json& j, VData& data) {
-	// Check if JSON is null or empty
-	if (j.is_null() || j.empty()) {
-		data.folderList.clear();
-		data.fileList.clear();
-		return;
-	}
-	
-	if (j.contains("folderList")) {
-		j.at("folderList").get_to(data.folderList);
-	} else {
-		data.folderList.clear();
-	}
-	
-	// Only set fileList if it exists in the JSON
-	if (j.contains("fileList")) {
-		j.at("fileList").get_to(data.fileList);
-	} else {
-		data.fileList.clear();
-	}
 }
 
 // Function declarations for functions implemented in VData.cpp
