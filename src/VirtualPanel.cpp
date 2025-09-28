@@ -1,4 +1,4 @@
-// This file is part of VFolders.
+// This file is part of VirtualFolders.
 // Copyright 2025 by FatihCoskun.
 
 // This program is free software: you can redistribute it and/or modify
@@ -619,7 +619,7 @@ void toggleVirtualPanelWithList() {
         
             TCHAR configDir[MAX_PATH];
             ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
-            jsonFilePath = std::wstring(configDir) + L"\\virtualfolders.json";
+            jsonFilePath = std::wstring(configDir) + L"\\VFolders-storage.json";
 
             // read JSON
             json rootVFolderJson = loadVDataFromFile(jsonFilePath);
@@ -669,7 +669,7 @@ void toggleVirtualPanelWithList() {
             dock.pszName = pluginTitle;  // title bar text (caption in dialog is replaced)
             dock.dlgID = menuItem_ToggleVirtualPanel;          // zero-based position in menu to recall dialog at next startup
             dock.uMask = DWS_DF_CONT_LEFT | DWS_ICONTAB;
-            dock.pszModuleName = L"VFolders.dll";        // plugin module name
+            dock.pszModuleName = L"VirtualFolders.dll";        // plugin module name
             HICON hIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
             dock.hIconTab = hIcon;
 

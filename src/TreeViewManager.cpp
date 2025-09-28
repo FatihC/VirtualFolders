@@ -1,4 +1,4 @@
-// This file is part of VFolders.
+// This file is part of VirtualFolders.
 // Copyright 2025 by FatihCoskun.
 
 // This program is free software: you can redistribute it and/or modify
@@ -277,7 +277,7 @@ void loadMenus() {
     int pluginMenuSize = GetMenuItemCount(hMenu);
     for (pluginMenuIndex = 0; pluginMenuIndex < pluginMenuSize; pluginMenuIndex++) {
         int copied = GetMenuStringW(hMenu, pluginMenuIndex, buffer, _countof(buffer), MF_BYPOSITION);
-        if (fromWchar(buffer) == "VFolders") {  // TODO: change to dynamic plugin name ?????
+        if (fromWchar(buffer) == "VirtualFolders") {  // TODO: change to dynamic plugin name ?????
             break;
         }
     }
@@ -2000,7 +2000,7 @@ extern void setFontSize() {
 	int pluginMenuSize = GetMenuItemCount(hMenu);
     for (pluginMenuIndex = 0; pluginMenuIndex < pluginMenuSize; pluginMenuIndex++) {
         int copied = GetMenuStringW(hMenu, pluginMenuIndex, buffer, _countof(buffer), MF_BYPOSITION);
-		if (fromWchar(buffer) == "VFolders") {  // TODO: change to dynamic plugin name ?????
+		if (fromWchar(buffer) == "VirtualFolders") {  // TODO: change to dynamic plugin name ?????
             break;
         }
     }

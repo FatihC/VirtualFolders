@@ -1,4 +1,4 @@
-// This file is part of VFolders.
+// This file is part of VirtualFolders.
 // Copyright 2025 by FatihCoskun.
 
 // This program is free software: you can redistribute it and/or modify
@@ -86,17 +86,17 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
                 std::wstring path(n, 0);
                 SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, n + 1, reinterpret_cast<LPARAM>(path.data()));
 
-                static std::wstring changes = path + L"\\VFolders\\CHANGELOG.md";
+                static std::wstring changes = path + L"\\VirtualFolders\\CHANGELOG.md";
                 if (PathFileExists(changes.data()) == TRUE) {
                     PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(changes.data()));
                     PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
-                static std::wstring license = path + L"\\VFolders\\LICENSE.txt";
+                static std::wstring license = path + L"\\VirtualFolders\\LICENSE.txt";
                 if (PathFileExists(license.data()) == TRUE) {
                     PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(license.data()));
                     PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
-                static std::wstring readme = path + L"\\VFolders\\README.md";
+                static std::wstring readme = path + L"\\VirtualFolders\\README.md";
                 if (PathFileExists(readme.data()) == TRUE) {
                     PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(readme.data()));
                     PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);

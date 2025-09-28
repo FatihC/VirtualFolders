@@ -1,4 +1,4 @@
-// This file is part of VFolders.
+// This file is part of VirtualFolders.
 // Copyright 2025 by FatihCoskun.
 
 // This program is free software: you can redistribute it and/or modify
@@ -132,7 +132,7 @@ void fileOpened(const NMHDR* nmhdr) {
 	if (!commonData.isNppReady) return; // Ensure Notepad++ is ready before showing message
     UINT_PTR bufferID = nmhdr->idFrom;
     std::wstring filepath = getFilePath(bufferID);
-    //MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VFolders", 0);
+    //MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VirtualFolders", 0);
 
     //TODO: have to implement this. just in case multiple files opened
     bufferActivated(nmhdr);

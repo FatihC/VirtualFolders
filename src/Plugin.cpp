@@ -1,4 +1,4 @@
-// This file is part of VFolders.
+// This file is part of VirtualFolders.
 // Copyright 2025 by FatihCoskun.
 
 // This program is free software: you can redistribute it and/or modify
@@ -123,7 +123,7 @@ FuncItem menuDefinition[] = {
 // Tell Notepad++ the plugin name
 
 extern "C" __declspec(dllexport) const wchar_t* getName() {
-    return L"VFolders";
+    return L"VirtualFolders";
 }
 
 
