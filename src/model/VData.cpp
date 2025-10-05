@@ -230,6 +230,20 @@ optional<VBase*> VFolder::getChildByOrder(int order) const {
 	return std::nullopt; // Return null if not found
 }
 
+optional<VBase*> VFolder::getDirectChildByOrder(int order) const {
+	for (const auto& file : fileList) {
+		if (file.getOrder() == order) {
+			return &const_cast<VFile&>(file);
+		}
+	}
+	for (const auto& folder : folderList) {
+		if (folder.getOrder() == order) {
+			return &const_cast<VFolder&>(folder);
+		}
+	}
+	return std::nullopt; // Return null if not found
+}
+
 optional<VFolder*> VFolder::findFolderByOrder(int order) const {
 	for (const auto& folder : folderList) {
 		if (folder.getOrder() == order) {
@@ -317,7 +331,7 @@ void VFolder::removeChild(int order) {
 		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
 }
 
-vector<VBase*> VFolder::getAllChildren() {
+vector<VBase*> VFolder::getAllDirectChildren() {
 	vector<VBase*> allChildren;
 	// Add all root-level files
 	for (const auto& file : fileList) {
@@ -326,6 +340,28 @@ vector<VBase*> VFolder::getAllChildren() {
 	// Add all root-level folders
 	for (const auto& folder : folderList) {
 		allChildren.push_back(const_cast<VFolder*>(&folder));
+	}
+
+	// sort this vector by order
+	std::sort(allChildren.begin(), allChildren.end(), [](const VBase* a, const VBase* b) {
+		return a->getOrder() < b->getOrder();
+		});
+
+	return allChildren;
+}
+
+vector<VBase*> VFolder::getAllChildren() {
+	vector<VBase*> allChildren;
+	// Add all root-level files
+	for (const auto& file : fileList) {
+		allChildren.push_back(const_cast<VFile*>(&file));
+	}
+	// Add all root-level folders
+	for (auto& folder : folderList) {
+		allChildren.push_back(const_cast<VFolder*>(&folder));
+		vector<VBase*> allSubChildren = folder.getAllChildren();
+		allChildren.insert(allChildren.end(), allSubChildren.begin(), allSubChildren.end());
+
 	}
 
 	// sort this vector by order
@@ -384,4 +420,17 @@ json loadVDataFromFile(const std::wstring& filePath) {
     } catch (const json::parse_error& e) {
         return json::object();
     }
+}
+
+void VFolder::resetOrders(size_t& pos)
+{
+	for (auto& file : fileList) {
+		file.setOrder(static_cast<int>(pos));
+		pos++;
+	}
+	for (auto& folder : folderList) {
+		folder.setOrder(static_cast<int>(pos));
+		pos++;
+		folder.resetOrders(pos);
+	}
 }

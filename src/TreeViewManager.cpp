@@ -40,6 +40,8 @@ extern int menuItem_IncreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_DecreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_ShortcutOverrider;   // Defined in Plugin.cpp
 
+extern bool checkRootVFolderJSON(); // Defined in VirtualPanel.cpp
+
 
 HMENU hContextMenu = nullptr;
 HMENU fontSizeSubMenu = nullptr;
@@ -432,7 +434,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 ScreenToClient(hTree, &hit.pt);
                 HTREEITEM selectedTreeItem = TreeView_HitTest(hTree, &hit);
 
-                TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
+                //TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
 
                 if (selectedTreeItem && (hit.flags & TVHT_ONITEM))
                 {
@@ -1012,7 +1014,11 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     }
                 }
                 commonData.rootVFolder.vFolderSort();
-                
+                if (checkRootVFolderJSON()) {
+                    LOG("Root is corrupted!!!!!!!!!!!!");
+                    checkRootVFolderJSON();
+                }
+
             }
             hDragItem = nullptr;
             hDropTarget = nullptr;
@@ -1437,8 +1443,10 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_
     pos++;
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
 
-    int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().getOrder();
-    lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().getOrder());
+    /*int lastOrder = vFolder->fileList.empty() ? 0 : vFolder->fileList.back().getOrder();
+    lastOrder = std::max(lastOrder, vFolder->folderList.empty() ? 0 : vFolder->folderList.back().getOrder());*/
+
+	int lastOrder = vFolder->getLastOrder();
     for (pos; pos <= lastOrder; pos) {
         optional<VFile*> vFile = vFolder->findFileByOrder(pos);
         if (vFile) {
@@ -1449,6 +1457,10 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_
             auto vSubFolder = vFolder->findFolderByOrder(pos);
             if (vSubFolder) {
                 prevItem = addFolderToTree(*vSubFolder, hTree, hFolder, pos, prevItem);
+            }
+            else {
+                // This should not happen, but if it does, we skip the order. 
+                pos++;
             }
         }
     }
@@ -1662,24 +1674,29 @@ void reorderItems(int oldOrder, int newOrder) {
         HTREEITEM hParent = nullptr;
 		HTREEITEM prevItem = nullptr;
 
-        int firstOrderOfFolder = -1;
+        int firstOrderOfFolder = 0; // first order of root
         if (sourceFolder) {
-			hParent = FindItemByLParam(hTree, nullptr, (LPARAM)sourceFolder->getOrder());
+			//hParent = FindItemByLParam(hTree, nullptr, (LPARAM)sourceFolder->getOrder());
 			firstOrderOfFolder = sourceFolder->getOrder() + 1;
-        } else {
-			firstOrderOfFolder = commonData.rootVFolder.fileList[0].getOrder();
         }
         
 		// What if newOrder is the first item in the folder?
+        oldItem = FindItemByLParam(hTree, hParent, (LPARAM)movedFile->getOrder());
+		hParent = sourceFolder ? sourceFolder->hTreeItem : nullptr;
         if (newOrder == firstOrderOfFolder) {
 			prevItem = TVI_FIRST;
         } else {
-            prevItem = FindItemByLParam(hTree, hParent, (LPARAM)newOrder);
+            optional<VBase*> targetBelowSibling;
             if (newOrder < oldOrder) {
-                prevItem = FindItemByLParam(hTree, hParent, (LPARAM)newOrder - 1);
+                targetBelowSibling = commonData.rootVFolder.getChildByOrder(newOrder);
             }
+            else {
+                targetBelowSibling = commonData.rootVFolder.getChildByOrder(newOrder + 1);
+            }
+            HTREEITEM targetNextItem = targetBelowSibling ? targetBelowSibling.value()->hTreeItem : nullptr;
+            prevItem = TreeView_GetPrevSibling(hTree, targetNextItem);
+
 		}
-        oldItem = FindItemByLParam(hTree, hParent, (LPARAM)movedFile->getOrder());
         TreeView_DeleteItem(hTree, oldItem);
 
         adjustGlobalOrdersForFileMove(oldOrder, newOrder > oldOrder ? newOrder+1 : newOrder);
@@ -1832,7 +1849,7 @@ FileLocation findFileLocation(int order) {
             }
         }
         return false;
-        };
+    };
 
     // Search in all root-level folders
     for (auto& rootFolder : commonData.rootVFolder.folderList) {

@@ -91,12 +91,15 @@ public:
 	VFile* findFileByName(const string& name, int view = 0) const;
 	int countItemsInFolder() const;
 	optional<VBase*> getChildByOrder(int order) const;
+	optional<VBase*> getDirectChildByOrder(int order) const;
 	optional<VBase*> findAboveSibling(int order);
+	vector<VBase*> getAllDirectChildren();
 	vector<VBase*> getAllChildren();
 	void addChildren(vector<VBase*>& allChildren);
 	vector<VFile*> getAllFilesByBufferID(UINT_PTR bufferID) const;
 
 	bool isInRoot(int order) const;
+	void resetOrders(size_t& pos);
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)

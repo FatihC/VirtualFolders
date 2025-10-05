@@ -111,7 +111,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{821f38c0-d927-4c4f-a08c-717c485b0f95}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>VFolders</RootNamespace>
+    <RootNamespace>VirtualFolders</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>VirtualFolders</ProjectName>
   </PropertyGroup>

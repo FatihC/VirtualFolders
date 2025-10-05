@@ -34,9 +34,9 @@
 - [x] onBeforeFileClosed'da order docOrder ayari
 - [x] Dark Mode - Light Mode Change Event
 - [x] View's
-- [ ] Session
+- [x] Session
 - [x] Plugin Menu's
-- [ ] Template'in kodlarından kurtul
+- [x] Template'in kodlarından kurtul
 - [x] NPPN_READONLYCHANGED: no event like this. Check everytime an item selected
 - [x] No Document List. Just tabs
 - [x] new buffer uretildi ama restart olmadi. path'de sadece new 1 yaziyor. 

@@ -34,12 +34,11 @@ extern int menuItem_ToggleVirtualPanel;      // Defined in Plugin.cpp
 void writeJsonFile();
 void resizeVirtualPanel();
 void syncVDataWithOpenFiles(std::vector<VFile>& openFiles);
-
-
+void fixRootVFolderJSON();
+bool checkRootVFolderJSON();
 
 
 HWND virtualPanelWnd = 0;
-
 
 
 Scintilla::Position location = -1;
@@ -637,29 +636,30 @@ void toggleVirtualPanelWithList() {
 
             syncVDataWithBufferIDs();
 
-		
-            int lastOrder = commonData.rootVFolder.folderList.empty() ? 0 : commonData.rootVFolder.folderList.back().getOrder();
-		    lastOrder = std::max(lastOrder, commonData.rootVFolder.fileList.empty() ? 0 : commonData.rootVFolder.fileList.back().getOrder());
+            vector<VBase*> allChildren = commonData.rootVFolder.getAllChildren();
 
+
+			
             BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+            fixRootVFolderJSON(); // uncomment on production
 
+            int lastOrder = commonData.rootVFolder.getLastOrder();
             for (size_t pos = 0; pos <= lastOrder; pos) {
-			    auto vFile = commonData.rootVFolder.findFileByOrder(pos);
-                if (!vFile) {
-                    auto vFolder = commonData.rootVFolder.findFolderByOrder(pos);
-                    if (vFolder) {
-                        addFolderToTree(vFolder.value(), hTree, TVI_ROOT, pos, TVI_LAST);
-                    }
-                    else {
-                        pos++;
-                    }
-                }
-                else {
-                    addFileToTree(vFile.value(), hTree, TVI_ROOT, isDarkMode, TVI_LAST);
+				optional<VBase*> childOpt = commonData.rootVFolder.getDirectChildByOrder(pos);
+                if (!childOpt) {
+                    // This should not happen, but just in case. 
                     pos++;
                 }
-
+                else if (auto file = dynamic_cast<VFile*>(childOpt.value())) {
+                    addFileToTree(file, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
+                    pos++;
+                }
+                else if (auto folder = dynamic_cast<VFolder*>(childOpt.value())) {
+                    addFolderToTree(folder, hTree, TVI_ROOT, pos, TVI_LAST);
+                }
             }
+
+
             static std::wstring pluginTitleStr;
             pluginTitleStr = commonData.translator->getTextW("IDM_PLUGIN_TITLE");
             static const wchar_t* pluginTitle = pluginTitleStr.c_str();
@@ -768,7 +768,6 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
             }
             if (j == openFiles.size() - 1) {
                 // Not found in openFiles, remove it from rootVFolder
-                //commonData.rootVFolder.removeFile(allFiles[i]->getOrder());
 
                 VFile fileCopy = *(allFiles[i]);
                 VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
@@ -786,10 +785,180 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
         }
     }
 
-    // TODO: fix orders
-
 }
 
+bool checkRootVFolderJSON() {
+    // Corruptions in json
+    // 1. Two items with same order
+    //  Fix: check if any gap above or below. If not, assign new order to one of them.
+    int lastOrder = commonData.rootVFolder.getLastOrder();
+    vector<VBase*> allChildren = commonData.rootVFolder.getAllChildren();
+    for (int i = 0; i < allChildren.size(); i++) {
+        for (int j = i + 1; j < allChildren.size(); j++) {
+            if (allChildren[i]->getOrder() == allChildren[j]->getOrder()) {
+                // Found duplicate orders
+                LOG("checkRootVFolderJSON: Duplicate orders");
+                return true;
+            }
+        }
+    }
 
 
 
+
+    lastOrder = commonData.rootVFolder.getLastOrder();
+    // 4. Negative orders except root folder (-1)
+    //  Fix: If positive order exists, assign new order with lastOrder+1
+    allChildren = commonData.rootVFolder.getAllChildren();
+    for (auto* child : allChildren) {
+        if (child->getOrder() >= 0) continue;
+        if (child->getOrder() == -1 && dynamic_cast<VFolder*>(child) == &commonData.rootVFolder) continue;
+        
+        LOG("checkRootVFolderJSON: Negative Order");
+        return true;
+    }
+
+    // 2. Gaps in orders
+    for (int i = 0; i < lastOrder; i++) {
+        optional<VBase*> child = commonData.rootVFolder.getChildByOrder(i);
+        if (child) continue;
+
+        LOG("checkRootVFolderJSON: Gaps in orders");
+        return true;
+    }
+
+
+    // 3. Order not sequential in a folder
+
+    commonData.rootVFolder.vFolderSort();
+    std::function<bool(VFolder*, size_t&)> isTheTreeCorrupt =
+        [&](VFolder* folder, size_t& startPos) -> bool {
+        int lastOrder = folder->fileList.empty() ? 0 : folder->fileList.back().getOrder();
+        lastOrder = std::max(lastOrder, folder->folderList.empty() ? 0 : folder->folderList.back().getOrder());
+
+        while (startPos <= lastOrder) {
+            optional<VBase*> childOpt = folder->getDirectChildByOrder(startPos);
+            if (!childOpt) {
+                return true;
+            }
+            startPos++;
+            if (auto subFolder = dynamic_cast<VFolder*>(childOpt.value())) {
+                bool isCorrupt = isTheTreeCorrupt(subFolder, startPos);
+                if (isCorrupt) {
+                    return true;
+                }
+            }
+        }
+        return false;
+        };
+
+    size_t startPos = 0;
+    bool treeIsCorrupt = isTheTreeCorrupt(&commonData.rootVFolder, startPos);
+
+    LOG("Finished checking rootVFolder JSON: [{}]", treeIsCorrupt);
+    
+    
+    return treeIsCorrupt;
+}
+
+void fixRootVFolderJSON() {
+    // Corruptions in json
+    // 1. Two items with same order
+    //  Fix: check if any gap above or below. If not, assign new order to one of them.
+    int lastOrder = commonData.rootVFolder.getLastOrder();
+    vector<VBase*> allChildren = commonData.rootVFolder.getAllChildren();
+    for (int i = 0; i < allChildren.size(); i++) {
+        for (int j = i + 1; j < allChildren.size(); j++) {
+            if (allChildren[i]->getOrder() == allChildren[j]->getOrder()) {
+                // Found duplicate orders
+                int dupOrder = allChildren[i]->getOrder();
+                optional<VBase*> lowerNeighbor = commonData.rootVFolder.getChildByOrder(dupOrder - 1);
+                optional<VBase*> upperNeighbor = commonData.rootVFolder.getChildByOrder(dupOrder + 1);
+                if (!lowerNeighbor && dupOrder > 0) {
+                    // No lower neighbor, shift down
+                    allChildren[j]->setOrder(dupOrder - 1);
+                    //adjustGlobalOrdersForFileMove(dupOrder - 1, dupOrder);
+                }
+                else if (!upperNeighbor) {
+                    // No upper neighbor, shift up
+                    allChildren[j]->setOrder(dupOrder + 1);
+                    //adjustGlobalOrdersForFileMove(dupOrder + 1, dupOrder);
+                }
+                else {
+                    // Both neighbors exist, assign new order at the end
+                    allChildren[j]->setOrder(lastOrder + 1);
+                    lastOrder++;
+                }
+            }
+        }
+	}
+
+
+
+
+    lastOrder = commonData.rootVFolder.getLastOrder();
+    // 4. Negative orders except root folder (-1)
+    //  Fix: If positive order exists, assign new order with lastOrder+1
+    allChildren = commonData.rootVFolder.getAllChildren();
+    for (auto* child : allChildren) {
+        if (child->getOrder() >= 0) continue;
+        if (child->getOrder() == -1 && dynamic_cast<VFolder*>(child) == &commonData.rootVFolder) continue;
+        optional<VBase*> positiveChild = commonData.rootVFolder.getChildByOrder(child->getOrder() * -1);
+        if (!positiveChild) {
+			child->setOrder(child->getOrder() * -1);
+        } else {
+            child->setOrder(lastOrder + 1);
+			lastOrder++;
+		}
+	}
+
+    // 2. Gaps in orders
+    for (int i = 0; i < lastOrder; i++) {
+        optional<VBase*> child = commonData.rootVFolder.getChildByOrder(i);
+        if (child) continue;
+
+        adjustGlobalOrdersForFileMove(i, lastOrder + 1);
+        lastOrder--;
+        i--;
+    }
+
+
+    // 3. Order not sequential in a folder
+
+	commonData.rootVFolder.vFolderSort();
+    std::function<bool(VFolder*, size_t)> isTheTreeCorrupt =
+        [&](VFolder* folder, size_t startPos) -> bool {
+        int lastOrder = folder->fileList.empty() ? 0 : folder->fileList.back().getOrder();
+        lastOrder = std::max(lastOrder, folder->folderList.empty() ? 0 : folder->folderList.back().getOrder());
+
+        while (startPos < lastOrder) {
+            optional<VBase*> childOpt = commonData.rootVFolder.getDirectChildByOrder(startPos);
+            if (!childOpt) {
+                return true;
+            }
+            startPos++;
+            if (auto subFolder = dynamic_cast<VFolder*>(childOpt.value())) {
+                bool isCorrupt = isTheTreeCorrupt(subFolder, startPos);
+                if (isCorrupt) return true;
+            }
+        }
+        return false;
+        };
+
+    size_t startPos = 0;
+    bool treeIsCorrupt = isTheTreeCorrupt(&commonData.rootVFolder, startPos);
+
+
+    // Nuclear option
+    if (treeIsCorrupt) {
+        startPos = 0;
+        commonData.rootVFolder.resetOrders(startPos);
+    }
+
+
+    //json vDataJson = commonData.rootVFolder;
+    //LOG("fixed json: [{}]", vDataJson.dump(4));
+
+
+    LOG("Finished fixing rootVFolder JSON");
+}
