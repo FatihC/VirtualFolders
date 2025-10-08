@@ -39,8 +39,16 @@ extern int menuItem_ToggleVirtualPanel;      // Defined in Plugin.cpp
 extern int menuItem_IncreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_DecreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_ShortcutOverrider;   // Defined in Plugin.cpp
+extern int menuItem_About;              // Defined in Plugin.cpp
+extern int menuItem_ToggleVirtualPanel; // Defined in Plugin.cpp
+extern int menuItem_Settings;           // Defined in Plugin.cpp
+
+
+
 
 extern bool checkRootVFolderJSON(); // Defined in VirtualPanel.cpp
+extern void fixRootVFolderJSON();
+extern void showCorruptionDialog(VFolder hOldFolder, VFolder hNewFolder, int hOldOrder, int hNewOrder); // Defined in CorruptionDialog.cpp
 
 
 HMENU hContextMenu = nullptr;
@@ -129,7 +137,6 @@ LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 
 // Forward declarations
 void writeJsonFile();
-void updateVirtualPanelUnconditional(UINT_PTR bufferID);
 
 
 LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
@@ -176,7 +183,7 @@ void loadMenus() {
 
 	dock.pszName = pluginTitle;  // title bar text (caption in dialog is replaced)
 
-    ::SendMessage(plugin.nppData._nppHandle, NPPM_DMMUPDATEDISPINFO, 0, (LPARAM)virtualPanelWnd);
+    SendMessage(plugin.nppData._nppHandle, NPPM_DMMUPDATEDISPINFO, 0, (LPARAM)virtualPanelWnd);
 
 
 
@@ -278,7 +285,7 @@ void loadMenus() {
     int pluginMenuIndex = 0;
     int pluginMenuSize = GetMenuItemCount(hMenu);
     for (pluginMenuIndex = 0; pluginMenuIndex < pluginMenuSize; pluginMenuIndex++) {
-        int copied = GetMenuStringW(hMenu, pluginMenuIndex, buffer, _countof(buffer), MF_BYPOSITION);
+        GetMenuStringW(hMenu, pluginMenuIndex, buffer, _countof(buffer), MF_BYPOSITION);
         if (fromWchar(buffer) == "VirtualFolders") {  // TODO: change to dynamic plugin name ?????
             break;
         }
@@ -289,12 +296,21 @@ void loadMenus() {
 
     
     std::wstring shortcutMenuLabel = commonData.translator->getTextW("IDM_SHORTCUT_OVERRIDE");
-    ModifyMenuW(pluginMenu, menuItem_ShortcutOverrider, MF_BYPOSITION | MF_STRING | plugin.isShortcutOverridden & MF_CHECKED, menuDefinition[menuItem_ShortcutOverrider]._cmdID, (LPCWSTR)(shortcutMenuLabel.c_str()));
+    if (plugin.isShortcutOverridden) {
+        ModifyMenuW(pluginMenu, menuItem_ShortcutOverrider, MF_BYPOSITION | MF_STRING | MF_CHECKED, menuDefinition[menuItem_ShortcutOverrider]._cmdID, (LPCWSTR)(shortcutMenuLabel.c_str()));
+    }
+    else {
+        ModifyMenuW(pluginMenu, menuItem_ShortcutOverrider, MF_BYPOSITION | MF_STRING | MF_UNCHECKED, menuDefinition[menuItem_ShortcutOverrider]._cmdID, (LPCWSTR)(shortcutMenuLabel.c_str()));
+    }
     ::SendMessage(plugin.nppData._nppHandle, NPPM_SETMENUITEMCHECK, menuDefinition[menuItem_ShortcutOverrider]._cmdID, plugin.isShortcutOverridden ? 1 : 0);
 
 
     ModifyMenuW(pluginMenu, menuItem_IncreaseFont, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_IncreaseFont]._cmdID, (LPCWSTR)(fontIncreaseLabel.c_str()));
     ModifyMenuW(pluginMenu, menuItem_DecreaseFont, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_DecreaseFont]._cmdID, (LPCWSTR)(fontDecreaseLabel.c_str()));
+
+    ModifyMenuW(pluginMenu, menuItem_About, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_About]._cmdID, (LPCWSTR)(commonData.translator->getTextW("IDM_ABOUT").c_str()));
+    ModifyMenuW(pluginMenu, menuItem_Settings, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_Settings]._cmdID, (LPCWSTR)(commonData.translator->getTextW("IDM_SETTINGS").c_str()));
+    ModifyMenuW(pluginMenu, menuItem_ToggleVirtualPanel, MF_BYPOSITION | MF_STRING, menuDefinition[menuItem_ToggleVirtualPanel]._cmdID, (LPCWSTR)(commonData.translator->getTextW("IDM_SHOW_VIRTUAL_PANEL").c_str()));
 }
 
 
@@ -696,7 +712,6 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
         else if (LOWORD(wParam) == IDM_EDIT_TOGGLEREADONLY)
         {
             LRESULT result = nppMenuCall(selectedTreeItem, IDM_EDIT_TOGGLEREADONLY);
-            // TODO: consider view
             if (result) {
                 TVITEM item = getTreeItem(hTree, selectedTreeItem);
                 optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
@@ -736,7 +751,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             }
 
             auto position = npp(NPPM_GETPOSFROMBUFFERID, vFileOpt.value()->bufferID, vFileOpt.value()->view);
-            int docView = (position >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
+            //int docView = (position >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
             int docIndex = position & 0x3FFFFFFF;    // 0-based index
 
             npp(NPPM_ACTIVATEDOC, vFileOpt.value()->view, docIndex);
@@ -863,8 +878,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 newMark.lineLeft = lineLeft;
                 newMark.lineRight = lineRight;
                 
-                // Draw the line with theme-appropriate color
-                BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
+                
                 //COLORREF lineColor = isDarkMode ? RGB(255, 255, 255) : RGB(0, 0, 255);  // White line in dark mode, blue in light mode
 				COLORREF lineColor = TreeView_GetTextColor(hTree); // Use text color for better visibility
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, lineColor));
@@ -969,6 +983,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             // Clear drop target selection and restore normal selection
             TreeView_SelectDropTarget(hTree, nullptr);
 
+            // TODO: current rootFolder to base64
+            VFolder oldRoot = commonData.rootVFolder;
+            int oldOrder = -1, newOrder = -1;
+
             if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
 				TVITEM dropItem = getTreeItem(hTree, hDropTarget);
                 if (dropItem.iImage == iconIndex[ICON_FOLDER] && !insertion) {
@@ -979,13 +997,18 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     auto draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
                     auto targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder);
 
+                    oldOrder = dragOrder;
+                    newOrder = targetOrder;
+
                     if (draggedFileOpt && targetFolderOpt) 
                     {
                         moveFileIntoFolder(dragOrder, targetOrder);
+                        writeJsonFile();
                     }
                     else if (draggedFolderOpt && targetFolderOpt) 
                     {
                         moveFolderIntoFolder(dragOrder, targetOrder);
+                        writeJsonFile();
                     }
                 }
                 // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
@@ -998,9 +1021,10 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     optional<VFile*> draggedFileOpt = commonData.rootVFolder.findFileByOrder(dragOrder);
                     optional<VFolder*> draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
 
+                    oldOrder = dragOrder;
                     if (draggedFileOpt) {
                         // Calculate new order based on drop position
-                        int newOrder = calculateNewOrder(targetOrder, lastMark);
+                        newOrder = calculateNewOrder(targetOrder, lastMark);
                         
                         // Reorder other items
                         reorderItems(dragOrder, newOrder);
@@ -1008,16 +1032,20 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     }
                     else if (draggedFolderOpt) {
                         // Similar logic for folders
-                        int newOrder = calculateNewOrder(targetOrder, lastMark);
+                        newOrder = calculateNewOrder(targetOrder, lastMark);
                         reorderFolders(dragOrder, newOrder);
                         writeJsonFile();
                     }
                 }
                 commonData.rootVFolder.vFolderSort();
+
+                VFolder newRoot = commonData.rootVFolder;
                 if (checkRootVFolderJSON()) {
                     LOG("Root is corrupted!!!!!!!!!!!!");
-                    checkRootVFolderJSON();
+                    showCorruptionDialog(oldRoot, newRoot, oldOrder, newOrder);
+                    fixRootVFolderJSON();
                 }
+
 
             }
             hDragItem = nullptr;
@@ -1133,7 +1161,7 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
         commonData.rootVFolder.addChildren(children);
 	}
     
-    
+    writeJsonFile();
 
     
 }
@@ -1197,6 +1225,8 @@ void wrapFileInFolder(HTREEITEM selectedTreeItem)
     else {
         folderTreeItem = addFolderToTree(newFolderOpt.value(), hTree, parentFolder ? parentFolder->hTreeItem : nullptr, pos, TVI_FIRST);
     }
+
+    writeJsonFile();
 }
 
 void treeItemSelected(HTREEITEM selectedTreeItem)
@@ -1322,7 +1352,6 @@ void moveFileIntoFolder(int dragOrder, int targetOrder) {
 }
 
 void moveFolderIntoFolder(int dragOrder, int targetOrder) {
-    // TODO: folder into folder
     auto draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
     auto targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder);
 
@@ -1554,17 +1583,12 @@ void reorderItems(int oldOrder, int newOrder) {
     VFile* movedFile = sourceLocation.file;
     VFolder* sourceFolder = sourceLocation.parentFolder;
     
-    // For now, we'll implement a simpler approach that handles the most common cases:
-    // 1. Moving within the same container (root or same folder)
-    // 2. Moving from folder to root
-    // 3. Moving from root to folder
-    
     // Determine if we're moving to root level or staying in a folder
     bool movingToRoot = false;
     VFolder* targetFolder = nullptr;
     
     // Count items at root level to determine if target is root
-    int rootItemCount = commonData.rootVFolder.fileList.size() + commonData.rootVFolder.folderList.size(); // TODO: add a class function if the order is in root
+    int rootItemCount = commonData.rootVFolder.fileList.size() + commonData.rootVFolder.folderList.size();
     
     if (commonData.rootVFolder.isInRoot(newOrder)) {
         movingToRoot = true;
@@ -1594,7 +1618,6 @@ void reorderItems(int oldOrder, int newOrder) {
         commonData.rootVFolder.fileList.push_back(fileData);
         movedFile = commonData.rootVFolder.findFileByOrder(newOrder).value();
 
-        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
         HTREEITEM oldItem = fileData.hTreeItem;
         HTREEITEM prevItem = nullptr;
         optional<VBase*> aboveSibling = commonData.rootVFolder.findAboveSibling(newOrder);
@@ -1607,8 +1630,8 @@ void reorderItems(int oldOrder, int newOrder) {
             LOG("[{}] moved into root to first place", movedFile->name);
         }
 
-        TreeView_DeleteItem(hTree, fileData.hTreeItem);
-        addFileToTree(movedFile, hTree, nullptr, isDarkMode, prevItem);
+        TreeView_DeleteItem(commonData.hTree, fileData.hTreeItem);
+        addFileToTree(movedFile, commonData.hTree, nullptr, isDarkMode, prevItem);
         
         
     } else if (!movingToRoot && !sourceFolder) {
@@ -1638,7 +1661,6 @@ void reorderItems(int oldOrder, int newOrder) {
             movedFile = targetFolder->findFileByOrder(newOrder).value();
         }
 
-        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
         HTREEITEM oldItem = nullptr;
         HTREEITEM parentItem = targetFolder->hTreeItem;
         HTREEITEM prevItem = nullptr;
@@ -1652,57 +1674,66 @@ void reorderItems(int oldOrder, int newOrder) {
 		}
 
         /*oldItem = FindItemByLParam(hTree, nullptr, (LPARAM)movedFile->getOrder());*/
-        TreeView_DeleteItem(hTree, fileData.hTreeItem);
+        TreeView_DeleteItem(commonData.hTree, fileData.hTreeItem);
 
-        addFileToTree(movedFile, hTree, parentItem, isDarkMode, prevItem);
+        addFileToTree(movedFile, commonData.hTree, parentItem, isDarkMode, prevItem);
         
         
     } else {
-        // Moving within the same container (root or same folder)
-        // Since order is global across the entire tree, we need to adjust all affected items globally
-        
+        // Moving folder to folder
+        if (targetFolder == nullptr) {
+            targetFolder = &commonData.rootVFolder;
+        }
+
+        if (sourceFolder == nullptr) {
+            sourceFolder = &commonData.rootVFolder;
+        }
         
         // Set the new order for the moved file
         if (newOrder > oldOrder) newOrder--;
         //newOrder--;
         if (newOrder == oldOrder) return;
         
-
-        //HTREEITEM FindItemByLParam(HWND hTree, HTREEITEM hParent, LPARAM lParam);
-        HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
         HTREEITEM oldItem = nullptr;
         HTREEITEM hParent = nullptr;
 		HTREEITEM prevItem = nullptr;
 
         int firstOrderOfFolder = 0; // first order of root
-        if (sourceFolder) {
-			//hParent = FindItemByLParam(hTree, nullptr, (LPARAM)sourceFolder->getOrder());
-			firstOrderOfFolder = sourceFolder->getOrder() + 1;
+        if (targetFolder) {
+			firstOrderOfFolder = targetFolder->getOrder() + 1;
         }
         
 		// What if newOrder is the first item in the folder?
-        oldItem = FindItemByLParam(hTree, hParent, (LPARAM)movedFile->getOrder());
-		hParent = sourceFolder ? sourceFolder->hTreeItem : nullptr;
-        if (newOrder == firstOrderOfFolder) {
+        oldItem = FindItemByLParam(commonData.hTree, hParent, (LPARAM)movedFile->getOrder());
+		hParent = targetFolder ? targetFolder->hTreeItem : nullptr;
+        if ((newOrder < oldOrder && newOrder == firstOrderOfFolder) || 
+            (newOrder > oldOrder && newOrder == firstOrderOfFolder - 1)) {  // If moving forward firstOrder is going to decrease
 			prevItem = TVI_FIRST;
         } else {
             optional<VBase*> targetBelowSibling;
             if (newOrder < oldOrder) {
-                targetBelowSibling = commonData.rootVFolder.getChildByOrder(newOrder);
+                targetBelowSibling = targetFolder->getChildByOrder(newOrder);
             }
             else {
-                targetBelowSibling = commonData.rootVFolder.getChildByOrder(newOrder + 1);
+                targetBelowSibling = targetFolder->getChildByOrder(newOrder + 1);
             }
             HTREEITEM targetNextItem = targetBelowSibling ? targetBelowSibling.value()->hTreeItem : nullptr;
-            prevItem = TreeView_GetPrevSibling(hTree, targetNextItem);
+            prevItem = TreeView_GetPrevSibling(commonData.hTree, targetNextItem);
 
 		}
-        TreeView_DeleteItem(hTree, oldItem);
+        TreeView_DeleteItem(commonData.hTree, oldItem);
+
+        if (sourceFolder != targetFolder) {
+            VFile movedFileCopy = *movedFile;
+            sourceFolder->removeChild(oldOrder);
+            targetFolder->fileList.push_back(movedFileCopy);
+            movedFile = targetFolder->findFileByOrder(oldOrder).value();
+        }
 
         adjustGlobalOrdersForFileMove(oldOrder, newOrder > oldOrder ? newOrder+1 : newOrder);
 		movedFile->setOrder(newOrder);
 
-		addFileToTree(movedFile, hTree, hParent, isDarkMode, prevItem);
+		addFileToTree(movedFile, commonData.hTree, hParent, isDarkMode, prevItem);
 
         LOG("[{}] moved to order [{}]", movedFile->name, newOrder);
 

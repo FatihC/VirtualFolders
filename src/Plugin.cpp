@@ -76,25 +76,7 @@ extern void updateTreeColorsExternal(HWND hTree);
 extern void loadMenus();
 
 
-// Name and define any shortcut keys to be assigned as menu item defaults: Ctrl, Alt, Shift and the virtual key code
-//
-// Define menu commands:
-//     text to appear on menu (ignored for a menu separator line)
-//     address of a void, zero-argument function that processes the command (0 for a menu separator line)
-//         recommended: use plugin.cmd, per examples, to wrap the function, setting Scintilla pointers and bypassing notifications
-//     ignored on call; on return, Notepad++ will fill this in with the menu command ID it assigns
-//     whether to show a checkmark beside this item on initial display of the menu
-//     0 or default shortcut key (menu accelerator) specified as the address of an NPP::ShortcutKey structure
-//
-// If you will reference any menu items elsewhere, define mnemonic references for them following the menu definition,
-// where it's easy to see and update them if you change the menu; then you can use:
-//    extern NPP::FuncItem menuDefinition[];
-//    extern int mnemonic;
-// in other source files; use the mnemonic to get the ordinal position in the original menu, and:
-//    menuDefinition[mnemonic]._cmdID
-// to get the menu item identifier assigned by Notepad++.
 
-//static ShortcutKey SKToggleStatus { true, true, true, VK_HOME };
 NPP::ShortcutKey SKNextTab;
 
 

@@ -58,7 +58,7 @@ void VFolder::addFile(VFile* vFile) {
 }
 
 int VFolder::countItemsInFolder() const {
-	int count = 1; // Count the folder itself
+	auto count = 1; // Count the folder itself
 	count += fileList.size();
 
 	for (const auto& subFolder : folderList) {

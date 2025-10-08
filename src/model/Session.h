@@ -294,8 +294,7 @@ inline Session loadSessionFromXMLFile(const std::wstring& filePath) {
     file.close();
     
     if (xmlContent.empty()) return session;
-    
-    size_t pos = 0;
+
     
     // Find Session tag
     size_t sessionStart = xmlContent.find("<Session");

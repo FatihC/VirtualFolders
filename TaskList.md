@@ -24,7 +24,7 @@
 - [x] Büyük dosyalarla test (200KB'lık side dosyası ile hata vermedi.)
 - [x] Folder moving
 - [x] Folder deleting (Unwrap)
-- [ ] Use std::list instead of vector
+- [x] Use std::list instead of vector: vector is recommended
 - [x] When Theme changed
 	- [x] Degisik temalarda insertion line: use text color as lineColor 
 - [x] Internationalization
@@ -45,7 +45,7 @@
 	- [x] While notepad++ is running
 	- [x] While notepad++ is NOT running
 - [x] NPPN_FILEDELETEFAILED: gerek yok
-- [ ] If there is a problem with orders. fix at the start. don't crash
+- [x] If there is a problem with orders. fix at the start. don't crash
 - [-] Hover color in different themes: seems not possible. In dark theme my color is ignored.
 - [x] ctrl+pg dwn-up: catch these events. and switch to new buffer with order number not docOrder
 - [x] Font resize.
@@ -61,7 +61,7 @@
 - [x] dosya ismi uzun olunca otomatik sağa kaydırıyor
 - [x] dosya isminde '\u0000' olusmasi
 - [x] ctrl+pagedown secili item'i degistirmedi
-- [ ] Duplicate order - Add to the end
+- [x] Duplicate order - Add to the end
 - [x] empty vData on exit
 - [x] Acilista view=1 olan ama subview'de olmayanlari view=0 yap
 - [ ] 

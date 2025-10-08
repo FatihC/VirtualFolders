@@ -27,10 +27,10 @@
 
 
 #define LOG(fmt, ...) { \
-    auto msg = std::format(fmt, __VA_ARGS__); \
-    msg = "***** VFOLDER LOG ***** : " + msg; \
-    msg += "\n"; \
-    OutputDebugStringA(msg.c_str()); \
+    auto logMessage = std::format(fmt, __VA_ARGS__); \
+    logMessage = "***** VFOLDER LOG ***** : " + logMessage; \
+    logMessage += "\n"; \
+    OutputDebugStringA(logMessage.c_str()); \
 }
 
 // Define enumerations for use with config, and tell the JSON package how represent them in the configuration file
@@ -76,7 +76,47 @@ inline struct CommonData {
 inline std::wstring jsonFilePath;
 
 inline void writeJsonFile() {
+    commonData.rootVFolder.vFolderSort();
     json vDataJson = commonData.rootVFolder;
     std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
 }
+
+inline string folderToMinJson(VFolder folder) 
+{
+
+    auto setAllNames = [&](auto&& self, VFolder& f) -> void {
+        f.name = "xxx " + to_string(f.getOrder());
+        f.path = "xxx " + to_string(f.getOrder());
+        for (auto& file : f.fileList) {
+            file.name = "xxx " + to_string(file.getOrder());
+            file.path = "xxx " + to_string(file.getOrder());
+            file.backupFilePath = "xxx " + to_string(file.getOrder());
+        }
+        for (auto& sub : f.folderList) self(self, sub);
+        };
+
+    setAllNames(setAllNames, folder);
+
+
+    
+    folder.vFolderSort();
+    json vDataJson = folder;
+
+    std::string jsonStr = vDataJson.dump(0); // Serialize JSON to string
+    
+
+   /* vector<BYTE> compressedVector = safeCompress(vector<BYTE>(jsonStr.begin(), jsonStr.end()));
+    string compressed = string(compressedVector.begin(), compressedVector.end());
+    vector<BYTE> decommpressedVector = safeDecompress(compressedVector, jsonStr.size());
+    string decompressed = string(decommpressedVector.begin(), decommpressedVector.end());
+
+    std::string base64Str = base64_encode(compressed);
+
+    if (jsonStr == decompressed) {
+        LOG("compress-decompress is successfull");
+    }
+    */
+    return jsonStr;
+}
+
 

@@ -219,7 +219,9 @@ FolderLocation findFolderLocation(int order) {
     return location;
 }
 
-void updateVirtualPanelUnconditional(UINT_PTR bufferID) {
+void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
+    currentView = activeView;
+
     if(!commonData.isNppReady) {
         return;
     }
@@ -384,12 +386,6 @@ void resizeVirtualPanel() {
         InvalidateRect(hTree, nullptr, TRUE);
         UpdateWindow(hTree);
     }
-}
-
-void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
-    currentView = activeView;
-    if (virtualPanelWnd && IsWindowVisible(virtualPanelWnd)) {}
-    updateVirtualPanelUnconditional(bufferID);
 }
 
 void onFileClosed(UINT_PTR bufferID, int view) {
@@ -617,8 +613,14 @@ void toggleVirtualPanelWithList() {
 
         
             TCHAR configDir[MAX_PATH];
-            ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
-            jsonFilePath = std::wstring(configDir) + L"\\VFolders-storage.json";
+            SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
+            filesystem::path configFolder(configDir);
+            filesystem::path virtualFolderPluginFolder = configFolder.parent_path() / L"VirtualFolder";
+            filesystem::create_directories(virtualFolderPluginFolder);
+
+
+            jsonFilePath = virtualFolderPluginFolder.wstring() + L"\\VFolders-storage.json";
+
 
             // read JSON
             json rootVFolderJson = loadVDataFromFile(jsonFilePath);
@@ -693,7 +695,7 @@ void toggleVirtualPanelWithList() {
         commonData.virtualFoldersTabSelected = false;
     }
     else {
-        updateVirtualPanelUnconditional(-1);
+        updateVirtualPanel(-1, currentView);
         npp(NPPM_DMMSHOW, 0, virtualPanelWnd);
         LOG("Tree Panel Show");
         // Update tab selection state

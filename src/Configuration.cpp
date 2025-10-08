@@ -195,7 +195,7 @@ void loadLocalization() {
         if (langFileName == "turkish.xml") {
             commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_TURKISH);
         }
-        else if (langFileName == "english.xml") {
+        else {
             commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_ENGLISH);
 
         }

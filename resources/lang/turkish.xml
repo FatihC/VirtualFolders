@@ -47,6 +47,26 @@
 
 	<Labels>
 		<Item id="NEW_FOLDER" text="Yeni Klasör"/>
+		<Item id="IDC_CORRUPTION_WARNING" text="Klasör ağacı güncellenirken bir hata oluştu. Bu sorunun çözülmesine yardımcı olmak için hızlı bir rapor gönderebilirsiniz.
+Aşağıda görebileceğiniz gibi, hiçbir kişisel bilgi paylaşılmayacaktır.
+
+			  
+Ya bir GitHub sorunu (issue) oluşturabilir ya da doğrudan bir e-posta gönderebilirsiniz. Her iki durumda da veriler verimlilik için sıkıştırılacaktır. Ancak gönderilecek veriler aşağıdaki verilerdir."/>
+		<Item id="IDC_CORRUPTION_SYSLINK_BEFORE" text="İlk Ağaç" />
+		<Item id="IDC_CORRUPTION_SYSLINK_AFTER" text="Son Ağaç" />
+		<Item id="ID_CORRUPTION_SENDGITHUB" text="GitHub Issue" />
+		<Item id="ID_CORRUPTION_SENDEMAIL" text="E-posta Gönder" />
+		<Item id="IDCANCEL" text="İptal" />
+		<Item id="ID_CLOSE" text="Kapat" />
+		<Item id="IDD_CORRUPTION_DIALOG" text="BOZUK AĞAÇ !!!" />
+
+
+		<Item id="IDC_ABOUT_DESCRIPTION" text="Notepad++ için, dosya sistemini değiştirmeden dosyaları özel klasör ağaçları halinde düzenlemenizi sağlayan bir eklenti.
+İlgili dosyaları bir arada tutun, farklı konumlardan gruplandırın ve Notepad++ içinde daha hızlı gezinin.
+
+— Azimle ve bol kahveyle üretildi." />
+
+		<Item id="ID_ABOUT_VERSION" text="Bu versiyon " />
 	</Labels>
 
 	<Dialogs>

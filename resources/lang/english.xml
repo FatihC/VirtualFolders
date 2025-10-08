@@ -48,6 +48,25 @@
 
 	<Labels>
 		<Item id="NEW_FOLDER" text="New Folder"/>
+		<Item id="IDC_CORRUPTION_WARNING" text="Something went wrong while updating the folder tree. You can send a quick report to help fix this issue.
+As you can see below no personal information will be shared.
+
+			  
+You can either create a GitHub issue or send a direct email. In either case data will be compressed for efficiency.But the data that will be sent are the data below"/>
+		<Item id="IDC_CORRUPTION_SYSLINK_BEFORE" text="Before Tree" />
+		<Item id="IDC_CORRUPTION_SYSLINK_AFTER" text="After Tree" />
+		<Item id="ID_CORRUPTION_SENDGITHUB" text="GitHub Issue" />
+		<Item id="ID_CORRUPTION_SENDEMAIL" text="Send Email" />
+		<Item id="IDCANCEL" text="Cancel" />
+		<Item id="ID_CLOSE" text="Close" />
+		<Item id="IDD_CORRUPTION_DIALOG" text="CORRUPT TREE !!!" />
+
+		<Item id="IDC_ABOUT_DESCRIPTION" text="A Notepad++ plugin that lets you organize files into custom folder trees without changing the filesystem.
+Keep related files together, group from multiple locations, and navigate faster inside Notepad++.
+
+— Made with persistence and plenty of coffee." />
+
+		<Item id="ID_ABOUT_VERSION" text="This is version " />
 	</Labels>
 
 	<Dialogs>

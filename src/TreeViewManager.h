@@ -98,7 +98,7 @@ inline HIMAGELIST hDragImage = nullptr;
 inline bool isDragging = false;
 inline bool ignoreSelectionChange = false;
 inline bool contextMenuLoaded = false;
-inline int currentView = -1;
+inline int currentView = 0;
 
 
 

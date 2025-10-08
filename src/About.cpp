@@ -22,7 +22,7 @@
 
 INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
 
-    static std::wstring version;  // Once filled in, we don't need to get this information again if About is called again.
+    static wstring version;  // Once filled in, we don't need to get this information again if About is called again.
 
     switch (uMsg) {
 
@@ -33,35 +33,24 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
         {
             config_rect::show(hwndDlg);  // centers dialog on owner client area, without saving position
 
+            SetDlgItemText(hwndDlg, IDC_ABOUT_DESCRIPTION, commonData.translator->getTextW("IDC_ABOUT_DESCRIPTION").c_str());
+
             if (version.empty()) {
-                VS_FIXEDFILEINFO* fixedFileInfo;
-                UINT size;
-                HRSRC hRes = FindResource(plugin.dllInstance, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
-                if (hRes) {
-                    HGLOBAL hGlobal = LoadResource(plugin.dllInstance, hRes);
-                    if (hGlobal) {
-                        void* pVersionInfo = LockResource(hGlobal);
-                        if (pVersionInfo) {
-                            if (VerQueryValue(pVersionInfo, L"\\", reinterpret_cast<void**>(&fixedFileInfo), &size) && size > 0) {
-                                int versionPart1 = 0x0000ffff & (fixedFileInfo->dwProductVersionMS >> 16);
-                                int versionPart2 = 0x0000ffff & fixedFileInfo->dwProductVersionMS;
-                                int versionPart3 = 0x0000ffff & (fixedFileInfo->dwProductVersionLS >> 16);
-                                int versionPart4 = 0x0000ffff & fixedFileInfo->dwProductVersionLS;
-                                version = L"This is version " + std::to_wstring(versionPart1)
-                                        + L"." + std::to_wstring(versionPart2);
-                                if (versionPart3 || versionPart4) version += L"." + std::to_wstring(versionPart3);
-                                if (versionPart4) version += L"." + std::to_wstring(versionPart4);
-                                if constexpr (sizeof(size_t) == 8) version += L" (x64)";
-                                else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
-                                version += L".\n\n";
-                            }
-                        }
-                    }
-                }
+                version = commonData.translator->getTextW("ID_ABOUT_VERSION");
+                version += GetPluginVersion(plugin.dllInstance);
+
+                if constexpr (sizeof(size_t) == 8) version += L" (x64)";
+                else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
+                version += L".\n\n";
+
+                LOG("versionNameString: {}", fromWide(version));
+
+
+                
                 auto pidh = reinterpret_cast<IMAGE_DOS_HEADER*>(plugin.dllInstance);
                 auto pnth = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<char*>(pidh) + pidh->e_lfanew);
-                auto timepoint = std::chrono::sys_seconds(std::chrono::seconds(pnth->FileHeader.TimeDateStamp));
-                version += std::format(L"Build time: {0:%Y} {0:%b} {0:%d} at {0:%H}:{0:%M}:{0:%S} UTC.", timepoint);
+                auto timepoint = chrono::sys_seconds(chrono::seconds(pnth->FileHeader.TimeDateStamp));
+                version += format(L"Build time: {0:%Y} {0:%b} {0:%d} at {0:%H}:{0:%M}:{0:%S} UTC.", timepoint);
 
                 version += L"\n\nby Fatih COÞKUN\n";
             }
@@ -83,20 +72,20 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
         case IDC_ABOUT_MORE:
             {
                 auto n = SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, 0, 0);
-                std::wstring path(n, 0);
+                wstring path(n, 0);
                 SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, n + 1, reinterpret_cast<LPARAM>(path.data()));
 
-                static std::wstring changes = path + L"\\VirtualFolders\\CHANGELOG.md";
+                static wstring changes = path + L"\\VirtualFolders\\CHANGELOG.md";
                 if (PathFileExists(changes.data()) == TRUE) {
                     PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(changes.data()));
                     PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
-                static std::wstring license = path + L"\\VirtualFolders\\LICENSE.txt";
+                static wstring license = path + L"\\VirtualFolders\\LICENSE.txt";
                 if (PathFileExists(license.data()) == TRUE) {
                     PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(license.data()));
                     PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
-                static std::wstring readme = path + L"\\VirtualFolders\\README.md";
+                static wstring readme = path + L"\\VirtualFolders\\README.md";
                 if (PathFileExists(readme.data()) == TRUE) {
                     PostMessage(plugin.nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(readme.data()));
                     PostMessage(plugin.nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
