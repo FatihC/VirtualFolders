@@ -70,7 +70,6 @@ void scnSavePointEvent(UINT_PTR bufferID, bool isSavePoint) {
         commonData.bufferStates[bufferID] = false;
     }
 
-    // TODO: active view
     changeTreeItemIcon(bufferID, MAIN_VIEW);
     changeTreeItemIcon(bufferID, SUB_VIEW);
 }

@@ -301,8 +301,7 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
         writeJsonFile();
     }
     else {
-        // TODO: CHECK if it is a clone
-        // kaç tane var
+        // CHECK if it is a clone
         vector<VFile*> allFilesWithBufferID = commonData.rootVFolder.getAllFilesByBufferID(bufferID);
         if (allFilesWithBufferID.size() == 1 && allFilesWithBufferID[0]->view != currentView) { // it is cloned
             VFolder* parentFolder = commonData.rootVFolder.findParentFolder(allFilesWithBufferID[0]->getOrder());

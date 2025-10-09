@@ -983,7 +983,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
             // Clear drop target selection and restore normal selection
             TreeView_SelectDropTarget(hTree, nullptr);
 
-            // TODO: current rootFolder to base64
+            // current rootFolder to base64 before move
             VFolder oldRoot = commonData.rootVFolder;
             int oldOrder = -1, newOrder = -1;
 
