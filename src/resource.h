@@ -23,6 +23,7 @@
 #define IDC_ABOUT_VERSION               1001
 #define IDC_ABOUT_MORE                  1003
 #define IDC_FONT_SIZE_LABEL             1004
+#define IDC_ABOUT_VERSION_LINK          1004
 #define IDC_SETTINGS_FONTSIZE_EDIT      1005
 #define IDC_SETTINGS_FONTSIZE_SPIN      1006
 #define IDC_FONT_FAMILY_LABEL           1007
@@ -41,6 +42,7 @@
 #define IDC_CORRUPTION_SYSLINK_AFTER    1035
 #define ID_CORRUPTION_SENDEMAIL         1037
 #define ID_CLOSE                        1038
+#define IDC_ABOUT_GITHUB_LINK           1039
 
 // Next default values for new objects
 // 
@@ -48,7 +50,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         40002
-#define _APS_NEXT_CONTROL_VALUE         1039
+#define _APS_NEXT_CONTROL_VALUE         1040
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

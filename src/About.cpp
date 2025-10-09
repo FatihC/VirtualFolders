@@ -20,7 +20,7 @@
 #include "Shlwapi.h"
 
 
-INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
+INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
     static wstring version;  // Once filled in, we don't need to get this information again if About is called again.
 
@@ -41,7 +41,7 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
 
                 if constexpr (sizeof(size_t) == 8) version += L" (x64)";
                 else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
-                version += L".\n\n";
+                version += L".\n";
 
                 LOG("versionNameString: {}", fromWide(version));
 
@@ -52,7 +52,7 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
                 auto timepoint = chrono::sys_seconds(chrono::seconds(pnth->FileHeader.TimeDateStamp));
                 version += format(L"Build time: {0:%Y} {0:%b} {0:%d} at {0:%H}:{0:%M}:{0:%S} UTC.", timepoint);
 
-                version += L"\n\nby Fatih COÞKUN\n";
+                version += L"\n\nby Fatih COÞKUN";
             }
 
             SetDlgItemText(hwndDlg, IDC_ABOUT_VERSION, version.data());
@@ -96,6 +96,21 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM)
             EndDialog(hwndDlg, 0);
             return TRUE;
         }
+        case WM_NOTIFY:
+        {
+            LPNMHDR pnmh = (LPNMHDR)lParam;
+            if (pnmh->idFrom == IDC_ABOUT_GITHUB_LINK && pnmh->code == NM_CLICK)
+            {
+                PNMLINK pNMLink = (PNMLINK)lParam;
+                ShellExecuteW(nullptr, L"open", pNMLink->item.szUrl, nullptr, nullptr, SW_SHOWNORMAL);
+            }
+            else if (pnmh->idFrom == IDC_ABOUT_GITHUB_LINK && pnmh->code == NM_RETURN)
+            {
+                PNMLINK pNMLink = (PNMLINK)lParam;
+                ShellExecuteW(nullptr, L"open", pNMLink->item.szUrl, nullptr, nullptr, SW_SHOWNORMAL);
+            }
+        }
+        break;
         break;
 
     }

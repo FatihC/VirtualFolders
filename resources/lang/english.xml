@@ -66,7 +66,7 @@ Keep related files together, group from multiple locations, and navigate faster 
 
 — Made with persistence and plenty of coffee." />
 
-		<Item id="ID_ABOUT_VERSION" text="This is version " />
+		<Item id="ID_ABOUT_VERSION" text="Version: " />
 	</Labels>
 
 	<Dialogs>

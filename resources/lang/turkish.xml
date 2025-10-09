@@ -66,7 +66,7 @@ Ya bir GitHub sorunu (issue) oluşturabilir ya da doğrudan bir e-posta göndere
 
 — Azimle ve bol kahveyle üretildi." />
 
-		<Item id="ID_ABOUT_VERSION" text="Bu versiyon " />
+		<Item id="ID_ABOUT_VERSION" text="Versiyon: " />
 	</Labels>
 
 	<Dialogs>
