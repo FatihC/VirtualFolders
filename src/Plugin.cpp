@@ -244,7 +244,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             // Note that this does not mean you will not get messages for other events; it only specifies that
             // you do want at least the ones you list.  You still must test and return quickly from messages
             // you don't need.  If you don't use Scintilla::Notification::Modified, remove the next line.
-            SendMessage(plugin.nppData._nppHandle, NPPM_ADDSCNMODIFIEDFLAGS, 0, SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);                  
+            SendMessage(plugin.nppData._nppHandle, NPPM_ADDSCNMODIFIEDFLAGS, 0, SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT);
             plugin.startupOrShutdown = false;
             plugin.getScintillaPointers();
             bufferActivated(nmhdr);

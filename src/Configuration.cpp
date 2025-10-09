@@ -162,6 +162,10 @@ void loadLocalization() {
     langFileNameVector[len] = L'\0';
     string langFileName = langFileNameVector.data();
 
+    if (langFileName == "") {
+        langFileName = "english.xml";
+    }
+
     LOG("Native Lang file name: [{}]", langFileName);
 
 	string langFilePath;

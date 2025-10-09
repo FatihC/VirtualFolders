@@ -134,7 +134,6 @@ void fileOpened(const NMHDR* nmhdr) {
     std::wstring filepath = getFilePath(bufferID);
     //MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VirtualFolders", 0);
 
-    //TODO: have to implement this. just in case multiple files opened
     bufferActivated(nmhdr);
 }
 
@@ -227,7 +226,7 @@ void nppReady() {
     }
     
     syncVDataWithBufferIDs();
-
+    loadLocalization();
 
     //SetTimer(virtualPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
 }
