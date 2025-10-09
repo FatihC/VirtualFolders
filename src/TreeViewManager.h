@@ -106,7 +106,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 // TreeView management functions
 void updateTreeItemLParam(VBase* vBase);
 HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem);
-HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos, HTREEITEM hPrevItem);
+HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize_t& pos, HTREEITEM hPrevItem);
 void updateTreeColorsExternal(HWND hTree);
 
 // Drag & Drop and Reordering functions

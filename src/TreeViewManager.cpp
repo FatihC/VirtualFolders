@@ -1119,7 +1119,7 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
     VFolder* parentFolder = commonData.rootVFolder.findParentFolder(vFolder->getOrder());
 	int parentFolderOrder = parentFolder ? parentFolder->getOrder() : -1;
 
-    size_t pos = folderCopy.getOrder();
+    ssize_t pos = folderCopy.getOrder();
     HTREEITEM fileTreeItem = nullptr;
     optional<VBase*> aboveSibling = parentFolder ? parentFolder->findAboveSibling(pos) : commonData.rootVFolder.findAboveSibling(pos);
     if (aboveSibling) {
@@ -1206,7 +1206,7 @@ void wrapFileInFolder(HTREEITEM selectedTreeItem)
 
     newFolderOpt.value()->addFile(&fileCopy);
     newFolderOpt.value()->isExpanded = true;
-    size_t pos = oldOrder;
+    ssize_t pos = oldOrder;
 
     /*HTREEITEM folderTreeItem = addFolderToTree(newFolderOpt.value(), hTree, parentFolder ? parentFolder->hTreeItem : nullptr, pos, TVI_LAST);
     TreeView_DeleteItem(hTree, folderTreeItem);*/
@@ -1375,7 +1375,7 @@ void moveFolderIntoFolder(int dragOrder, int targetOrder) {
     targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder); // removeChild operation somehow effected targetFolder
     targetFolder = targetFolderOpt.value();
 
-    size_t pos = targetFolder->getLastOrder();
+    ssize_t pos = targetFolder->getLastOrder();
 	adjustGlobalOrdersForFolderMove(movedFolderCopy.getOrder(), pos + 1, movedFolderCopy.countItemsInFolder());
     movedFolderCopy.move(step);
     targetFolder->folderList.push_back(movedFolderCopy);
@@ -1445,7 +1445,7 @@ HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMo
 	return hItem;
 }
 
-HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, size_t& pos, HTREEITEM prevItem) {
+HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize_t& pos, HTREEITEM prevItem) {
     wchar_t buffer[100];
 
     TVINSERTSTRUCT tvis = { 0 };
@@ -1833,7 +1833,7 @@ void reorderFolders(int oldOrder, int newOrder) {
 
     // Re-insert the folder in the new position
     // addFolderToTree will recursively add all files and subfolders
-    size_t pos = newOrder;
+    ssize_t pos = newOrder;
     HTREEITEM newItem = addFolderToTree(movedFolder, hTree, targetParentItem, pos, prevItem);
 
     // After reordering, recursively sort the entire data structure to ensure consistency

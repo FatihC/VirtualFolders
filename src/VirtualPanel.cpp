@@ -222,7 +222,7 @@ FolderLocation findFolderLocation(int order) {
 void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
     currentView = activeView;
 
-    if(!commonData.isNppReady) {
+    if(!commonData.isNppReady && commonData.rootVFolder.getLastOrder() >= 0) {  // if there is no buffer a default one comes. We should show that in the tree
         return;
     }
 
@@ -615,7 +615,7 @@ void toggleVirtualPanelWithList() {
             TCHAR configDir[MAX_PATH];
             SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
             filesystem::path configFolder(configDir);
-            filesystem::path virtualFolderPluginFolder = configFolder.parent_path() / L"VirtualFolder";
+            filesystem::path virtualFolderPluginFolder = configFolder.parent_path() / L"VirtualFolders";
             filesystem::create_directories(virtualFolderPluginFolder);
 
 
@@ -643,10 +643,12 @@ void toggleVirtualPanelWithList() {
 
 			
             BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
-            fixRootVFolderJSON(); // uncomment on production
+            if (checkRootVFolderJSON()) {
+                fixRootVFolderJSON(); // uncomment on production
+            }
 
             int lastOrder = commonData.rootVFolder.getLastOrder();
-            for (size_t pos = 0; pos <= lastOrder; pos) {
+            for (ssize_t pos = 0; pos <= lastOrder; pos) {
 				optional<VBase*> childOpt = commonData.rootVFolder.getDirectChildByOrder(pos);
                 if (!childOpt) {
                     // This should not happen, but just in case. 
@@ -933,7 +935,7 @@ void fixRootVFolderJSON() {
         int lastOrder = folder->fileList.empty() ? 0 : folder->fileList.back().getOrder();
         lastOrder = std::max(lastOrder, folder->folderList.empty() ? 0 : folder->folderList.back().getOrder());
 
-        while (startPos < lastOrder) {
+        while (startPos <= lastOrder) {
             optional<VBase*> childOpt = commonData.rootVFolder.getDirectChildByOrder(startPos);
             if (!childOpt) {
                 return true;

@@ -24,6 +24,10 @@
 #include <format>
 #include "Translator.h"
 
+#include <type_traits>
+
+using ssize_t = std::make_signed_t<size_t>;
+
 
 
 #define LOG(fmt, ...) { \
