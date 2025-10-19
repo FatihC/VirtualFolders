@@ -1,0 +1,27 @@
+name: CI_MS_analysis
+
+on: [push, pull_request]
+
+env:
+  PROJECT_NAME: VirtualFolders
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_configuration: [Debug]
+        build_platform: [x64]
+        
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v5
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+
+    - name: MSBuild of plugin dll
+      working-directory: .
+      run: msbuild ${{ env.PROJECT_NAME }}.vcxproj /m /p:configuration="${{ matrix.build_configuration }}" /p:platform="${{ matrix.build_platform }}" /p:PlatformToolset="v143" /p:RunCodeAnalysis=true
