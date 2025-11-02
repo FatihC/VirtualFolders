@@ -19,6 +19,8 @@ using std::string;
 using std::vector;
 using std::optional;
 
+using ssize_t = std::make_signed_t<size_t>;
+
 
 class VBase {
 protected:
@@ -99,7 +101,7 @@ public:
 	vector<VFile*> getAllFilesByBufferID(UINT_PTR bufferID) const;
 
 	bool isInRoot(int order) const;
-	void resetOrders(size_t& pos);
+	void resetOrders(ssize_t& pos);
 };
 
 // JSON serialization functions (must remain inline for nlohmann/json)

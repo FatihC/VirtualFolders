@@ -30,6 +30,8 @@ extern CommonData commonData;
 extern NPP::FuncItem menuDefinition[];  // Defined in Plugin.cpp
 extern int menuItem_ToggleVirtualPanel;      // Defined in Plugin.cpp
 
+extern void showCorruptionDialog(VFolder hOldFolder, VFolder hNewFolder, int hOldOrder, int hNewOrder); // Defined in CorruptionDialog.cpp
+
 
 void writeJsonFile();
 void resizeVirtualPanel();
@@ -643,6 +645,7 @@ void toggleVirtualPanelWithList() {
 			
             BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
             if (checkRootVFolderJSON()) {
+                showCorruptionDialog(commonData.rootVFolder, commonData.rootVFolder, 0, 0);
                 fixRootVFolderJSON(); // uncomment on production
             }
 
@@ -765,26 +768,26 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
     // Collect all vFiles that are now in rootVFolder but not in openFiles.
     vector<VFile*> allFiles = commonData.rootVFolder.getAllFiles();
     for (int i = 0; i < allFiles.size(); i++) {
+		bool found = false;
         for (int j = 0; j < openFiles.size(); j++) {
             if (allFiles[i]->path == openFiles[j].path && allFiles[i]->view == openFiles[j].view) {
+				found = true;
                 break;
             }
-            if (j == openFiles.size() - 1) {
-                // Not found in openFiles, remove it from rootVFolder
+        }
+        if (!found) {
+            // Not found in openFiles, remove it from rootVFolder
 
-                VFile fileCopy = *(allFiles[i]);
-                VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
-                if (parentFolder) {
-                    parentFolder->removeFile(fileCopy.getOrder());
-                }
-                else {
-                    commonData.rootVFolder.removeFile(fileCopy.getOrder());
-                }
-
-                adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
-
-
+            VFile fileCopy = *(allFiles[i]);
+            VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
+            if (parentFolder) {
+                parentFolder->removeFile(fileCopy.getOrder());
             }
+            else {
+                commonData.rootVFolder.removeFile(fileCopy.getOrder());
+            }
+
+            adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
         }
     }
 
@@ -834,10 +837,10 @@ bool checkRootVFolderJSON() {
     // 3. Order not sequential in a folder
 
     commonData.rootVFolder.vFolderSort();
-    std::function<bool(VFolder*, size_t&)> isTheTreeCorrupt =
-        [&](VFolder* folder, size_t& startPos) -> bool {
-        int lastOrder = folder->fileList.empty() ? 0 : folder->fileList.back().getOrder();
-        lastOrder = std::max(lastOrder, folder->folderList.empty() ? 0 : folder->folderList.back().getOrder());
+    std::function<bool(VFolder*, ssize_t&)> isTheTreeCorrupt =
+        [&](VFolder* folder, ssize_t& startPos) -> bool {
+
+        int lastOrder = commonData.rootVFolder.getLastOrder();
 
         while (startPos <= lastOrder) {
             optional<VBase*> childOpt = folder->getDirectChildByOrder(startPos);
@@ -855,7 +858,7 @@ bool checkRootVFolderJSON() {
         return false;
         };
 
-    size_t startPos = 0;
+    ssize_t startPos = 0;
     bool treeIsCorrupt = isTheTreeCorrupt(&commonData.rootVFolder, startPos);
 
     LOG("Finished checking rootVFolder JSON: [{}]", treeIsCorrupt);
@@ -929,8 +932,8 @@ void fixRootVFolderJSON() {
     // 3. Order not sequential in a folder
 
 	commonData.rootVFolder.vFolderSort();
-    std::function<bool(VFolder*, size_t)> isTheTreeCorrupt =
-        [&](VFolder* folder, size_t startPos) -> bool {
+    std::function<bool(VFolder*, ssize_t)> isTheTreeCorrupt =
+        [&](VFolder* folder, ssize_t startPos) -> bool {
         int lastOrder = folder->fileList.empty() ? 0 : folder->fileList.back().getOrder();
         lastOrder = std::max(lastOrder, folder->folderList.empty() ? 0 : folder->folderList.back().getOrder());
 
@@ -948,7 +951,7 @@ void fixRootVFolderJSON() {
         return false;
         };
 
-    size_t startPos = 0;
+    ssize_t startPos = 0;
     bool treeIsCorrupt = isTheTreeCorrupt(&commonData.rootVFolder, startPos);
 
 

@@ -41,3 +41,7 @@ After restarting `Notepad++`, you can toggle the Virtual Folders panel from `Plu
 This plugin was built using the [NppCppMSVS](https://github.com/Coises/NppCppMSVS). template
 .
 Special thanks to [Coises](https://community.notepad-plus-plus.org/user/coises) for creating and sharing such a helpful foundation.
+
+# Licences
+- File icon: https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
+- 

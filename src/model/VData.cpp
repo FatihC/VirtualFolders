@@ -422,7 +422,7 @@ json loadVDataFromFile(const std::wstring& filePath) {
     }
 }
 
-void VFolder::resetOrders(size_t& pos)
+void VFolder::resetOrders(ssize_t& pos)
 {
 	for (auto& file : fileList) {
 		file.setOrder(static_cast<int>(pos));

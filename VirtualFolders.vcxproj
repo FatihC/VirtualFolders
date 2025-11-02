@@ -321,7 +321,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Portable|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\npp.8.8.5.portable.x64\plugins\VirtualFolders</OutDir>
+    <OutDir>..\..\npp.8.8.6.portable.x64\plugins\VirtualFolders</OutDir>
     <IntDir>.vs\int\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Portable|ARM64'">
