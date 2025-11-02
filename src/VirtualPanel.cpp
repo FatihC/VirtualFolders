@@ -847,7 +847,7 @@ bool checkRootVFolderJSON() {
     std::function<bool(VFolder*, ssize_t&)> isTheTreeCorrupt =
         [&](VFolder* folder, ssize_t& startPos) -> bool {
 
-        int lastOrder = commonData.rootVFolder.getLastOrder();
+        int lastOrder = folder->getLastOrder();
 
         while (startPos <= lastOrder) {
             optional<VBase*> childOpt = folder->getDirectChildByOrder(startPos);
