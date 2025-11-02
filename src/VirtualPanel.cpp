@@ -766,29 +766,36 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
     }
 
     // Collect all vFiles that are now in rootVFolder but not in openFiles.
-    vector<VFile*> allFiles = commonData.rootVFolder.getAllFiles();
-    for (int i = 0; i < allFiles.size(); i++) {
-		bool found = false;
-        for (int j = 0; j < openFiles.size(); j++) {
-            if (allFiles[i]->path == openFiles[j].path && allFiles[i]->view == openFiles[j].view) {
-				found = true;
+    while (true) {
+        int fileIndex = 0;
+        vector<VFile*> allFiles = commonData.rootVFolder.getAllFiles();
+        for (fileIndex = 0; fileIndex < allFiles.size(); fileIndex++) {
+            bool found = false;
+            for (int j = 0; j < openFiles.size(); j++) {
+                if (allFiles[fileIndex]->path == openFiles[j].path && allFiles[fileIndex]->view == openFiles[j].view) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Not found in openFiles, remove it from rootVFolder
+                VFile fileCopy = *(allFiles[fileIndex]);
+                VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
+                if (parentFolder) {
+                    parentFolder->removeFile(fileCopy.getOrder());
+                }
+                else {
+                    commonData.rootVFolder.removeFile(fileCopy.getOrder());
+                }
+
+                adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
                 break;
             }
         }
-        if (!found) {
-            // Not found in openFiles, remove it from rootVFolder
-
-            VFile fileCopy = *(allFiles[i]);
-            VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
-            if (parentFolder) {
-                parentFolder->removeFile(fileCopy.getOrder());
-            }
-            else {
-                commonData.rootVFolder.removeFile(fileCopy.getOrder());
-            }
-
-            adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
+		if (fileIndex == allFiles.size()) {
+            break;
         }
+
     }
 
 }
