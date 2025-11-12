@@ -1,0 +1,47 @@
+name: CI_build
+
+on: [push, pull_request]
+
+env:
+  PROJECT_NAME: VirtualFolders
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_configuration: [Release, Debug]
+        build_platform: [x64, Win32, ARM64]
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v5
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+
+    - name: MSBuild of plugin dll
+      working-directory: .
+      run: msbuild ${{ env.PROJECT_NAME }}.vcxproj /m /p:configuration="${{ matrix.build_configuration }}" /p:platform="${{ matrix.build_platform }}" /p:PlatformToolset="v143"
+
+    - uses: olegtarasov/get-tag@v2.1.4
+      id: tagName
+
+    - name: zip artifacts for ${{ matrix.build_platform }}
+      if: matrix.build_configuration == 'Release'
+      run: 7z a ${{ env.PROJECT_NAME }}_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip .vs\bin\${{ matrix.build_platform }}\${{ matrix.build_configuration }}\${{ env.PROJECT_NAME }}.dll
+
+    - name: Archive artifacts for ${{ matrix.build_platform }}
+      if: matrix.build_configuration == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+          name: ${{ env.PROJECT_NAME }}_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+          path: ${{ env.PROJECT_NAME }}_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
+
+    - name: Create release on tagging
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+          files: ${{ env.PROJECT_NAME }}_${{ steps.tagName.outputs.tag }}_${{ matrix.build_platform }}.zip
