@@ -512,7 +512,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                     COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
                     COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
 
-                    LOG("EditorBg: [{}]", editorBg);
+                    //LOG("EditorBg: [{}]", editorBg);
 
                     COLORREF highlightBg = RGB(200, 220, 255);
 
@@ -1041,6 +1041,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
                 VFolder newRoot = commonData.rootVFolder;
                 if (checkRootVFolderJSON()) {
+                    checkRootVFolderJSON();
                     LOG("Root is corrupted!!!!!!!!!!!!");
                     showCorruptionDialog(oldRoot, newRoot, oldOrder, newOrder);
                     fixRootVFolderJSON();
@@ -1135,7 +1136,7 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
 
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
     folderCopy.move(-1);
-    vector<VBase*> allChildren = folderCopy.getAllChildren();
+    vector<VBase*> allChildren = folderCopy.getAllDirectChildren();
     for (const auto& child : allChildren) {
         if (!child) continue;
         if (auto file = dynamic_cast<VFile*>(child)) {
@@ -1157,7 +1158,7 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
     }
     else {
         commonData.rootVFolder.removeChild(vFolder->getOrder());
-        auto children = folderCopy.getAllChildren();
+        auto children = folderCopy.getAllDirectChildren();
         commonData.rootVFolder.addChildren(children);
 	}
     
@@ -1465,6 +1466,13 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize
     }
 
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
+    if (vFolder->isExpanded) {
+        TreeView_Expand(hTree, hFolder, TVE_EXPAND);
+    }
+    else {
+        TreeView_Expand(hTree, hFolder, TVE_COLLAPSE);
+    }
+
     vFolder->hTreeItem = hFolder; // Store the HTREEITEM in the VFolder for later reference
 
 	prevItem = hFolder;
@@ -1494,13 +1502,8 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize
         }
     }
 
-    if (vFolder->isExpanded) {
-        TreeView_Expand(hTree, hFolder, TVE_EXPAND);
-    }
-    else {
-        TreeView_Expand(hTree, hFolder, TVE_COLLAPSE);
-    }
-    return hFolder;
+    
+    return vFolder->hTreeItem;
 }
 
 void updateTreeColors(HWND hTree) {

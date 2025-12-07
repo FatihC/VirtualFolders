@@ -35,7 +35,7 @@
 		<Item id="IDM_VIEW_CLONE_TO_ANOTHER_VIEW" text="Diğer Görünüme Kopyasını Çıkart"/>
 		<Item id="IDM_MOVE_MENU" text="Belgeyi Taşı"/>
 
-		<Item id="MENU_ID_FOLDER_UNWRAP" text="Klasör İçine Al"/>
+		<Item id="MENU_ID_FOLDER_UNWRAP" text="Klasör Dışına Al"/>
 		<Item id="MENU_ID_FOLDER_RENAME" text="Yeniden Adlandır..."/>
 
 		<Item id="IDM_FONT_INCREASE" text="Eklenti Yazı Boyutunu Arttır: " />

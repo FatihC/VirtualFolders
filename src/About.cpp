@@ -20,6 +20,9 @@
 #include "Shlwapi.h"
 
 
+static bool isArmSystem();
+
+
 INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
     static wstring version;  // Once filled in, we don't need to get this information again if About is called again.
@@ -39,7 +42,10 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
                 version = commonData.translator->getTextW("ID_ABOUT_VERSION");
                 version += GetPluginVersion(plugin.dllInstance);
 
-                if constexpr (sizeof(size_t) == 8) version += L" (x64)";
+                if constexpr (sizeof(size_t) == 8) {
+                    if (isArmSystem()) version += L" (ARM64)";
+                    else version += L" (x64)";
+                }
                 else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
                 version += L".\n";
 
@@ -115,6 +121,38 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 
     }
     return FALSE;
+}
+
+static bool isArmSystem() {
+    // Prefer IsWow64Process2 when available (Windows 10+). It returns native machine type.
+    using LPFN_ISWOW64PROCESS2 = BOOL(WINAPI*)(HANDLE, USHORT*, USHORT*);
+    HMODULE hKernel = GetModuleHandleW(L"kernel32.dll");
+    if (hKernel) {
+        auto fn = reinterpret_cast<LPFN_ISWOW64PROCESS2>(GetProcAddress(hKernel, "IsWow64Process2"));
+        if (fn) {
+            USHORT processMachine = 0, nativeMachine = 0;
+            if (fn(GetCurrentProcess(), &processMachine, &nativeMachine)) {
+                if (nativeMachine == IMAGE_FILE_MACHINE_ARM64 || nativeMachine == IMAGE_FILE_MACHINE_ARMNT) {
+                    return true;
+                }
+                return false;
+            }
+        }
+    }
+
+    // Fallback: GetNativeSystemInfo and examine processor architecture.
+    SYSTEM_INFO si{};
+    using LPFN_GETNATIVESYSTEMINFO = void(WINAPI*)(LPSYSTEM_INFO);
+    auto gns = reinterpret_cast<LPFN_GETNATIVESYSTEMINFO>(GetProcAddress(hKernel, "GetNativeSystemInfo"));
+    if (gns) gns(&si);
+    else GetSystemInfo(&si);
+
+    if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM64 ||
+        si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM) {
+        return true;
+    }
+
+    return false;
 }
 
 

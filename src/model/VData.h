@@ -77,6 +77,7 @@ public:
 	
 	// Returns a vector of all VFile objects in this folder and all subfolders
 	vector<VFile*> getAllFiles() const;
+	vector<VFolder*> getAllFolders() const;
 	void vFolderSort();
 	optional<VFile*> findFileByOrder(int order) const;
 	optional<VFile*> findFileByBufferID(UINT_PTR bufferID) const;

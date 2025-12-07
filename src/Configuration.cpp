@@ -229,6 +229,7 @@ void loadShortcuts(string langFilePath)
     if (std::filesystem::exists(shortcutPath)) {
         Translator translator(shortcutPath);
 		commonData.shortcutTranslator.get()->loadFile(shortcutPath);
+		LOG("Loaded user shortcuts from [{}]", shortcutPath);
 	}
 
 }

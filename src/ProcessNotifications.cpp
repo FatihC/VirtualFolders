@@ -94,6 +94,10 @@ void bufferActivated(const NMHDR* nmhdr) {
     //GetActiveViewForBuffer(bufferID);
 
     updateVirtualPanel(bufferID, view);
+
+	/*static int bufferActivatedCounter = 0;
+    LOG("Buffer activated: {}", bufferActivatedCounter);
+	bufferActivatedCounter++;*/
 }
 
 void beforeFileClose(const NMHDR* nmhdr) {
@@ -127,11 +131,9 @@ void fileClosed(const NMHDR* nmhdr) {
 
 
 void fileOpened(const NMHDR* nmhdr) {
-    //if (!commonData.annoy) return;
-	if (!commonData.isNppReady) return; // Ensure Notepad++ is ready before showing message
+	//if (!commonData.isNppReady) return; // Commented out to handle file opened during startup
     UINT_PTR bufferID = nmhdr->idFrom;
     std::wstring filepath = getFilePath(bufferID);
-    //MessageBox(plugin.nppData._nppHandle, (L"You opened \"" + filepath + L"\", didn't you?").data(), L"VirtualFolders", 0);
 
     bufferActivated(nmhdr);
 }
@@ -227,6 +229,33 @@ void nppReady() {
     syncVDataWithBufferIDs();
     loadLocalization();
 
+    
+    
+    
+    LRESULT bufID = npp(NPPM_GETCURRENTBUFFERID, 0, 0);
+    UINT_PTR bufferID = static_cast<UINT_PTR>(bufID);
+
+    NMHDR nmhdr{};
+    nmhdr.hwndFrom = commonData.hTree; // source window (tree)
+    nmhdr.idFrom = bufferID;         // the buffer id you wanted
+    nmhdr.code = 0;
+
+    bufferActivated(&nmhdr);
+    
+
+
+
+    // Now we have to collapse the folders manually.
+	vector<VFolder*> allFolders = commonData.rootVFolder.getAllFolders();
+	for (VFolder* folder : allFolders) {
+		if (folder->isExpanded && folder->hTreeItem) {
+			TreeView_Expand(commonData.hTree, folder->hTreeItem, TVE_EXPAND);
+        }
+        else {
+            TreeView_Expand(commonData.hTree, folder->hTreeItem, TVE_COLLAPSE);
+        }
+	}
+
     //SetTimer(virtualPanel, TREEVIEW_TIMER_ID, 3000, nullptr); // 3-second interval
 }
 
@@ -296,4 +325,4 @@ int GetActiveViewForBuffer(UINT_PTR bufferID)
         }
     }
     return -1; // not active in either view
-}
+}////////////////////////////////

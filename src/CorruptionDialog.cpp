@@ -185,7 +185,7 @@ namespace {
         oldFolder.vFolderSort();
         setAllNames(setAllNames, oldFolder);
         json oldDataJson = oldFolder;
-        string oldJsonStr = oldDataJson.dump(0);
+        string oldJsonStr = oldDataJson.dump(-1);
         vector<BYTE> oldCompressedVector = safeCompress(vector<BYTE>(oldJsonStr.begin(), oldJsonStr.end()));
         string oldCompressed = string(oldCompressedVector.begin(), oldCompressedVector.end());
         string oldBase64Str = base64_encode(oldCompressed);
@@ -193,7 +193,7 @@ namespace {
         newFolder.vFolderSort();
         setAllNames(setAllNames, newFolder);
         json newDataJson = newFolder;
-        string newJsonStr = newDataJson.dump(0);
+        string newJsonStr = newDataJson.dump(-1);
         vector<BYTE> newCompressedVector = safeCompress(vector<BYTE>(newJsonStr.begin(), newJsonStr.end()));
         string newCompressed = string(newCompressedVector.begin(), newCompressedVector.end());
         string newBase64Str = base64_encode(newCompressed);
@@ -201,6 +201,7 @@ namespace {
         string newLine = "\r\n";
 
         ostringstream bodyStream;
+        bodyStream << "Version: " << fromWchar(GetPluginVersion(plugin.dllInstance).c_str()) << newLine << newLine;
         bodyStream << "Old Order: " << oldOrder << newLine << newLine;
         bodyStream << "New Order: " << newOrder << newLine << newLine;
         bodyStream << "Old Root: " << oldBase64Str << newLine << newLine;

@@ -79,6 +79,49 @@ string base64_encode(const string& in) {
     return out;
 }
 
+int main() {
+	
+    return 0;
+}
+
+vector<BYTE> base64_decode(const string& in) {
+    if (in.empty()) return {};
+
+    // Build decode table
+    vector<int> T(256, -1);
+    for (int i = 0; i < 26; ++i) { T['A' + i] = i; T['a' + i] = 26 + i; }
+    for (int i = 0; i < 10; ++i) T['0' + i] = 52 + i;
+    T['+'] = 62; T['/'] = 63;
+
+    // Remove whitespace (if any)
+    string s;
+    s.reserve(in.size());
+    for (char c : in) if (!isspace(static_cast<unsigned char>(c))) s.push_back(c);
+    if (s.empty()) return {};
+
+    size_t pads = 0;
+    if (!s.empty() && s.back() == '=') { ++pads; if (s.size() > 1 && s[s.size() - 2] == '=') ++pads; }
+
+    size_t groups = s.size() / 4;
+    vector<BYTE> out;
+    out.reserve(groups * 3);
+
+    for (size_t i = 0; i < groups; ++i) {
+        int idx = static_cast<int>(i * 4);
+        int v0 = T[static_cast<unsigned char>(s[idx])];
+        int v1 = T[static_cast<unsigned char>(s[idx + 1])];
+        int v2 = (s[idx + 2] == '=') ? 0 : T[static_cast<unsigned char>(s[idx + 2])];
+        int v3 = (s[idx + 3] == '=') ? 0 : T[static_cast<unsigned char>(s[idx + 3])];
+        int n = (v0 << 18) | (v1 << 12) | (v2 << 6) | v3;
+        out.push_back(static_cast<BYTE>((n >> 16) & 0xFF));
+        out.push_back(static_cast<BYTE>((n >> 8) & 0xFF));
+        out.push_back(static_cast<BYTE>(n & 0xFF));
+    }
+
+    if (pads) out.resize(out.size() - pads);
+    return out;
+}
+
 
 
 typedef BOOL(WINAPI* CreateCompressor_t)(DWORD, PCOMPRESS_ALLOCATION_ROUTINES, PCOMPRESSOR_HANDLE);
@@ -156,6 +199,23 @@ vector<BYTE> safeDecompress(const vector<BYTE>& input, SIZE_T originalSize) {
 
     vector<BYTE> output(originalSize);
     SIZE_T decompressedSize = 0;
+
+    originalSize = 0;
+    while (true) {
+        originalSize++;
+
+        vector<BYTE> output(originalSize);
+        SIZE_T decompressedSize = 0;
+        if (!pDecompress(decompressor, input.data(), input.size(), output.data(), output.size(), &decompressedSize)) {
+            OutputDebugStringA("Decompression attempt failed with output size:" + originalSize);
+        } else {
+            OutputDebugStringA("Decompression attempt successfull with output size:" + originalSize);
+            output.resize(decompressedSize);
+            pCloseDecompressor(decompressor);
+            FreeLibrary(hCabinet);
+			return output;
+		}
+    }
 
     if (!pDecompress(decompressor, input.data(), input.size(), output.data(), output.size(), &decompressedSize)) {
         pCloseDecompressor(decompressor);

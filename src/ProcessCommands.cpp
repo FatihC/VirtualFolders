@@ -26,23 +26,23 @@
 
 
 
-std::vector<VFile> listOpenFiles();
+vector<VFile> listOpenFiles();
 
 
-std::vector<VFile> listOpenFiles() {
+vector<VFile> listOpenFiles() {
     TCHAR configDir[MAX_PATH];
     ::SendMessage(plugin.nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)configDir);
 
     // Session files are typically stored in the same location as plugin config
     // but in a different subdirectory or as session.xml
-    std::wstring sessionPath = std::wstring(configDir);
+    wstring sessionPath = std::wstring(configDir);
     // Remove "plugins\config" and add session info
     sessionPath = sessionPath.substr(0, sessionPath.find(L"\\plugins\\Config"));
     sessionPath += L"\\session.xml"; // This is where Notepad++ stores session info
 
     Session session = loadSessionFromXMLFile(sessionPath);
 
-    std::vector<VFile> fileList;
+    vector<VFile> fileList;
     
     size_t i = 0;
     // Convert SessionFile objects to VFile objects
@@ -53,7 +53,7 @@ std::vector<VFile> listOpenFiles() {
 		if (!vFileOpt) continue;
 
         vFileOpt.value().setOrder(i);
-        //vFile.isActive = session.mainView.activeIndex == vFile.docOrder;
+        vFileOpt.value().isActive = session.activeView == 0 && i == session.mainView.activeIndex;
         fileList.push_back(vFileOpt.value());
     }
     
@@ -64,7 +64,7 @@ std::vector<VFile> listOpenFiles() {
         if (!vFileOpt) continue;
 
         vFileOpt.value().setOrder(i + j);
-        //vFile.isActive = session.subView.activeIndex == vFile.docOrder;
+        vFileOpt.value().isActive = session.activeView == 1 && j == session.subView.activeIndex;
         fileList.push_back(vFileOpt.value());
     }
     

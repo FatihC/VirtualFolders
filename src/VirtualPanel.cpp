@@ -225,7 +225,7 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
     currentView = activeView;
 
     if(!commonData.isNppReady && commonData.rootVFolder.getLastOrder() >= 0) {  // if there is no buffer a default one comes. We should show that in the tree
-        return;
+		//return; // Commented out to handle initial buffer activation. Will remove in future if not needed.
     }
 
     if (ignoreSelectionChange) {
@@ -242,6 +242,7 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
         bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0); // does not take view as param
     }
     optional<VFile*> vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID);
+    VFile* vFile = nullptr;
     if (!vFileOption) {
         int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
         wchar_t* filePath = new wchar_t[len + 1];
@@ -262,47 +263,43 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
         }
 
 		// Check if file already exists in vData by path or name
-        {
-            string nppFileName = fromWchar(filePath);
-            VFile* vFile = nullptr;
-            if (nppFileName.find_first_of("\\\\") != string::npos) {
-                vFile = commonData.rootVFolder.findFileByPath(nppFileName);
-            }
-            else {
-                vFile = commonData.rootVFolder.findFileByName(nppFileName);
-            }
-            if (vFile) return;
+        string nppFileName = fromWchar(filePath);
+        if (nppFileName.find_first_of("\\\\") != string::npos) {
+            vFile = commonData.rootVFolder.findFileByPath(nppFileName);
+        }
+        else {
+            vFile = commonData.rootVFolder.findFileByName(nppFileName);
         }
 
+        if (!vFile) {
+            // create vFile
+            VFile newFile;
+            newFile.bufferID = bufferID;
+            newFile.setOrder(commonData.rootVFolder.getLastOrder() + 1);
+
+            string filePathString = fromWchar(filePath);
+            size_t lastSlash = filePathString.find_last_of("/\\");
+            newFile.name = lastSlash != string::npos ? filePathString.substr(lastSlash + 1) : filePathString;
+
+            newFile.path = fromWchar(filePath);
+            newFile.view = currentView;
+            newFile.session = 0;
+            newFile.backupFilePath = "";
+            newFile.isActive = true;
+            commonData.rootVFolder.fileList.push_back(newFile);
+
+            vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID);
+            vFile = vFileOption.value();
 
 
+            // create treeItem
+            addFileToTree(vFile, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
 
-        // create vFile
-		VFile newFile;
-		newFile.bufferID = bufferID;
-		newFile.setOrder(commonData.rootVFolder.getLastOrder() + 1);
-
-        string filePathString = fromWchar(filePath);
-        size_t lastSlash = filePathString.find_last_of("/\\");
-        newFile.name = lastSlash != string::npos ? filePathString.substr(lastSlash + 1) : filePathString;
-
-		newFile.path = fromWchar(filePath);
-		newFile.view = currentView;
-		newFile.session = 0;
-		newFile.backupFilePath = "";
-		newFile.isActive = true;
-		commonData.rootVFolder.fileList.push_back(newFile);
-
-        vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID);
-		VFile* vFilePtr = vFileOption.value();
-
-
-        // create treeItem
-		addFileToTree(vFilePtr, hTree, TVI_ROOT, isDarkMode, TVI_LAST);
-        
-        writeJsonFile();
+            writeJsonFile();
+        }
     }
     else {
+		vFile = vFileOption.value();
         // CHECK if it is a clone
         vector<VFile*> allFilesWithBufferID = commonData.rootVFolder.getAllFilesByBufferID(bufferID);
         if (allFilesWithBufferID.size() == 1 && allFilesWithBufferID[0]->view != currentView) { // it is cloned
@@ -323,17 +320,16 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
             if (parentFolder) parentFolder->fileList.push_back(fileCopy);
             else commonData.rootVFolder.fileList.push_back(fileCopy);
             vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID, currentView);
+			vFile = vFileOption.value();
             writeJsonFile();
         }
     }
     
+    currentView = vFile->view;
 
-    
-    currentView = vFileOption.value()->view;
-
-    if (TreeView_GetSelection(hTree) != vFileOption.value()->hTreeItem) {
+    if (TreeView_GetSelection(hTree) != vFile->hTreeItem) {
         ignoreSelectionChange = true;
-        HTREEITEM selectedItem = vFileOption.value()->hTreeItem;
+        HTREEITEM selectedItem = vFile->hTreeItem;
         TreeView_SelectItem(hTree, selectedItem);
     }
 
@@ -595,7 +591,25 @@ void syncVDataWithBufferIDs()
     delete[] fileNames;
 }
 
+void decodeErrorMail(string encoded_compressed) {
+    vector<BYTE> compressedVector = base64_decode(encoded_compressed);
+    string compressedText(compressedVector.begin(), compressedVector.end());
+
+    SIZE_T originalSize = 367;
+    vector<BYTE> decompressed = safeDecompress(compressedVector, originalSize);
+    // If data is UTF-8 text:
+    string original_text(decompressed.begin(), decompressed.end());
+
+    LOG("FreeText: {}", original_text);
+}
+
 void toggleVirtualPanelWithList() {
+    
+    string oldRoot = "";
+    string newRoot = "";
+    //decodeErrorMail(oldRoot);
+    //decodeErrorMail(newRoot);
+
     if (!virtualPanelWnd) {
         virtualPanelWnd = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
         
@@ -625,6 +639,7 @@ void toggleVirtualPanelWithList() {
 
             // read JSON
             json rootVFolderJson = loadVDataFromFile(jsonFilePath);
+            
             commonData.rootVFolder = rootVFolderJson.get<VFolder>();
 
             commonData.openFiles = listOpenFiles();
@@ -635,19 +650,18 @@ void toggleVirtualPanelWithList() {
             commonData.rootVFolder.vFolderSort();
             commonData.rootVFolder.setOrder(-1);
 
-            writeJsonFile();
-
-            syncVDataWithBufferIDs();
-
-            vector<VBase*> allChildren = commonData.rootVFolder.getAllChildren();
-
-
-			
+            
             BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
             if (checkRootVFolderJSON()) {
-                showCorruptionDialog(commonData.rootVFolder, commonData.rootVFolder, 0, 0);
+                checkRootVFolderJSON();
+                VFolder originalRootVFolder = rootVFolderJson.get<VFolder>();
+                showCorruptionDialog(originalRootVFolder, commonData.rootVFolder, 0, 0);
                 fixRootVFolderJSON(); // uncomment on production
             }
+
+            writeJsonFile();
+            syncVDataWithBufferIDs();
+
 
             int lastOrder = commonData.rootVFolder.getLastOrder();
             for (ssize_t pos = 0; pos <= lastOrder; pos) {
@@ -709,6 +723,8 @@ void toggleVirtualPanelWithList() {
 	commonData.hTree = hTree;
 }
 
+
+
 void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
     vector<VFile*> allJsonVFiles = commonData.rootVFolder.getAllFiles();
     for (VFile* vFile : allJsonVFiles)
@@ -725,6 +741,7 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
                 found = true;
 				vFile->backupFilePath = openFile.backupFilePath;
 				vFile->path = openFile.path;
+				vFile->isActive = openFile.isActive;
                 break;
             }
         }
@@ -746,6 +763,8 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
     for (int i = 0; i < openFiles.size(); i++) {
         VFile* jsonVFile = commonData.rootVFolder.findFileByPath(openFiles[i].path, openFiles[i].view);
         if (!jsonVFile) {
+			int lastOrder = commonData.rootVFolder.getLastOrder();
+			openFiles[i].setOrder(lastOrder + 1);   // append to the end
             commonData.rootVFolder.fileList.push_back(openFiles[i]);
             continue;
         }
@@ -762,6 +781,7 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
             jsonVFile->view = openFiles[i].view;
             jsonVFile->session = openFiles[i].session;
             jsonVFile->isReadOnly = openFiles[i].isReadOnly;
+            jsonVFile->isActive = openFiles[i].isActive;
         }
     }
 
@@ -974,4 +994,4 @@ void fixRootVFolderJSON() {
 
 
     LOG("Finished fixing rootVFolder JSON");
-}
+}////////////////

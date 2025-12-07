@@ -30,6 +30,23 @@ vector<VFile*> VFolder::getAllFiles() const {
 	return allFiles;
 }
 
+vector<VFolder*> VFolder::getAllFolders() const {
+	vector<VFolder*> allFolders;
+
+	// Add all folders from this folder
+	for (const auto& folder : folderList) {
+		allFolders.push_back(const_cast<VFolder*>(&folder));
+	}
+
+	// Recursively add files from all subfolders
+	for (const auto& subFolder : folderList) {
+		vector<VFolder*> subFolderFiles = subFolder.getAllFolders();
+		allFolders.insert(allFolders.end(), subFolderFiles.begin(), subFolderFiles.end());
+	}
+
+	return allFolders;
+}
+
 int VFolder::getLastOrder() const {
 	// Get the last order in this folder
 	if (fileList.empty() && folderList.empty()) {

@@ -166,6 +166,108 @@ inline ULONGLONG parseULongLong(const string& value, ULONGLONG defaultValue = 0)
     }
 }
 
+// Helper: append UTF-8 bytes for a Unicode code point
+inline void appendUtf8FromCodePoint(string& out, uint32_t cp) {
+    if (cp <= 0x7F) {
+        out.push_back(static_cast<char>(cp));
+    }
+    else if (cp <= 0x7FF) {
+        out.push_back(static_cast<char>(0xC0 | ((cp >> 6) & 0x1F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+    else if (cp <= 0xFFFF) {
+        out.push_back(static_cast<char>(0xE0 | ((cp >> 12) & 0x0F)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+    else if (cp <= 0x10FFFF) {
+        out.push_back(static_cast<char>(0xF0 | ((cp >> 18) & 0x07)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    }
+}
+
+// Decode XML numeric and named character references in a UTF-8 string
+inline string xmlDecode(const string& input) {
+    string out;
+    out.reserve(input.size());
+    for (size_t i = 0; i < input.size(); ++i) {
+        char c = input[i];
+        if (c == '&') {
+            // Look ahead for numeric reference or named entity
+            if (i + 1 < input.size() && input[i + 1] == '#') {
+                // Numeric reference
+                size_t j = i + 2;
+                bool isHex = false;
+                if (j < input.size() && (input[j] == 'x' || input[j] == 'X')) {
+                    isHex = true;
+                    ++j;
+                }
+                uint32_t codepoint = 0;
+                size_t digitsStart = j;
+                while (j < input.size()) {
+                    char dj = input[j];
+                    if (isHex) {
+                        if (isxdigit(static_cast<unsigned char>(dj))) {
+                            codepoint = codepoint * 16 + (uint32_t)((dj >= '0' && dj <= '9') ? (dj - '0') :
+                                (dj >= 'a' && dj <= 'f') ? (10 + dj - 'a') :
+                                (dj >= 'A' && dj <= 'F') ? (10 + dj - 'A') : 0);
+                            ++j;
+                            continue;
+                        }
+                        break;
+                    }
+                    else {
+                        if (dj >= '0' && dj <= '9') {
+                            codepoint = codepoint * 10 + (uint32_t)(dj - '0');
+                            ++j;
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                if (j < input.size() && input[j] == ';' && j > digitsStart) {
+                    // valid numeric entity
+                    appendUtf8FromCodePoint(out, codepoint);
+                    i = j; // skip until ;
+                    continue;
+                }
+                // malformed numeric entity - fallthrough and treat '&' as literal
+            }
+            else {
+                // Named entities: &amp;, &lt;, &gt;, &quot;, &apos;
+                if (input.compare(i, 5, "&amp;") == 0) {
+                    out.push_back('&'); i += 4; continue;
+                }
+                if (input.compare(i, 4, "&lt;") == 0) {
+                    out.push_back('<'); i += 3; continue;
+                }
+                if (input.compare(i, 4, "&gt;") == 0) {
+                    out.push_back('>'); i += 3; continue;
+                }
+                if (input.compare(i, 6, "&quot;") == 0) {
+                    out.push_back('"'); i += 5; continue;
+                }
+                if (input.compare(i, 6, "&apos;") == 0) {
+                    out.push_back('\''); i += 5; continue;
+                }
+                // Unknown named entity: copy as-is until ';' or whitespace
+                size_t semi = input.find(';', i + 1);
+                if (semi != string::npos) {
+                    // if unknown entity, we can try to preserve it or strip — here preserve the literal characters
+                    out.append(input, i, semi - i + 1);
+                    i = semi;
+                    continue;
+                }
+            }
+        }
+        // default path: copy byte
+        out.push_back(c);
+    }
+    return out;
+}
+
 // Simple XML attribute parser
 inline string getAttributeValue(const string& xml, const string& attrName, size_t& pos) {
     string searchStr = attrName + "=\"";
@@ -177,7 +279,10 @@ inline string getAttributeValue(const string& xml, const string& attrName, size_
     if (end == string::npos) return "";
     
     //pos = end + 1; // position shouldn't be effected. because search starts at the start
-    return xml.substr(start, end - start);
+    string attrValue = xml.substr(start, end - start);
+
+
+    return xmlDecode(attrValue);
 }
 
 // Parse a single File element
