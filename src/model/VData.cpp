@@ -340,10 +340,16 @@ void VFolder::removeFile(int order) {
 	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
 		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
 }
+
+void VFolder::removeFolder(int order) {
+	folderList.erase(std::remove_if(folderList.begin(), folderList.end(),
+		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
+}
+
 void VFolder::removeChild(int order) {
-	// Remove file by order
 	fileList.erase(std::remove_if(fileList.begin(), fileList.end(),
 		[order](const VFile& file) { return file.getOrder() == order; }), fileList.end());
+
 	folderList.erase(std::remove_if(folderList.begin(), folderList.end(),
 		[order](const VFolder& folder) { return folder.getOrder() == order; }), folderList.end());
 }

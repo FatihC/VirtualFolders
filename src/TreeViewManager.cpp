@@ -1151,13 +1151,13 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
     
     // DONT FORGET:   tree operations first. vData organisations later.
     if (parentFolder && parentFolder->getOrder() != -1) {
-        parentFolder->removeChild(vFolder->getOrder());
+        parentFolder->removeFolder(vFolder->getOrder());
 		parentFolder = commonData.rootVFolder.findFolderByOrder(parentFolderOrder).value();
         auto children = folderCopy.getAllChildren();
         parentFolder->addChildren(children);
     }
     else {
-        commonData.rootVFolder.removeChild(vFolder->getOrder());
+        commonData.rootVFolder.removeFolder(vFolder->getOrder());
         auto children = folderCopy.getAllDirectChildren();
         commonData.rootVFolder.addChildren(children);
 	}

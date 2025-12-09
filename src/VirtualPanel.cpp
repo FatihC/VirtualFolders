@@ -655,7 +655,8 @@ void toggleVirtualPanelWithList() {
             if (checkRootVFolderJSON()) {
                 checkRootVFolderJSON();
                 VFolder originalRootVFolder = rootVFolderJson.get<VFolder>();
-                showCorruptionDialog(originalRootVFolder, commonData.rootVFolder, 0, 0);
+				// Convert and then call the dialog. rootVFolder changes in the next line
+                showCorruptionDialog(originalRootVFolder, commonData.rootVFolder, -1, -1);
                 fixRootVFolderJSON(); // uncomment on production
             }
 
@@ -755,6 +756,7 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
             else {
                 commonData.rootVFolder.removeFile(fileCopy.getOrder());
 			}
+			adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
         }
 
     }

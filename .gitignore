@@ -364,3 +364,6 @@ FodyWeavers.xsd
 /.idea
 .vscode
 /.vscode
+
+# Visual Studio IntelliSense / preprocessor temp files
+RD??????

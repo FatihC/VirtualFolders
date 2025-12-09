@@ -171,12 +171,12 @@ namespace {
 
     string getCompressedContent() {
         auto setAllNames = [&](auto&& self, VFolder& f) -> void {
-            f.name = "xxx " + f.getOrder();
-            f.path = "xxx " + f.getOrder();
+            f.name = "xxx " + to_string(f.getOrder());
+            f.path = "xxx " + to_string(f.getOrder());
             for (auto& file : f.fileList) {
-                file.name = "xxx " + f.getOrder();
-                file.path = "xxx " + f.getOrder();
-                file.backupFilePath = "xxx " + f.getOrder();
+                file.name = "xxx " + to_string(file.getOrder());
+                file.path = "xxx " + to_string(file.getOrder());
+                file.backupFilePath = "xxx " + to_string(file.getOrder());
             }
             for (auto& sub : f.folderList) self(self, sub);
             };

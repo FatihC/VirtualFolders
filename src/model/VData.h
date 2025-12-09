@@ -86,6 +86,7 @@ public:
 	void move(int steps);
 	VFolder* findParentFolder(int order) const;
 	void removeFile(int order);
+	void removeFolder(int order);
 	void removeChild(int order);
 	void adjustOrders(int beginOrder, int endOrder, int step);
 	void addFile(VFile* vFile);
