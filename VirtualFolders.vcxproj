@@ -163,6 +163,8 @@
   </ItemGroup>
   <ItemGroup>
     <Xml Include="resources\lang\english.xml" />
+    <Xml Include="resources\lang\serbian.xml" />
+    <Xml Include="resources\lang\serbianCyrillic.xml" />
     <Xml Include="resources\lang\turkish.xml" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

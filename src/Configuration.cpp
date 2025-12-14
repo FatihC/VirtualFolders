@@ -199,6 +199,12 @@ void loadLocalization() {
         if (langFileName == "turkish.xml") {
             commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_TURKISH);
         }
+        else if (langFileName == "serbianCyrillic.xml") {
+            commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_SERBIAN_CYRILLIC);
+        }
+        else if (langFileName == "serbian.xml") {
+            commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_SERBIAN_LATIN);
+        }
         else {
             commonData.translator = std::make_unique<Translator>(plugin.dllInstance, IDR_LANG_ENGLISH);
 

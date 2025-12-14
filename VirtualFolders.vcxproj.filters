@@ -199,5 +199,11 @@
     <Xml Include="resources\lang\english.xml">
       <Filter>Resource Files</Filter>
     </Xml>
+    <Xml Include="resources\lang\serbian.xml">
+      <Filter>Resource Files</Filter>
+    </Xml>
+    <Xml Include="resources\lang\serbianCyrillic.xml">
+      <Filter>Resource Files</Filter>
+    </Xml>
   </ItemGroup>
 </Project>

@@ -20,6 +20,8 @@
 #define IDD_CORRUPTION_DIALOG           148
 #define IDR_LANG_ENGLISH                301
 #define IDR_LANG_TURKISH                302
+#define IDR_LANG_SERBIAN_CYRILLIC       303
+#define IDR_LANG_SERBIAN_LATIN          304
 #define IDC_ABOUT_VERSION               1001
 #define IDC_ABOUT_MORE                  1003
 #define IDC_FONT_SIZE_LABEL             1004
