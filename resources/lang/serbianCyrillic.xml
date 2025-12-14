@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Language id="sr" name="Српски">
+
+	<Menu>
+		<Item id="IDM_PLUGIN_TITLE" text="Виртуелни фолдери"/>
+		
+		
+		<Item id="IDM_SHOW_VIRTUAL_PANEL" text="Прикажи панел виртуелних фолдера"/>
+		<Item id="IDM_SETTINGS" text="Подешавања..."/>
+		<Item id="IDM_SHORTCUT_OVERRIDE" text="Override-уј пречице"/>
+		<Item id="IDM_ABOUT" text="Помоћ/О додатку..."/>
+		
+		<Item id="MENU_ID_FILE_CLOSE" text="Затвори"/>
+		<Item id="MENU_ID_FILE_WRAP_IN_FOLDER" text="Стави у фолдер"/>
+		<Item id="IDM_FILE_SAVE" text="Сачувај"/>
+		<Item id="IDM_FILE_SAVEAS" text="Сачувај као..."/>
+		
+		<Item id="IDM_FILE_OPEN_FOLDER" text="Отвори тренутни фолдер у Explorer-у"/>
+		<Item id="IDM_FILE_OPEN_CMD" text="Отвори тренутни фолдер у cmd"/>
+		<Item id="IDM_FILE_CONTAININGFOLDERASWORKSPACE" text="Отвори тренутни фолдер као workspace"/>
+		<Item id="IDM_FILE_OPEN_DEFAULT_VIEWER" text="Отвори у подразумеваном прегледачу"/>
+		<Item id="IDM_OPEN_CONTEXT_MENU" text="Отвори у"/>
+		
+		<Item id="IDM_FILE_RENAME" text="Преименуј"/>
+		<Item id="IDM_FILE_DELETE" text="Помери у канту"/>
+		<Item id="IDM_FILE_RELOAD" text="Поново учитај"/>
+		<Item id="IDM_FILE_PRINT" text="Штампај"/>
+		<Item id="IDM_EDIT_TOGGLEREADONLY" text="Само за читање у Notepad++"/>
+		
+		<Item id="IDM_EDIT_FULLPATHTOCLIP" text="Копирај пуну путању датотеке"/>
+		<Item id="IDM_EDIT_FILENAMETOCLIP" text="Копирај назив датотеке"/>
+		<Item id="IDM_EDIT_CURRENTDIRTOCLIP" text="Копирај путању тренутног директоријума"/>
+		<Item id="IDM_CLIPBOARD" text="Копирај у clipboard"/>
+		
+		<Item id="IDM_VIEW_GOTO_ANOTHER_VIEW" text="Помери у други приказ"/>
+		<Item id="IDM_VIEW_CLONE_TO_ANOTHER_VIEW" text="Дуплирај приказ"/>
+		<Item id="IDM_MOVE_MENU" text="Помери документ"/>
+		
+		<Item id="MENU_ID_FOLDER_UNWRAP" text="Извади"/>
+		<Item id="MENU_ID_FOLDER_RENAME" text="Преименуј"/>
+		
+		<Item id="IDM_FONT_INCREASE" text="Повећај величину слова додатка: " />
+		<Item id="IDM_FONT_DECREASE" text="Смањи величину слова додатка: " />
+		
+		
+		<Item id="about" text="О додатку" />
+	</Menu>
+
+	<Labels>
+		<Item id="NEW_FOLDER" text="Нови фолдер"/>
+		<Item id="IDC_CORRUPTION_WARNING" text="Нешто је пошло по злу током ажурирања стабла фолдера. Можете послати брзи извештај да помогнете у решавању проблема.
+Личне информације нису дељене, као што видите испод.
+
+			  
+Можете направити GitHub issue или послати email. У оба случаја подаци ће бити компресовани ради ефикасности. Подаци који ће бити послати налазе се испод"/>
+		<Item id="IDC_CORRUPTION_SYSLINK_BEFORE" text="Пре стабла" />
+		<Item id="IDC_CORRUPTION_SYSLINK_AFTER" text="После стабла" />
+		<Item id="ID_CORRUPTION_SENDGITHUB" text="GitHub Issue" />
+		<Item id="ID_CORRUPTION_SENDEMAIL" text="Пошаљи email" />
+		<Item id="IDCANCEL" text="Откажи" />
+		<Item id="ID_CLOSE" text="Затвори" />
+		<Item id="IDD_CORRUPTION_DIALOG" text="ОШТЕЋЕНО СТАБЛО !!!" />
+
+		<Item id="IDC_ABOUT_DESCRIPTION" text="Notepad++ додатак који вам омогућава груписање датотека у прилагођена стабла фолдера без промене система датотека.
+Чувајте повезане датотеке заједно, групишите их са више локација и крећите се брже унутар Notepad++.
+
+— Направљено упорношћу и са много кафе." />
+
+		<Item id="ID_ABOUT_VERSION" text="Верзија: " />
+	</Labels>
+
+	<Dialogs>
+		<Dialog id="aboutDialog" title="О Виртуелним фолдерима">
+			<Text id="description">Овај додатак управља виртуелним фолдерима у Notepad++.</Text>
+			<Text id="version">Верзија {0}</Text>
+		</Dialog>
+	</Dialogs>
+
+</Language>
