@@ -1,8 +1,6 @@
-::: 
-	For all contributions, please start by reading "the guide":1 to building the plugin.
-:::
-
 # Bug fixes and new features
+
+For all contributions, please start by reading [Plugin Guide](https://npp-user-manual.org/docs/plugins/) to building the plugin.
 
 Test your changes and "open a pull request":3.\
 Raising an issue beforehand is encouraged but not required.
