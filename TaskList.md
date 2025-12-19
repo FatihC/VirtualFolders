@@ -1,9 +1,13 @@
-﻿# Version 1.0.2
+﻿# Version 1.0.3
+- [] When dropped a file into a folder new selection not working
+- [x] Put localization folder into project but not in dll
+
+
+# Version 1.0.2
 - [x] When NPP is closed, if you open a file with NPP file does not show up on the tree.
 - [?] Renamed buffer icon stays saved (Could not reproduce)
 - [x] At startup current buffer is not selected in the tree
 - [x] If a file in session.xml has turkish characters it corrupts the tree
-- [ ] 
 
 
 # Feature Plan

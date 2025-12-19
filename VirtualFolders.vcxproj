@@ -366,7 +366,8 @@
       <AdditionalDependencies>shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES(X86)%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES(X86)%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES(X86)%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
@@ -390,7 +391,8 @@
       <AdditionalDependencies>shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES(X86)%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES(X86)%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES(X86)%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
@@ -463,10 +465,12 @@
       <AdditionalDependencies>shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
-)</Command>
+)
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -488,7 +492,8 @@
       <AdditionalDependencies>shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
@@ -514,10 +519,12 @@
       <AdditionalDependencies>shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
-)</Command>
+)
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Portable|ARM64'">
@@ -540,7 +547,8 @@
       <AdditionalDependencies>shlwapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;version.lib;wininet.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
@@ -570,7 +578,8 @@
       <ImportLibrary>$(TargetName).lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES(X86)%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES(X86)%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES(X86)%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
@@ -630,7 +639,8 @@
       <ImportLibrary>$(TargetName).lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
@@ -660,7 +670,8 @@
       <ImportLibrary>$(TargetName).lib</ImportLibrary>
     </Link>
     <PostBuildEvent>
-      <Command>if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
+      <Command>robocopy "$(ProjectDir)\localization" "$(TargetDir)\localization" /E
+if EXIST "%PROGRAMFILES%\Notepad++\plugins\" (
   robocopy "$(TargetDir) " "%PROGRAMFILES%\Notepad++\plugins\$(TargetName)" /R:1 /W:1 /XF  *.exp *.lib *.pdb
   if NOT ERRORLEVEL 8 exit 0
 )</Command>
