@@ -331,6 +331,7 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
         ignoreSelectionChange = true;
         HTREEITEM selectedItem = vFile->hTreeItem;
         TreeView_SelectItem(hTree, selectedItem);
+        ignoreSelectionChange = false;
     }
 
 
@@ -765,10 +766,16 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
     for (int i = 0; i < openFiles.size(); i++) {
         VFile* jsonVFile = commonData.rootVFolder.findFileByPath(openFiles[i].path, openFiles[i].view);
         if (!jsonVFile) {
-			int lastOrder = commonData.rootVFolder.getLastOrder();
-			openFiles[i].setOrder(lastOrder + 1);   // append to the end
-            commonData.rootVFolder.fileList.push_back(openFiles[i]);
-            continue;
+            jsonVFile = commonData.rootVFolder.findFileByName(openFiles[i].name, openFiles[i].view);
+            if (jsonVFile) {
+
+            }
+            else {
+                int lastOrder = commonData.rootVFolder.getLastOrder();
+                openFiles[i].setOrder(lastOrder + 1);   // append to the end
+                commonData.rootVFolder.fileList.push_back(openFiles[i]);
+                continue;
+            }
         }
 
         if (jsonVFile->path == openFiles[i].path) {
@@ -785,6 +792,13 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
             jsonVFile->isReadOnly = openFiles[i].isReadOnly;
             jsonVFile->isActive = openFiles[i].isActive;
         }
+        else {
+            // Path changed, update it
+//            jsonVFile->path = openFiles[i].path;
+            jsonVFile->name = openFiles[i].name;
+            jsonVFile->backupFilePath = openFiles[i].backupFilePath;
+			jsonVFile->isActive = openFiles[i].isActive;
+        }
     }
 
     // Collect all vFiles that are now in rootVFolder but not in openFiles.
@@ -797,6 +811,12 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
                 if (allFiles[fileIndex]->path == openFiles[j].path && allFiles[fileIndex]->view == openFiles[j].view) {
                     found = true;
                     break;
+                }
+                else {
+                    if (allFiles[fileIndex]->backupFilePath == openFiles[j].backupFilePath && allFiles[fileIndex]->view == openFiles[j].view) {
+                        found = true;
+                        break;
+					}
                 }
             }
             if (!found) {

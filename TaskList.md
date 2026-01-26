@@ -1,6 +1,11 @@
 ﻿# Version 1.0.3
-- [] When dropped a file into a folder new selection not working
+- [x] When dropped a file into a folder new selection not working
 - [x] Put localization folder into project but not in dll
+- [x] When there is a buffer in second view, on resart it created a copy buffer of the last selected file in main view
+- [ ] when notepad++ crashed all unsaved buffers are deleted from backup folder but stays in vfolder tree. After second restart they are removed from the vfolder json too.
+- [x] When Notepad++ closed unexpectedly (via reboot or endtask from task manager) unsaved files on disk will have backup files. At start up they have to be merged to actual file entries on tree (Maybe you can recreate the crash when you move one of these files into a folder)
+- [x] Catch the crash
+- [ ] Remove 
 
 
 # Version 1.0.2

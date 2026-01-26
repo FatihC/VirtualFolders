@@ -27,7 +27,6 @@ using json = nlohmann::json;
 #include <windowsx.h>
 #include "ProcessCommands.h"
 #include "RenameDialog.h"
-#include "TreeViewManager.h"
 
 #include <stdlib.h>
 
@@ -102,7 +101,9 @@ inline int currentView = 0;
 
 
 
+static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 // TreeView management functions
 void updateTreeItemLParam(VBase* vBase);
 HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem);

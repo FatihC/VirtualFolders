@@ -40,7 +40,6 @@ extern int menuItem_IncreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_DecreaseFont;      // Defined in Plugin.cpp
 extern int menuItem_ShortcutOverrider;   // Defined in Plugin.cpp
 extern int menuItem_About;              // Defined in Plugin.cpp
-extern int menuItem_ToggleVirtualPanel; // Defined in Plugin.cpp
 extern int menuItem_Settings;           // Defined in Plugin.cpp
 
 
@@ -49,6 +48,8 @@ extern int menuItem_Settings;           // Defined in Plugin.cpp
 extern bool checkRootVFolderJSON(); // Defined in VirtualPanel.cpp
 extern void fixRootVFolderJSON();
 extern void showCorruptionDialog(VFolder hOldFolder, VFolder hNewFolder, int hOldOrder, int hNewOrder); // Defined in CorruptionDialog.cpp
+extern void toggleVirtualPanelWithList(); // Defined in Plugin.cpp
+
 
 
 HMENU hContextMenu = nullptr;
@@ -314,651 +315,642 @@ void loadMenus() {
 }
 
 
+INT_PTR CALLBACK fileViewDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    __try {
+        return fileViewDialogProc_impl(hwnd, msg, wParam, lParam);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        // MINIMAL work here
+        // 1) disable plugin for session
+        // 2) show message with restart suggestion
+        MessageBoxW(hwnd,
+            L"Virtual Folders hit a fatal error (access violation) and was disabled.\n\n"
+            L"Please restart Notepad++.",
+            L"Virtual Folders – Fatal Error",
+            MB_OK | MB_ICONERROR);
+        return FALSE;
+    }
+}
+
 
 // Add a new dialog procedure for the file view dialog (IDD_FILEVIEW)
-INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static HWND hTree = nullptr;
     
     static InsertionMark lastMark = {};
-    
-    switch (uMsg) {
-    case WM_TIMER:
 
-        break;
-    case WM_DESTROY:
-        KillTimer(hwndDlg, 1); // clean up timer
-        break;
-    case WM_INITDIALOG: {
-        stretch.setup(hwndDlg);
-        hTree = GetDlgItem(hwndDlg, IDC_TREE1);
+    try {
 
-        oldTreeProc = (WNDPROC)SetWindowLongPtr(hTree, GWLP_WNDPROC, (LONG_PTR)TreeView_SubclassProc);
-        SetWindowTheme(hTree, L"", L"");
+        switch (uMsg) {
+        case WM_TIMER:
 
-        // initial color – match the current tree-view background
-        //COLORREF bgColor = TreeView_GetBkColor(hTree);
-        //hBgBrush = CreateSolidBrush(bgColor);
+            break;
+        case WM_DESTROY:
+            KillTimer(hwndDlg, 1); // clean up timer
+            break;
+        case WM_INITDIALOG: {
+            stretch.setup(hwndDlg);
+            hTree = GetDlgItem(hwndDlg, IDC_TREE1);
 
+            oldTreeProc = (WNDPROC)SetWindowLongPtr(hTree, GWLP_WNDPROC, (LONG_PTR)TreeView_SubclassProc);
+            SetWindowTheme(hTree, L"", L"");
 
-        //DWORD exStyle = TreeView_GetExtendedStyle(hTree);
-        //TreeView_SetExtendedStyle(hTree, exStyle | TVS_EX_AUTOHSCROLL, TVS_EX_AUTOHSCROLL);
+            // initial color – match the current tree-view background
+            //COLORREF bgColor = TreeView_GetBkColor(hTree);
+            //hBgBrush = CreateSolidBrush(bgColor);
 
 
-        loadMenus();
+            //DWORD exStyle = TreeView_GetExtendedStyle(hTree);
+            //TreeView_SetExtendedStyle(hTree, exStyle | TVS_EX_AUTOHSCROLL, TVS_EX_AUTOHSCROLL);
 
 
-
-
-        HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
-        //HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
-        HICON hIconApp = LoadIcon(NULL, IDI_APPLICATION);
-        HICON hIconFolder = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
-        HICON hIconFileLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LIGHT_ICON));
-        HICON hIconFileDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_DARK_ICON));
-        HICON hIconFileEdited = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_EDITED_ICON));
-        HICON hIconFileReadOnlyDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_DARK_ICON));
-        HICON hIconFileReadOnlyLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_LIGHT_ICON));
-        HICON hIconSecondaryViewIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_VIEW_2_ICON));
-
-        
-        //HIMAGELIST stateImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
-
-        iconIndex[ICON_APP] = ImageList_AddIcon(hImages, hIconApp);
-        iconIndex[ICON_FOLDER] = ImageList_AddIcon(hImages, hIconFolder);
-        iconIndex[ICON_FILE_LIGHT] = ImageList_AddIcon(hImages, hIconFileLight);
-        iconIndex[ICON_FILE_DARK] = ImageList_AddIcon(hImages, hIconFileDark);
-        iconIndex[ICON_FILE_EDITED] = ImageList_AddIcon(hImages, hIconFileEdited);
-        iconIndex[ICON_FILE_READONLY_DARK] = ImageList_AddIcon(hImages, hIconFileReadOnlyDark);
-        iconIndex[ICON_FILE_READONLY_LIGHT] = ImageList_AddIcon(hImages, hIconFileReadOnlyLight);
-        iconIndex[ICON_FILE_SECONDARY_VIEW] = ImageList_AddIcon(hImages, hIconSecondaryViewIcon);
-
-        TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
-        TreeView_SetImageList(hTree, hImages, TVSIL_STATE);
-
-
-        //TreeView_SetImageList(hTree, stateImages, TVSIL_STATE);
+            loadMenus();
 
 
 
 
-        // Increase item height and indent for better spacing
-        // TODO: make this dynamic based on the font size of the UI
-        TreeView_SetItemHeight(hTree, 20);  // Default is usually around 16-18 pixels
-        TreeView_SetIndent(hTree, 18);      // Default is usually around 16-20 pixels
-
-        // Set colors based on current theme
-        updateTreeColorsExternal(hTree);
-
-        lastMark = {};
-
-        // Enable dark mode support
-        npp(NPPM_DARKMODESUBCLASSANDTHEME, NPP::NppDarkMode::dmfInit, hwndDlg);
-
-        return TRUE;
-    }
-    case WM_NOTIFY: {
-        LPNMHDR nmhdr = (LPNMHDR)lParam;
-        if (nmhdr->idFrom == IDC_TREE1) {
-            LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
-            switch (pnmtv->hdr.code) {
-            case TVN_SELCHANGED: {
-                // Only process file clicks if Notepad++ is ready
-                if (!commonData.isNppReady) {
-                    return TRUE;  // Skip processing if Notepad++ isn't ready yet
-                } else if (ignoreSelectionChange) {
-                    ignoreSelectionChange = false;  // Reset the flag
-                    return TRUE;  // Skip processing if we are ignoring this change
-				}
+            HIMAGELIST hImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
+            //HICON hIconFolder = LoadIcon(NULL, IDI_APPLICATION);
+            HICON hIconApp = LoadIcon(NULL, IDI_APPLICATION);
+            HICON hIconFolder = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FOLDER_YELLOW));
+            HICON hIconFileLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LIGHT_ICON));
+            HICON hIconFileDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_DARK_ICON));
+            HICON hIconFileEdited = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_EDITED_ICON));
+            HICON hIconFileReadOnlyDark = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_DARK_ICON));
+            HICON hIconFileReadOnlyLight = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_LOCKED_LIGHT_ICON));
+            HICON hIconSecondaryViewIcon = LoadIcon(plugin.dllInstance, MAKEINTRESOURCE(IDI_FILE_VIEW_2_ICON));
 
 
-                COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
-                COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
-                TreeView_SetBkColor(hTree, editorBg);
-                TreeView_SetTextColor(hTree, editorFg);
-                //TreeView_SetLineColor(hTree, 0x99FF0000);
+            //HIMAGELIST stateImages = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 2, 2);
+
+            iconIndex[ICON_APP] = ImageList_AddIcon(hImages, hIconApp);
+            iconIndex[ICON_FOLDER] = ImageList_AddIcon(hImages, hIconFolder);
+            iconIndex[ICON_FILE_LIGHT] = ImageList_AddIcon(hImages, hIconFileLight);
+            iconIndex[ICON_FILE_DARK] = ImageList_AddIcon(hImages, hIconFileDark);
+            iconIndex[ICON_FILE_EDITED] = ImageList_AddIcon(hImages, hIconFileEdited);
+            iconIndex[ICON_FILE_READONLY_DARK] = ImageList_AddIcon(hImages, hIconFileReadOnlyDark);
+            iconIndex[ICON_FILE_READONLY_LIGHT] = ImageList_AddIcon(hImages, hIconFileReadOnlyLight);
+            iconIndex[ICON_FILE_SECONDARY_VIEW] = ImageList_AddIcon(hImages, hIconSecondaryViewIcon);
+
+            TreeView_SetImageList(hTree, hImages, TVSIL_NORMAL);
+            TreeView_SetImageList(hTree, hImages, TVSIL_STATE);
+
+
+            //TreeView_SetImageList(hTree, stateImages, TVSIL_STATE);
 
 
 
-				HTREEITEM selectedTreeItem = pnmtv->itemNew.hItem;
-				treeItemSelected(selectedTreeItem);
-                return TRUE;
-            }
-            case TVN_BEGINDRAG: {
-                std::cout << "TVN_BEGINDRAG" << std::endl;
-                hDragItem = pnmtv->itemNew.hItem;
-                hDragImage = TreeView_CreateDragImage(hTree, hDragItem);
-                if (hDragImage) {
-                    POINT pt = pnmtv->ptDrag;
-                    ClientToScreen(hTree, &pt);
-                    ImageList_BeginDrag(hDragImage, 0, 0, 0);
-                    ImageList_DragEnter(NULL, pt.x, pt.y);
-                    SetCapture(hwndDlg);
-                    isDragging = true;
-                    
-                    // Start tracking mouse leave events
-                    TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hTree, 0 };
-                    TrackMouseEvent(&tme);
+
+            // Increase item height and indent for better spacing
+            // TODO: make this dynamic based on the font size of the UI
+            TreeView_SetItemHeight(hTree, 20);  // Default is usually around 16-18 pixels
+            TreeView_SetIndent(hTree, 18);      // Default is usually around 16-20 pixels
+
+            // Set colors based on current theme
+            updateTreeColorsExternal(hTree);
+
+            lastMark = {};
+
+            // Enable dark mode support
+            npp(NPPM_DARKMODESUBCLASSANDTHEME, NPP::NppDarkMode::dmfInit, hwndDlg);
+
+            return TRUE;
+        }
+        case WM_NOTIFY: {
+            LPNMHDR nmhdr = (LPNMHDR)lParam;
+            if (nmhdr->idFrom == IDC_TREE1) {
+                LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
+                switch (pnmtv->hdr.code) {
+                case TVN_SELCHANGED: {
+                    // Only process file clicks if Notepad++ is ready
+                    if (!commonData.isNppReady) {
+                        return TRUE;  // Skip processing if Notepad++ isn't ready yet
+                    }
+                    else if (ignoreSelectionChange) {
+                        ignoreSelectionChange = false;  // Reset the flag
+                        return TRUE;  // Skip processing if we are ignoring this change
+                    }
+
+
+                    COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
+                    COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
+                    TreeView_SetBkColor(hTree, editorBg);
+                    TreeView_SetTextColor(hTree, editorFg);
+                    //TreeView_SetLineColor(hTree, 0x99FF0000);
+
+
+
+                    HTREEITEM selectedTreeItem = pnmtv->itemNew.hItem;
+                    treeItemSelected(selectedTreeItem);
+                    return TRUE;
                 }
-                return TRUE;
-            }
-            case NM_RCLICK: {
-                DWORD pos = GetMessagePos();
-                POINT pt = { GET_X_LPARAM(pos), GET_Y_LPARAM(pos) };
+                case TVN_BEGINDRAG: {
+                    std::cout << "TVN_BEGINDRAG" << std::endl;
+                    hDragItem = pnmtv->itemNew.hItem;
+                    hDragImage = TreeView_CreateDragImage(hTree, hDragItem);
+                    if (hDragImage) {
+                        POINT pt = pnmtv->ptDrag;
+                        ClientToScreen(hTree, &pt);
+                        ImageList_BeginDrag(hDragImage, 0, 0, 0);
+                        ImageList_DragEnter(NULL, pt.x, pt.y);
+                        SetCapture(hwndDlg);
+                        isDragging = true;
 
-                TVHITTESTINFO hit = {0};
-                hit.pt = pt;
-                ScreenToClient(hTree, &hit.pt);
-                HTREEITEM selectedTreeItem = TreeView_HitTest(hTree, &hit);
+                        // Start tracking mouse leave events
+                        TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hTree, 0 };
+                        TrackMouseEvent(&tme);
+                    }
+                    return TRUE;
+                }
+                case NM_RCLICK: {
+                    DWORD pos = GetMessagePos();
+                    POINT pt = { GET_X_LPARAM(pos), GET_Y_LPARAM(pos) };
 
-                //TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
+                    TVHITTESTINFO hit = { 0 };
+                    hit.pt = pt;
+                    ScreenToClient(hTree, &hit.pt);
+                    HTREEITEM selectedTreeItem = TreeView_HitTest(hTree, &hit);
 
-                if (selectedTreeItem && (hit.flags & TVHT_ONITEM))
-                {
-                    TreeView_SelectItem(hTree, selectedTreeItem);
+                    //TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
 
-                    TVITEM item = { 0 };
-                    item.mask = TVIF_IMAGE | TVIF_PARAM;
-                    item.hItem = selectedTreeItem;
-                    if (TreeView_GetItem(hTree, &item)) {
-                        // Check if this is a folder (not a file) by checking the image index
-                        if (item.iImage == iconIndex[ICON_FOLDER]) {
-                            TrackPopupMenu(folderContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                    if (selectedTreeItem && (hit.flags & TVHT_ONITEM))
+                    {
+                        TreeView_SelectItem(hTree, selectedTreeItem);
+
+                        TVITEM item = { 0 };
+                        item.mask = TVIF_IMAGE | TVIF_PARAM;
+                        item.hItem = selectedTreeItem;
+                        if (TreeView_GetItem(hTree, &item)) {
+                            // Check if this is a folder (not a file) by checking the image index
+                            if (item.iImage == iconIndex[ICON_FOLDER]) {
+                                TrackPopupMenu(folderContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                            }
+                            else {
+                                optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
+                                if (vFileOpt) {
+                                    VFile* vFile = vFileOpt.value();
+                                    if (vFile->backupFilePath.empty())
+                                    {
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_FOLDER, MF_BYCOMMAND | MF_ENABLED);
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_CMD, MF_BYCOMMAND | MF_ENABLED);
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_CONTAININGFOLDERASWORKSPACE, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_ENABLED);
+                                        EnableMenuItem(fileContextMenu, IDM_FILE_DELETE, MF_BYCOMMAND | MF_ENABLED);
+                                        EnableMenuItem(fileContextMenu, IDM_FILE_RELOAD, MF_BYCOMMAND | MF_ENABLED);
+                                        EnableMenuItem(fileContextMenu, IDM_FILE_PRINT, MF_BYCOMMAND | MF_ENABLED);
+                                    }
+                                    else
+                                    {
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_FOLDER, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_CMD, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_CONTAININGFOLDERASWORKSPACE, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(fileContextMenu, IDM_FILE_DELETE, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(fileContextMenu, IDM_FILE_RELOAD, MF_BYCOMMAND | MF_DISABLED);
+                                        EnableMenuItem(fileContextMenu, IDM_FILE_PRINT, MF_BYCOMMAND | MF_DISABLED);
+                                    }
+
+                                    CheckMenuItem(fileContextMenu, IDM_EDIT_TOGGLEREADONLY, MF_BYCOMMAND | (vFile->isReadOnly ? MF_CHECKED : MF_UNCHECKED));
+                                }
+                                TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                            }
+                            contextMenuLoaded = true;
+                        }
+
+                    }
+                    return TRUE;
+                }
+                case NM_CUSTOMDRAW: {
+                    LPNMTVCUSTOMDRAW tvcd = (LPNMTVCUSTOMDRAW)lParam;
+                    static int hoverItemIndex = 0;
+
+                    switch (tvcd->nmcd.dwDrawStage) {
+                    case CDDS_PREPAINT:
+                        return CDRF_NOTIFYITEMDRAW;
+
+                    case CDDS_ITEMPREPAINT: {
+                        HTREEITEM hItem = (HTREEITEM)tvcd->nmcd.dwItemSpec;
+                        COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
+                        COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
+
+                        //LOG("EditorBg: [{}]", editorBg);
+
+                        COLORREF highlightBg = RGB(200, 220, 255);
+
+
+                        RECT client;
+                        GetClientRect(hTree, &client);
+                        RECT rc;
+                        TreeView_GetItemRect(hTree, hItem, &rc, FALSE);
+                        rc.left = client.left;
+                        rc.right = client.right;
+
+                        HBRUSH hBrush = nullptr;
+
+
+                        if (tvcd->nmcd.uItemState & CDIS_SELECTED) {
+                            hBrush = CreateSolidBrush(RGB(152, 178, 227));
+                            tvcd->clrText = RGB(255, 255, 255);
+                            tvcd->clrTextBk = RGB(152, 178, 227);
+                        }
+                        else if (hItem == hHoveredItem) {
+                            hBrush = CreateSolidBrush(highlightBg);
+                            tvcd->clrText = editorFg;
+                            tvcd->clrTextBk = highlightBg;
                         }
                         else {
-                            optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
-                            if (vFileOpt) {
-                                VFile* vFile = vFileOpt.value();
-                                if (vFile->backupFilePath.empty()) 
-                                {
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_FOLDER, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_CMD, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_CONTAININGFOLDERASWORKSPACE, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(fileContextMenu, IDM_FILE_DELETE, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(fileContextMenu, IDM_FILE_RELOAD, MF_BYCOMMAND | MF_ENABLED);
-                                    EnableMenuItem(fileContextMenu, IDM_FILE_PRINT, MF_BYCOMMAND | MF_ENABLED);
-                                }
-                                else 
-                                {
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_FOLDER, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_CMD, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_CONTAININGFOLDERASWORKSPACE, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(openContextSubMenu, IDM_FILE_OPEN_DEFAULT_VIEWER, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(fileContextMenu, IDM_FILE_DELETE, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(fileContextMenu, IDM_FILE_RELOAD, MF_BYCOMMAND | MF_DISABLED);
-                                    EnableMenuItem(fileContextMenu, IDM_FILE_PRINT, MF_BYCOMMAND | MF_DISABLED);
-                                }
-
-                                CheckMenuItem(fileContextMenu, IDM_EDIT_TOGGLEREADONLY, MF_BYCOMMAND | (vFile->isReadOnly ? MF_CHECKED : MF_UNCHECKED));
-                            }
-                            TrackPopupMenu(fileContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                            hBrush = CreateSolidBrush(editorBg);
+                            tvcd->clrText = editorFg;
+                            tvcd->clrTextBk = editorBg;
                         }
-					    contextMenuLoaded = true;
-                    }
+                        ++hoverItemIndex;
+                        FillRect(tvcd->nmcd.hdc, &rc, hBrush);
+                        DeleteObject(hBrush);
 
+                        SetBkMode(tvcd->nmcd.hdc, TRANSPARENT);
+
+                        return CDRF_SKIPDEFAULT;
+                    }
+                    } break;
+                }
+                } // switch
+            }
+            if (nmhdr->code == TVN_ITEMEXPANDED) {
+                if (!commonData.isNppReady) return TRUE;  // Skip processing if Notepad++ isn't ready yet
+
+                LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
+                HTREEITEM hItem = pnmtv->itemNew.hItem;
+                TVITEM item = { 0 };
+                item.mask = TVIF_PARAM;
+                item.hItem = hItem;
+                if (TreeView_GetItem(hTree, &item)) {
+                    optional<VFolder*> vFolderOpt = commonData.rootVFolder.findFolderByOrder((int)item.lParam);
+                    if (vFolderOpt) {
+                        vFolderOpt.value()->isExpanded = pnmtv->action == TVE_EXPAND;
+                    }
                 }
                 return TRUE;
             }
-            case NM_CUSTOMDRAW: {
-                LPNMTVCUSTOMDRAW tvcd = (LPNMTVCUSTOMDRAW)lParam;
-				static int hoverItemIndex = 0;
-
-                switch (tvcd->nmcd.dwDrawStage) {
-                case CDDS_PREPAINT:
-                    return CDRF_NOTIFYITEMDRAW;
-
-                case CDDS_ITEMPREPAINT: {
-                    HTREEITEM hItem = (HTREEITEM)tvcd->nmcd.dwItemSpec;
-                    COLORREF editorFg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETFORE, STYLE_DEFAULT, 0);
-                    COLORREF editorBg = (COLORREF)::SendMessage(plugin.currentScintilla(), SCI_STYLEGETBACK, STYLE_DEFAULT, 0);
-
-                    //LOG("EditorBg: [{}]", editorBg);
-
-                    COLORREF highlightBg = RGB(200, 220, 255);
-
-
-                    RECT client;
-                    GetClientRect(hTree, &client);
-                    RECT rc;
-                    TreeView_GetItemRect(hTree, hItem, &rc, FALSE);
-                    rc.left = client.left;
-                    rc.right = client.right;
-
-                    HBRUSH hBrush = nullptr;
-
-
-                    if (tvcd->nmcd.uItemState & CDIS_SELECTED) {
-                        hBrush = CreateSolidBrush(RGB(152, 178, 227));
-                        tvcd->clrText = RGB(255, 255, 255);
-                        tvcd->clrTextBk = RGB(152, 178, 227);
-                    }
-                    else if (hItem == hHoveredItem) {
-                        hBrush = CreateSolidBrush(highlightBg);
-                        tvcd->clrText = editorFg;
-                        tvcd->clrTextBk = highlightBg;
-                    }
-                    else {
-                        hBrush = CreateSolidBrush(editorBg);
-                        tvcd->clrText = editorFg;
-                        tvcd->clrTextBk = editorBg;
-                    }
-                    ++hoverItemIndex;
-                    FillRect(tvcd->nmcd.hdc, &rc, hBrush);
-                    DeleteObject(hBrush);
-
-                    SetBkMode(tvcd->nmcd.hdc, TRANSPARENT);
-
-                    return CDRF_SKIPDEFAULT;
-                }
-				} break;
-            }
-            } // switch
-        }
-        if (nmhdr->code == TVN_ITEMEXPANDED) {
-			if (!commonData.isNppReady) return TRUE;  // Skip processing if Notepad++ isn't ready yet
-
-            LPNMTREEVIEW pnmtv = (LPNMTREEVIEW)lParam;
-            HTREEITEM hItem = pnmtv->itemNew.hItem;
-            TVITEM item = { 0 };
-            item.mask = TVIF_PARAM;
-            item.hItem = hItem;
-            if (TreeView_GetItem(hTree, &item)) {
-                optional<VFolder*> vFolderOpt = commonData.rootVFolder.findFolderByOrder((int)item.lParam);
-                if (vFolderOpt) {
-                    vFolderOpt.value()->isExpanded = pnmtv->action == TVE_EXPAND;
-                }
-            }
-            return TRUE;
-        }
-        break;
-    }
-    case WM_CONTEXTMENU: {
-        if (contextMenuLoaded) {
-            contextMenuLoaded = false; // Reset flag
-            return TRUE; // Prevent default context menu handling
-		}
-        HWND hwndFrom = (HWND)wParam;
-        if (hwndFrom == hTree) {
-            POINT pt;
-            pt.x = GET_X_LPARAM(lParam);
-            pt.y = GET_Y_LPARAM(lParam);
-            // Select the item under the cursor
-            TVHITTESTINFO hitTest = { 0 };
-            hitTest.pt = pt;
-            ScreenToClient(hTree, &hitTest.pt);
-            HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
-
-            TVITEM item = { 0 };
-            item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_PARAM;
-            item.hItem = hItem;
-            if (TreeView_GetItem(hTree, &item)) {
-                // Check if this is a file (not a folder) by checking the image index
-                if (item.iImage != iconIndex[ICON_FOLDER]) {
-
-                    return TRUE;  // This is a file item, no need to do anything here
-                }
-            }
-
-            if (hItem) {
-                TreeView_SelectItem(hTree, hItem);
-            }
-
-            std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(commonData.fontSize) + L" px";
-            ModifyMenuW(fontSizeSubMenu, 0, MF_BYPOSITION | MF_STRING, MENU_ID_INCREASEFONT, (LPCWSTR)(fontIncreaseLabel.c_str()));
-
-            std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(commonData.fontSize) + L" px";
-            ModifyMenuW(fontSizeSubMenu, 1, MF_BYPOSITION | MF_STRING, MENU_ID_DECREASEFONT, (LPCWSTR)(fontDecreaseLabel.c_str()));
-
-
-            // Show context menu
-            TrackPopupMenu(hContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
-            return TRUE;
-        }
-        break;
-    }
-    case WM_COMMAND: {
-        HTREEITEM selectedTreeItem = TreeView_GetSelection(hTree);
-        if (!selectedTreeItem) {
             break;
         }
-        if (LOWORD(wParam) == MENU_ID_INCREASEFONT) {
-			increaseFontSize();
+        case WM_CONTEXTMENU: {
+            if (contextMenuLoaded) {
+                contextMenuLoaded = false; // Reset flag
+                return TRUE; // Prevent default context menu handling
+            }
+            HWND hwndFrom = (HWND)wParam;
+            if (hwndFrom == hTree) {
+                POINT pt;
+                pt.x = GET_X_LPARAM(lParam);
+                pt.y = GET_Y_LPARAM(lParam);
+                // Select the item under the cursor
+                TVHITTESTINFO hitTest = { 0 };
+                hitTest.pt = pt;
+                ScreenToClient(hTree, &hitTest.pt);
+                HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
+
+                TVITEM item = { 0 };
+                item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_PARAM;
+                item.hItem = hItem;
+                if (TreeView_GetItem(hTree, &item)) {
+                    // Check if this is a file (not a folder) by checking the image index
+                    if (item.iImage != iconIndex[ICON_FOLDER]) {
+
+                        return TRUE;  // This is a file item, no need to do anything here
+                    }
+                }
+
+                if (hItem) {
+                    TreeView_SelectItem(hTree, hItem);
+                }
+
+                std::wstring fontIncreaseLabel = commonData.translator->getTextW("IDM_FONT_INCREASE") + std::to_wstring(commonData.fontSize) + L" px";
+                ModifyMenuW(fontSizeSubMenu, 0, MF_BYPOSITION | MF_STRING, MENU_ID_INCREASEFONT, (LPCWSTR)(fontIncreaseLabel.c_str()));
+
+                std::wstring fontDecreaseLabel = commonData.translator->getTextW("IDM_FONT_DECREASE") + std::to_wstring(commonData.fontSize) + L" px";
+                ModifyMenuW(fontSizeSubMenu, 1, MF_BYPOSITION | MF_STRING, MENU_ID_DECREASEFONT, (LPCWSTR)(fontDecreaseLabel.c_str()));
+
+
+                // Show context menu
+                TrackPopupMenu(hContextMenu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwndDlg, NULL);
+                return TRUE;
+            }
             break;
         }
-        else if (LOWORD(wParam) == MENU_ID_DECREASEFONT) {
-			decreaseFontSize();
-			break;
-        }
-        else if (LOWORD(wParam) == MENU_ID_TREE_DELETE) {
-            //TreeView_DeleteItem(hTree, selectedTreeItem);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == MENU_ID_FILE_CLOSE) {
-			TVITEM item = getTreeItem(hTree, selectedTreeItem);
-			optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
-            if (vFileOpt) {
-                npp(NPPM_MENUCOMMAND, vFileOpt.value()->bufferID, IDM_FILE_CLOSE);
+        case WM_COMMAND: {
+            HTREEITEM selectedTreeItem = TreeView_GetSelection(hTree);
+            if (!selectedTreeItem) {
+                break;
             }
-            return TRUE;
-        } 
-        else if (LOWORD(wParam) == MENU_ID_FILE_WRAP_IN_FOLDER) {
-            wrapFileInFolder(selectedTreeItem);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == MENU_ID_FOLDER_RENAME) {
-            TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
-            optional<VFolder*> vFolderOpt = commonData.rootVFolder.findFolderByOrder((int)tvItem.lParam);
-            if (!vFolderOpt) {
-				return TRUE;
+            if (LOWORD(wParam) == MENU_ID_INCREASEFONT) {
+                increaseFontSize();
+                break;
             }
-            VFolder* vFolder = vFolderOpt.value();
-            
-            // Show rename dialog for the folder
-            showRenameDialog(vFolder, selectedTreeItem, hTree);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_RENAME)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_RENAME);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == MENU_ID_FOLDER_UNWRAP) {
-            unwrapFolder(selectedTreeItem);
-			return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_SAVE) {
-            nppMenuCall(selectedTreeItem, IDM_FILE_SAVE);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_SAVEAS) {
-            nppMenuCall(selectedTreeItem, IDM_FILE_SAVEAS);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_OPEN_FOLDER)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_FOLDER);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_OPEN_CMD)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_CMD);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_CONTAININGFOLDERASWORKSPACE)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_CONTAININGFOLDERASWORKSPACE);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_OPEN_DEFAULT_VIEWER)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_DEFAULT_VIEWER);
-            return TRUE;
-		}
-        else if (LOWORD(wParam) == IDM_FILE_DELETE)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_DELETE);
-			return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_RELOAD)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_RELOAD);
-			return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_FILE_PRINT)
-        {
-            nppMenuCall(selectedTreeItem, IDM_FILE_PRINT);
-			return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_EDIT_TOGGLEREADONLY)
-        {
-            LRESULT result = nppMenuCall(selectedTreeItem, IDM_EDIT_TOGGLEREADONLY);
-            if (result) {
+            else if (LOWORD(wParam) == MENU_ID_DECREASEFONT) {
+                decreaseFontSize();
+                break;
+            }
+            else if (LOWORD(wParam) == MENU_ID_TREE_DELETE) {
+                //TreeView_DeleteItem(hTree, selectedTreeItem);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == MENU_ID_FILE_CLOSE) {
                 TVITEM item = getTreeItem(hTree, selectedTreeItem);
                 optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
-                vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
-                changeTreeItemIcon(vFileOpt.value()->bufferID, vFileOpt.value()->view);
-
-
-                vFileOpt = commonData.rootVFolder.findFileByBufferID(vFileOpt.value()->bufferID, vFileOpt.value()->view == 0 ? 1 : 0); // If this bufferID exist in the other view
                 if (vFileOpt) {
+                    npp(NPPM_MENUCOMMAND, vFileOpt.value()->bufferID, IDM_FILE_CLOSE);
+                }
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == MENU_ID_FILE_WRAP_IN_FOLDER) {
+                wrapFileInFolder(selectedTreeItem);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == MENU_ID_FOLDER_RENAME) {
+                TVITEM tvItem = getTreeItem(hTree, selectedTreeItem);
+                optional<VFolder*> vFolderOpt = commonData.rootVFolder.findFolderByOrder((int)tvItem.lParam);
+                if (!vFolderOpt) {
+                    return TRUE;
+                }
+                VFolder* vFolder = vFolderOpt.value();
+
+                // Show rename dialog for the folder
+                showRenameDialog(vFolder, selectedTreeItem, hTree);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_RENAME)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_RENAME);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == MENU_ID_FOLDER_UNWRAP) {
+                unwrapFolder(selectedTreeItem);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_SAVE) {
+                nppMenuCall(selectedTreeItem, IDM_FILE_SAVE);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_SAVEAS) {
+                nppMenuCall(selectedTreeItem, IDM_FILE_SAVEAS);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_OPEN_FOLDER)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_FOLDER);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_OPEN_CMD)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_CMD);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_CONTAININGFOLDERASWORKSPACE)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_CONTAININGFOLDERASWORKSPACE);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_OPEN_DEFAULT_VIEWER)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_OPEN_DEFAULT_VIEWER);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_DELETE)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_DELETE);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_RELOAD)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_RELOAD);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_FILE_PRINT)
+            {
+                nppMenuCall(selectedTreeItem, IDM_FILE_PRINT);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_EDIT_TOGGLEREADONLY)
+            {
+                LRESULT result = nppMenuCall(selectedTreeItem, IDM_EDIT_TOGGLEREADONLY);
+                if (result) {
+                    TVITEM item = getTreeItem(hTree, selectedTreeItem);
+                    optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
                     vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
                     changeTreeItemIcon(vFileOpt.value()->bufferID, vFileOpt.value()->view);
+
+
+                    vFileOpt = commonData.rootVFolder.findFileByBufferID(vFileOpt.value()->bufferID, vFileOpt.value()->view == 0 ? 1 : 0); // If this bufferID exist in the other view
+                    if (vFileOpt) {
+                        vFileOpt.value()->isReadOnly = !vFileOpt.value()->isReadOnly;
+                        changeTreeItemIcon(vFileOpt.value()->bufferID, vFileOpt.value()->view);
+                    }
                 }
+                return TRUE;
             }
-			return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_EDIT_FULLPATHTOCLIP)
-        {
-			nppMenuCall(selectedTreeItem, IDM_EDIT_FULLPATHTOCLIP);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_EDIT_FILENAMETOCLIP)
-        {
-            nppMenuCall(selectedTreeItem, IDM_EDIT_FILENAMETOCLIP);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_EDIT_CURRENTDIRTOCLIP)
-        {
-			nppMenuCall(selectedTreeItem, IDM_EDIT_CURRENTDIRTOCLIP);
-			return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_VIEW_GOTO_ANOTHER_VIEW)
-        {
-            TVITEM item = getTreeItem(commonData.hTree, selectedTreeItem);
-            optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
-            if (!vFileOpt) {
-                return false;
+            else if (LOWORD(wParam) == IDM_EDIT_FULLPATHTOCLIP)
+            {
+                nppMenuCall(selectedTreeItem, IDM_EDIT_FULLPATHTOCLIP);
+                return TRUE;
             }
-
-            auto position = npp(NPPM_GETPOSFROMBUFFERID, vFileOpt.value()->bufferID, vFileOpt.value()->view);
-            //int docView = (position >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
-            int docIndex = position & 0x3FFFFFFF;    // 0-based index
-
-            npp(NPPM_ACTIVATEDOC, vFileOpt.value()->view, docIndex);
-
-            nppMenuCall(selectedTreeItem, IDM_VIEW_GOTO_ANOTHER_VIEW);
-            return TRUE;
-        }
-        else if (LOWORD(wParam) == IDM_VIEW_CLONE_TO_ANOTHER_VIEW)
-        {
-            nppMenuCall(selectedTreeItem, IDM_VIEW_CLONE_TO_ANOTHER_VIEW);
-            return TRUE;
-        }
-        break;
-    }
-    case WM_SIZE: {
-        // When the dialog is resized, resize the tree control to fill it
-        if (hTree) {
-            RECT rcClient;
-            GetClientRect(hwndDlg, &rcClient);
-            SetWindowPos(hTree, nullptr, 0, 0, 
-                        rcClient.right - rcClient.left, 
-                        rcClient.bottom - rcClient.top, 
-                        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
-            
-            // Force the tree control to update its scrollbars
-            InvalidateRect(hTree, nullptr, TRUE);
-            UpdateWindow(hTree);
-        }
-        return TRUE;
-    }
-    case WM_MOUSEMOVE: {
-        if (isDragging && hDragImage) {
-            POINT pt;
-            GetCursorPos(&pt); // screen coordinates
-            ImageList_DragMove(pt.x, pt.y);
-
-            // For hit-testing, convert to TreeView client coordinates
-            POINT ptClient = pt;
-            ScreenToClient(hTree, &ptClient);
-            TVHITTESTINFO hitTest = { 0 };
-            hitTest.pt = ptClient;
-            HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
-
-            // Check if mouse is outside the tree area
-            RECT treeRect;
-            GetClientRect(hTree, &treeRect);
-            bool mouseOutsideTree = (ptClient.x < 0 || ptClient.x >= treeRect.right || 
-                                   ptClient.y < 0 || ptClient.y >= treeRect.bottom);
-
-            // Only show drop target if it's a valid target (not the dragged item)
-            if (hItem && hItem != hDragItem) {
-                TreeView_SelectDropTarget(hTree, hItem);
-                hDropTarget = hItem;
+            else if (LOWORD(wParam) == IDM_EDIT_FILENAMETOCLIP)
+            {
+                nppMenuCall(selectedTreeItem, IDM_EDIT_FILENAMETOCLIP);
+                return TRUE;
             }
-            else {
-                TreeView_SelectDropTarget(hTree, nullptr);
-                hDropTarget = nullptr;
+            else if (LOWORD(wParam) == IDM_EDIT_CURRENTDIRTOCLIP)
+            {
+                nppMenuCall(selectedTreeItem, IDM_EDIT_CURRENTDIRTOCLIP);
+                return TRUE;
             }
-
-            // --- Insertion line logic ---
-            InsertionMark newMark = {};
-            if (hItem && hItem != hDragItem && !mouseOutsideTree) { // Don't show line over the dragged item itself or outside tree
-                RECT rc;
-                TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
-                if (hitTest.flags & TVHT_ABOVE) {
-                    newMark = { hItem, true, rc, true };
+            else if (LOWORD(wParam) == IDM_VIEW_GOTO_ANOTHER_VIEW)
+            {
+                TVITEM item = getTreeItem(commonData.hTree, selectedTreeItem);
+                optional<VFile*> vFileOpt = commonData.rootVFolder.findFileByOrder((int)item.lParam);
+                if (!vFileOpt) {
+                    return false;
                 }
-                else if (hitTest.flags & TVHT_BELOW) {
-                    newMark = { hItem, false, rc, true };
+
+                auto position = npp(NPPM_GETPOSFROMBUFFERID, vFileOpt.value()->bufferID, vFileOpt.value()->view);
+                //int docView = (position >> 30) & 0x3;   // 0 = MAIN_VIEW, 1 = SUB_VIEW
+                int docIndex = position & 0x3FFFFFFF;    // 0-based index
+
+                npp(NPPM_ACTIVATEDOC, vFileOpt.value()->view, docIndex);
+
+                nppMenuCall(selectedTreeItem, IDM_VIEW_GOTO_ANOTHER_VIEW);
+                return TRUE;
+            }
+            else if (LOWORD(wParam) == IDM_VIEW_CLONE_TO_ANOTHER_VIEW)
+            {
+                nppMenuCall(selectedTreeItem, IDM_VIEW_CLONE_TO_ANOTHER_VIEW);
+                return TRUE;
+            }
+            break;
+        }
+        case WM_SIZE: {
+            // When the dialog is resized, resize the tree control to fill it
+            if (hTree) {
+                RECT rcClient;
+                GetClientRect(hwndDlg, &rcClient);
+                SetWindowPos(hTree, nullptr, 0, 0,
+                    rcClient.right - rcClient.left,
+                    rcClient.bottom - rcClient.top,
+                    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+                // Force the tree control to update its scrollbars
+                InvalidateRect(hTree, nullptr, TRUE);
+                UpdateWindow(hTree);
+            }
+            return TRUE;
+        }
+        case WM_MOUSEMOVE: {
+            if (isDragging && hDragImage) {
+                POINT pt;
+                GetCursorPos(&pt); // screen coordinates
+                ImageList_DragMove(pt.x, pt.y);
+
+                // For hit-testing, convert to TreeView client coordinates
+                POINT ptClient = pt;
+                ScreenToClient(hTree, &ptClient);
+                TVHITTESTINFO hitTest = { 0 };
+                hitTest.pt = ptClient;
+                HTREEITEM hItem = TreeView_HitTest(hTree, &hitTest);
+
+                // Check if mouse is outside the tree area
+                RECT treeRect;
+                GetClientRect(hTree, &treeRect);
+                bool mouseOutsideTree = (ptClient.x < 0 || ptClient.x >= treeRect.right ||
+                    ptClient.y < 0 || ptClient.y >= treeRect.bottom);
+
+                // Only show drop target if it's a valid target (not the dragged item)
+                if (hItem && hItem != hDragItem) {
+                    TreeView_SelectDropTarget(hTree, hItem);
+                    hDropTarget = hItem;
                 }
                 else {
-                    // If on item, check if near top or bottom
-                    int y = ptClient.y;
-                    int mid = (rc.top + rc.bottom) / 2;
-                    if (y < mid - 4) {
+                    TreeView_SelectDropTarget(hTree, nullptr);
+                    hDropTarget = nullptr;
+                }
+
+                // --- Insertion line logic ---
+                InsertionMark newMark = {};
+                if (hItem && hItem != hDragItem && !mouseOutsideTree) { // Don't show line over the dragged item itself or outside tree
+                    RECT rc;
+                    TreeView_GetItemRect(hTree, hItem, &rc, TRUE);
+                    if (hitTest.flags & TVHT_ABOVE) {
                         newMark = { hItem, true, rc, true };
                     }
-                    else if (y > mid + 4) {
+                    else if (hitTest.flags & TVHT_BELOW) {
                         newMark = { hItem, false, rc, true };
                     }
+                    else {
+                        // If on item, check if near top or bottom
+                        int y = ptClient.y;
+                        int mid = (rc.top + rc.bottom) / 2;
+                        if (y < mid - 4) {
+                            newMark = { hItem, true, rc, true };
+                        }
+                        else if (y > mid + 4) {
+                            newMark = { hItem, false, rc, true };
+                        }
+                    }
                 }
-            }
 
-            // Erase previous line if needed
-            if (lastMark.valid && (!newMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
+                // Erase previous line if needed
+                if (lastMark.valid && (!newMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
+                    HDC hdc = GetDC(hTree);
+
+                    // Get the actual background color from the tree control
+                    COLORREF bgColor = TreeView_GetBkColor(hTree);
+
+                    HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
+
+                    // Erase a slightly larger area to ensure complete coverage
+                    Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight, lastMark.lineY + 5);
+                    SelectObject(hdc, hOldPen);
+                    SelectObject(hdc, hOldBrush);
+                    DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                    DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
+                    ReleaseDC(hTree, hdc);
+
+                    // Force redraw of a larger area to ensure erasure is visible
+                    RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight, lastMark.lineY + 5 };
+                    InvalidateRect(hTree, &eraseRect, FALSE);
+                    UpdateWindow(hTree);
+
+                    // Clear the entire lastMark structure, not just valid flag
+                    lastMark = {};
+                }
+
+                // Draw new line if needed
+                if (newMark.valid && (!lastMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
+                    HDC hdc = GetDC(hTree);
+                    RECT rc = newMark.rect;
+                    int y = newMark.above ? rc.top : rc.bottom;
+
+                    // Calculate line coordinates - use item bounds with small extension
+                    int lineLeft = rc.left - 4;
+                    int lineRight = rc.right + 4;
+                    int lineY = y - 2;
+
+                    // Store coordinates for reliable erasing
+                    newMark.lineY = lineY;
+                    newMark.lineLeft = lineLeft;
+                    newMark.lineRight = lineRight;
+
+
+                    //COLORREF lineColor = isDarkMode ? RGB(255, 255, 255) : RGB(0, 0, 255);  // White line in dark mode, blue in light mode
+                    COLORREF lineColor = TreeView_GetTextColor(hTree); // Use text color for better visibility
+                    HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, lineColor));
+                    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(lineColor));
+                    Rectangle(hdc, lineLeft, lineY, lineRight, lineY + 4);
+                    SelectObject(hdc, hOldPen);
+                    SelectObject(hdc, hOldBrush);
+                    DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                    DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
+                    ReleaseDC(hTree, hdc);
+                    lastMark = newMark;
+                }
+
+                return TRUE;
+            }
+            else {
+                // Not dragging - clear any lingering insertion line
+                if (lastMark.valid) {
+                    OutputDebugStringA("Not dragging - clearing lingering line\n");
+                    HDC hdc = GetDC(hTree);
+
+                    // Get the actual background color from the tree control
+                    COLORREF bgColor = TreeView_GetBkColor(hTree);
+
+                    HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
+                    Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
+                    SelectObject(hdc, hOldPen);
+                    SelectObject(hdc, hOldBrush);
+                    DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                    DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
+                    ReleaseDC(hTree, hdc);
+                    lastMark = {};
+                }
+
+            }
+            break;
+        }
+        case WM_MOUSELEAVE: {
+            // Clear insertion line when mouse leaves the tree area during dragging
+            if (isDragging && lastMark.valid) {
+                OutputDebugStringA("Mouse left tree area during drag - clearing line\n");
                 HDC hdc = GetDC(hTree);
-                
+
                 // Get the actual background color from the tree control
                 COLORREF bgColor = TreeView_GetBkColor(hTree);
-                
+
                 HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
                 HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-                
-                // Erase a slightly larger area to ensure complete coverage
-                Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight, lastMark.lineY + 5);
-                SelectObject(hdc, hOldPen);
-                SelectObject(hdc, hOldBrush);
-                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
-                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
-                ReleaseDC(hTree, hdc);
-                
-                // Force redraw of a larger area to ensure erasure is visible
-                RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight, lastMark.lineY + 5 };
-                InvalidateRect(hTree, &eraseRect, FALSE);
-                UpdateWindow(hTree);
-                
-                // Clear the entire lastMark structure, not just valid flag
-                lastMark = {};
-            }
 
-            // Draw new line if needed
-            if (newMark.valid && (!lastMark.valid || lastMark.hItem != newMark.hItem || lastMark.above != newMark.above)) {
-                HDC hdc = GetDC(hTree);
-                RECT rc = newMark.rect;
-                int y = newMark.above ? rc.top : rc.bottom;
-                
-                // Calculate line coordinates - use item bounds with small extension
-                int lineLeft = rc.left - 4;
-                int lineRight = rc.right + 4;
-                int lineY = y - 2;
-                
-                // Store coordinates for reliable erasing
-                newMark.lineY = lineY;
-                newMark.lineLeft = lineLeft;
-                newMark.lineRight = lineRight;
-                
-                
-                //COLORREF lineColor = isDarkMode ? RGB(255, 255, 255) : RGB(0, 0, 255);  // White line in dark mode, blue in light mode
-				COLORREF lineColor = TreeView_GetTextColor(hTree); // Use text color for better visibility
-                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, lineColor));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(lineColor));
-                Rectangle(hdc, lineLeft, lineY, lineRight, lineY + 4);
-                SelectObject(hdc, hOldPen);
-                SelectObject(hdc, hOldBrush);
-                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
-                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
-                ReleaseDC(hTree, hdc);
-                lastMark = newMark;
-            }
-
-            return TRUE;
-        }
-        else {
-            // Not dragging - clear any lingering insertion line
-            if (lastMark.valid) {
-                OutputDebugStringA("Not dragging - clearing lingering line\n");
-                HDC hdc = GetDC(hTree);
-                
-                // Get the actual background color from the tree control
-                COLORREF bgColor = TreeView_GetBkColor(hTree);
-                
-                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-                Rectangle(hdc, lastMark.lineLeft, lastMark.lineY, lastMark.lineRight, lastMark.lineY + 4);
-                SelectObject(hdc, hOldPen);
-                SelectObject(hdc, hOldBrush);
-                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
-                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
-                ReleaseDC(hTree, hdc);
-                lastMark = {};
-            }
-
-        }
-        break;
-    }
-    case WM_MOUSELEAVE: {
-        // Clear insertion line when mouse leaves the tree area during dragging
-        if (isDragging && lastMark.valid) {
-            OutputDebugStringA("Mouse left tree area during drag - clearing line\n");
-            HDC hdc = GetDC(hTree);
-            
-            // Get the actual background color from the tree control
-            COLORREF bgColor = TreeView_GetBkColor(hTree);
-            
-            HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
-            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-            
-            // Erase a slightly larger area to ensure complete coverage
-            Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
-            SelectObject(hdc, hOldPen);
-            SelectObject(hdc, hOldBrush);
-            DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
-            DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
-            ReleaseDC(hTree, hdc);
-            
-            // Force redraw of a larger area to ensure erasure is visible
-            RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
-            InvalidateRect(hTree, &eraseRect, FALSE);
-            UpdateWindow(hTree);
-            
-            lastMark = {};
-        }
-        break;
-    }
-    case WM_LBUTTONUP: {
-        bool insertion = lastMark.valid;
-        if (isDragging) {
-            // Erase insertion line if present
-            if (lastMark.valid) {
-                HDC hdc = GetDC(hTree);
-                
-                // Get the actual background color from the tree control
-                COLORREF bgColor = TreeView_GetBkColor(hTree);
-                
-                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
-                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-                
                 // Erase a slightly larger area to ensure complete coverage
                 Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
                 SelectObject(hdc, hOldPen);
@@ -966,125 +958,172 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
                 DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
                 DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
                 ReleaseDC(hTree, hdc);
-                
+
                 // Force redraw of a larger area to ensure erasure is visible
                 RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
                 InvalidateRect(hTree, &eraseRect, FALSE);
                 UpdateWindow(hTree);
-                
+
+                lastMark = {};
+            }
+            break;
+        }
+        case WM_LBUTTONUP: {
+            bool insertion = lastMark.valid;
+            if (isDragging) {
+                // Erase insertion line if present
+                if (lastMark.valid) {
+                    HDC hdc = GetDC(hTree);
+
+                    // Get the actual background color from the tree control
+                    COLORREF bgColor = TreeView_GetBkColor(hTree);
+
+                    HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                    HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
+
+                    // Erase a slightly larger area to ensure complete coverage
+                    Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
+                    SelectObject(hdc, hOldPen);
+                    SelectObject(hdc, hOldBrush);
+                    DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                    DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
+                    ReleaseDC(hTree, hdc);
+
+                    // Force redraw of a larger area to ensure erasure is visible
+                    RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
+                    InvalidateRect(hTree, &eraseRect, FALSE);
+                    UpdateWindow(hTree);
+
+                    lastMark.valid = false;
+                }
+                ReleaseCapture();
+                ImageList_EndDrag();
+                ImageList_Destroy(hDragImage);
+                hDragImage = nullptr;
+                isDragging = false;
+
+                // Clear drop target selection and restore normal selection
+                TreeView_SelectDropTarget(hTree, nullptr);
+
+                // current rootFolder to base64 before move
+                VFolder oldRoot = commonData.rootVFolder;
+                int oldOrder = -1, newOrder = -1;
+
+                if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
+                    TVITEM dropItem = getTreeItem(hTree, hDropTarget);
+                    if (dropItem.iImage == iconIndex[ICON_FOLDER] && !insertion) {
+                        // Move file into folder
+                        int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
+                        int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
+                        auto draggedFileOpt = commonData.rootVFolder.findFileByOrder(dragOrder);
+                        auto draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
+                        auto targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder);
+
+                        oldOrder = dragOrder;
+                        newOrder = targetOrder;
+
+                        if (draggedFileOpt && targetFolderOpt)
+                        {
+                            moveFileIntoFolder(dragOrder, targetOrder);
+                            writeJsonFile();
+                        }
+                        else if (draggedFolderOpt && targetFolderOpt)
+                        {
+                            moveFolderIntoFolder(dragOrder, targetOrder);
+                            writeJsonFile();
+                        }
+                    }
+                    // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
+                    else if (insertion) {
+                        // Get the dragged and target item orders
+                        int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
+                        int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
+
+                        // Find the dragged item in rootVFolder
+                        optional<VFile*> draggedFileOpt = commonData.rootVFolder.findFileByOrder(dragOrder);
+                        optional<VFolder*> draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
+
+                        oldOrder = dragOrder;
+                        if (draggedFileOpt) {
+                            // Calculate new order based on drop position
+                            newOrder = calculateNewOrder(targetOrder, lastMark);
+
+                            // Reorder other items
+                            reorderItems(dragOrder, newOrder);
+                            writeJsonFile();
+                        }
+                        else if (draggedFolderOpt) {
+                            // Similar logic for folders
+                            newOrder = calculateNewOrder(targetOrder, lastMark);
+                            reorderFolders(dragOrder, newOrder);
+                            writeJsonFile();
+                        }
+                    }
+                    commonData.rootVFolder.vFolderSort();
+
+                    VFolder newRoot = commonData.rootVFolder;
+                    if (checkRootVFolderJSON()) {
+                        checkRootVFolderJSON();
+                        LOG("Root is corrupted!!!!!!!!!!!!");
+                        showCorruptionDialog(oldRoot, newRoot, oldOrder, newOrder);
+                        fixRootVFolderJSON();
+                    }
+
+
+                }
+                hDragItem = nullptr;
+                hDropTarget = nullptr;
+                return TRUE;
+            }
+            break;
+        }
+        case WM_CANCELMODE: { // In case drag is canceled
+            if (lastMark.valid) {
+                OutputDebugStringA("WM_CANCELMODE\n");
+                HDC hdc = GetDC(hTree);
+
+                // Get the actual background color from the tree control
+                COLORREF bgColor = TreeView_GetBkColor(hTree);
+
+                HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
+                HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
+
+                // Erase a slightly larger area to ensure complete coverage
+                Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
+                SelectObject(hdc, hOldPen);
+                SelectObject(hdc, hOldBrush);
+                DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
+                DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
+                ReleaseDC(hTree, hdc);
+
+                // Force redraw of a larger area to ensure erasure is visible
+                RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
+                InvalidateRect(hTree, &eraseRect, FALSE);
+                UpdateWindow(hTree);
+
                 lastMark.valid = false;
+                return TRUE;
             }
-            ReleaseCapture();
-            ImageList_EndDrag();
-            ImageList_Destroy(hDragImage);
-            hDragImage = nullptr;
-            isDragging = false;
-
-            // Clear drop target selection and restore normal selection
-            TreeView_SelectDropTarget(hTree, nullptr);
-
-            // current rootFolder to base64 before move
-            VFolder oldRoot = commonData.rootVFolder;
-            int oldOrder = -1, newOrder = -1;
-
-            if (hDragItem && hDropTarget && hDragItem != hDropTarget) {
-				TVITEM dropItem = getTreeItem(hTree, hDropTarget);
-                if (dropItem.iImage == iconIndex[ICON_FOLDER] && !insertion) {
-                    // Move file into folder
-                    int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
-                    int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
-                    auto draggedFileOpt = commonData.rootVFolder.findFileByOrder(dragOrder);
-                    auto draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
-                    auto targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder);
-
-                    oldOrder = dragOrder;
-                    newOrder = targetOrder;
-
-                    if (draggedFileOpt && targetFolderOpt) 
-                    {
-                        moveFileIntoFolder(dragOrder, targetOrder);
-                        writeJsonFile();
-                    }
-                    else if (draggedFolderOpt && targetFolderOpt) 
-                    {
-                        moveFolderIntoFolder(dragOrder, targetOrder);
-                        writeJsonFile();
-                    }
-                }
-                // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
-                else if (insertion) {
-                    // Get the dragged and target item orders
-                    int dragOrder = getOrderFromTreeItem(hTree, hDragItem);
-                    int targetOrder = getOrderFromTreeItem(hTree, hDropTarget);
-
-                    // Find the dragged item in rootVFolder
-                    optional<VFile*> draggedFileOpt = commonData.rootVFolder.findFileByOrder(dragOrder);
-                    optional<VFolder*> draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
-
-                    oldOrder = dragOrder;
-                    if (draggedFileOpt) {
-                        // Calculate new order based on drop position
-                        newOrder = calculateNewOrder(targetOrder, lastMark);
-                        
-                        // Reorder other items
-                        reorderItems(dragOrder, newOrder);
-                        writeJsonFile();
-                    }
-                    else if (draggedFolderOpt) {
-                        // Similar logic for folders
-                        newOrder = calculateNewOrder(targetOrder, lastMark);
-                        reorderFolders(dragOrder, newOrder);
-                        writeJsonFile();
-                    }
-                }
-                commonData.rootVFolder.vFolderSort();
-
-                VFolder newRoot = commonData.rootVFolder;
-                if (checkRootVFolderJSON()) {
-                    checkRootVFolderJSON();
-                    LOG("Root is corrupted!!!!!!!!!!!!");
-                    showCorruptionDialog(oldRoot, newRoot, oldOrder, newOrder);
-                    fixRootVFolderJSON();
-                }
-
-
-            }
-            hDragItem = nullptr;
-            hDropTarget = nullptr;
-            return TRUE;
+            break;
         }
-        break;
-    }
-    case WM_CANCELMODE: { // In case drag is canceled
-        if (lastMark.valid) {
-            OutputDebugStringA("WM_CANCELMODE\n");
-            HDC hdc = GetDC(hTree);
-            
-            // Get the actual background color from the tree control
-            COLORREF bgColor = TreeView_GetBkColor(hTree);
-            
-            HPEN hOldPen = (HPEN)SelectObject(hdc, CreatePen(PS_SOLID, 1, bgColor));
-            HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, CreateSolidBrush(bgColor));
-            
-            // Erase a slightly larger area to ensure complete coverage
-            Rectangle(hdc, lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5);
-            SelectObject(hdc, hOldPen);
-            SelectObject(hdc, hOldBrush);
-            DeleteObject(GetCurrentObject(hdc, OBJ_PEN));
-            DeleteObject(GetCurrentObject(hdc, OBJ_BRUSH));
-            ReleaseDC(hTree, hdc);
-            
-            // Force redraw of a larger area to ensure erasure is visible
-            RECT eraseRect = { lastMark.lineLeft - 2, lastMark.lineY - 1, lastMark.lineRight + 2, lastMark.lineY + 5 };
-            InvalidateRect(hTree, &eraseRect, FALSE);
-            UpdateWindow(hTree);
-            
-            lastMark.valid = false;
-            return TRUE;
         }
-        break;
+
     }
+    catch (const std::exception& e) {
+        MessageBoxA(hwndDlg, e.what(), "Virtual Folders – Error", MB_OK | MB_ICONERROR);
     }
+    catch (...) {
+        MessageBoxW(hwndDlg, L"Virtual Folders encountered an internal error.",
+            L"Virtual Folders – Error", MB_OK | MB_ICONERROR);
+
+        
+		// Disable the plugin and close Notepad++
+        //plugin.cmd(toggleVirtualPanelWithList);
+        //plugin.cmd(toggleVirtualPanelWithList);
+        
+        //npp(WM_CLOSE, 0, 0);
+    }
+
 
     //return CallWindowProc(oldTreeProc, hwndDlg, uMsg, wParam, lParam);
     return FALSE;
@@ -1344,8 +1383,9 @@ void moveFileIntoFolder(int dragOrder, int targetOrder) {
     int tempOrder = fileCopy.getOrder();
     commonData.rootVFolder.adjustOrders(fileCopy.getOrder(), INT_MAX, 1);
     // Update the file's order to match the folder's order
-    file = commonData.rootVFolder.findFileByPath(fileCopy.path);
+    file = commonData.rootVFolder.findFileByPath(fileCopy.path, fileCopy.view);
     file->setOrder(tempOrder);
+    
 
     writeJsonFile();
 
