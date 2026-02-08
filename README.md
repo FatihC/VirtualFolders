@@ -35,13 +35,12 @@ Working with many scattered files in `Notepad++` was frustrating. I wanted a sim
 # Installation
 Just unpack the VirtualFolder zip-archive (the last *dll*.zip under https://github.com/FatihC/VirtualFolders/releases ) to the folder `"Notepad++\plugins"`. It will extract the file `"VirtualFolders.dll"` as well as the `"localization"` subfolder.
 <br/>
-After restarting `Notepad++`, you can toggle the Virtual Folders panel from `Plugins->Virtual Folders->Show Virtual Folders Panel` menu.
+After restarting `Notepad++`, you can toggle the Virtual Folders panel from the `Plugins->Virtual Folders->Show Virtual Folders Panel` menu.
 
 # Acknowledgments
-This plugin was built using the [NppCppMSVS](https://github.com/Coises/NppCppMSVS). template
+This plugin was built using the [NppCppMSVS](https://github.com/Coises/NppCppMSVS) template.
 .
 Special thanks to [Coises](https://community.notepad-plus-plus.org/user/coises) for creating and sharing such a helpful foundation.
 
 # Licences
 - File icon: https://www.iconfinder.com/icons/290138/document_extension_file_format_paper_icon
-- 
