@@ -45,6 +45,55 @@ int GetActiveViewForBuffer(UINT_PTR bufferID);
 void loadLocalization();
 
 namespace {
+int resolveBufferView(UINT_PTR bufferID, int reportedView) {
+    if (bufferID == 0) {
+        return reportedView;
+    }
+
+    const LRESULT position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, reportedView);
+    if (position == -1) {
+        return reportedView;
+    }
+
+    const int actualView = static_cast<int>((position >> 30) & 0x3);
+    return actualView == MAIN_VIEW || actualView == SUB_VIEW ? actualView : reportedView;
+}
+
+bool isTransientSecondaryPlaceholder(UINT_PTR bufferID, int view) {
+    if (view != SUB_VIEW) {
+        return false;
+    }
+
+    const int secondaryFileCount = static_cast<int>(
+        npp(NPPM_GETNBOPENFILES, 0, SECOND_VIEW));
+    if (secondaryFileCount != 1) {
+        return false;
+    }
+
+    // A real move/clone or a restored session entry already has a matching
+    // model item. The temporary empty document created while Notepad++ tears
+    // down the secondary view does not.
+    if (commonData.rootVFolder.findFileByBufferID(bufferID)) {
+        return false;
+    }
+
+    const int len = static_cast<int>(
+        npp(NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0));
+    if (len < 0) {
+        return false;
+    }
+
+    vector<wchar_t> filePath(static_cast<size_t>(len) + 1);
+    npp(NPPM_GETFULLPATHFROMBUFFERID, bufferID, filePath.data());
+    const string name = fromWchar(filePath.data());
+
+    if (name.find_first_of("/\\") != string::npos) {
+        return false;
+    }
+
+    return commonData.rootVFolder.findFileByName(name, SUB_VIEW) == nullptr;
+}
+
 void updateActiveFileState(UINT_PTR bufferID, int view) {
     for (VFile* file : commonData.rootVFolder.getAllFiles()) {
         file->isActive = file->bufferID == bufferID && file->view == view;
@@ -97,7 +146,16 @@ void bufferActivated(const NMHDR* nmhdr) {
 
     long whichScintilla = 0;
     npp(NPPM_GETCURRENTSCINTILLA, 0, (LPARAM)&whichScintilla);
-    int view = (whichScintilla == 0) ? MAIN_VIEW : SUB_VIEW;
+    const int reportedView = (whichScintilla == 0) ? MAIN_VIEW : SUB_VIEW;
+
+    // When the final document leaves the secondary view, Notepad++ can still
+    // report that Scintilla as current while it is being torn down. The
+    // buffer position already contains its real destination view.
+    const int view = resolveBufferView(bufferID, reportedView);
+
+    if (isTransientSecondaryPlaceholder(bufferID, view)) {
+        return;
+    }
 
     // isActive represents a single TreeView item, not every clone of a
     // buffer. Keep it synchronized whenever Notepad++ activates a document.

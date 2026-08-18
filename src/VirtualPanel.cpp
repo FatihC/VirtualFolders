@@ -241,34 +241,68 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
     if (bufferID <= 0) {
         bufferID = ::SendMessage(plugin.nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0); // does not take view as param
     }
-    optional<VFile*> vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID);
+    // Prefer the entry from the view that raised the notification. A cloned
+    // buffer has the same buffer ID in both views, so a view-agnostic lookup
+    // can select the wrong tree item.
+    optional<VFile*> vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID, currentView);
     VFile* vFile = nullptr;
     if (!vFileOption) {
-        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
-        wchar_t* filePath = new wchar_t[len + 1];
-        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath);
-
         auto position = npp(NPPM_GETPOSFROMBUFFERID, bufferID, currentView);
         if (position == -1) {
             return;
         }
 
-        if (position > 256 * 256) { // I am assuming there can not be more than 65536 buffers open
-            int nbFiles = (int)npp(NPPM_GETNBOPENFILES, 0, currentView == MAIN_VIEW ? PRIMARY_VIEW : SECOND_VIEW);
-            if (nbFiles == 1) {
-                // Ignore this buffer-activated event
-                return;
-            }
-
+        // NPPM_GETPOSFROMBUFFERID encodes the view in the upper bits. A valid
+        // secondary-view position is therefore much larger than a document
+        // index and must not be treated as an invalid position.
+        int len = (int)::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, 0);
+        if (len < 0) {
+            return;
         }
+        vector<wchar_t> filePath(static_cast<size_t>(len) + 1);
+        ::SendMessage(plugin.nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID, bufferID, (LPARAM)filePath.data());
 
 		// Check if file already exists in vData by path or name
-        string nppFileName = fromWchar(filePath);
+        string nppFileName = fromWchar(filePath.data());
         if (nppFileName.find_first_of("\\\\") != string::npos) {
-            vFile = commonData.rootVFolder.findFileByPath(nppFileName);
+            vFile = commonData.rootVFolder.findFileByPath(nppFileName, currentView);
         }
         else {
-            vFile = commonData.rootVFolder.findFileByName(nppFileName);
+            vFile = commonData.rootVFolder.findFileByName(nppFileName, currentView);
+        }
+
+        if (vFile) {
+            // Session entries are loaded before Notepad++ buffer IDs are
+            // available. Bind the existing entry instead of appending a
+            // second tree row during startup.
+            vFile->bufferID = bufferID;
+            vFile->isActive = true;
+        }
+
+        if (!vFile) {
+            optional<VFile*> otherViewFile = commonData.rootVFolder.findFileByBufferID(bufferID);
+            if (otherViewFile) {
+                // The same buffer has just appeared in the other view. This
+                // covers both clone and move; NPPN_FILECLOSED removes the old
+                // entry in the move case.
+                VFolder* parentFolder = commonData.rootVFolder.findParentFolder(otherViewFile.value()->getOrder());
+
+                VFile fileCopy = *otherViewFile.value();
+                fileCopy.hTreeItem = nullptr;
+                fileCopy.view = currentView;
+                fileCopy.incrementOrder();
+
+                adjustGlobalOrdersForFileMove(INT_MAX, fileCopy.getOrder());
+                addFileToTree(&fileCopy, hTree, parentFolder ? parentFolder->hTreeItem : nullptr,
+                    isDarkMode, otherViewFile.value()->hTreeItem);
+
+                if (parentFolder) parentFolder->fileList.push_back(fileCopy);
+                else commonData.rootVFolder.fileList.push_back(fileCopy);
+
+                vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID, currentView);
+                vFile = vFileOption.value();
+                writeJsonFile();
+            }
         }
 
         if (!vFile) {
@@ -277,11 +311,11 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
             newFile.bufferID = bufferID;
             newFile.setOrder(commonData.rootVFolder.getLastOrder() + 1);
 
-            string filePathString = fromWchar(filePath);
+            string filePathString = fromWchar(filePath.data());
             size_t lastSlash = filePathString.find_last_of("/\\");
             newFile.name = lastSlash != string::npos ? filePathString.substr(lastSlash + 1) : filePathString;
 
-            newFile.path = fromWchar(filePath);
+            newFile.path = filePathString;
             newFile.view = currentView;
             newFile.session = 0;
             newFile.backupFilePath = "";
@@ -300,29 +334,6 @@ void updateVirtualPanel(UINT_PTR bufferID, int activeView) {
     }
     else {
 		vFile = vFileOption.value();
-        // CHECK if it is a clone
-        vector<VFile*> allFilesWithBufferID = commonData.rootVFolder.getAllFilesByBufferID(bufferID);
-        if (allFilesWithBufferID.size() == 1 && allFilesWithBufferID[0]->view != currentView) { // it is cloned
-            VFolder* parentFolder = commonData.rootVFolder.findParentFolder(allFilesWithBufferID[0]->getOrder());
-            
-            VFile fileCopy = *allFilesWithBufferID[0];
-            fileCopy.hTreeItem = nullptr;
-            fileCopy.view = currentView;
-            fileCopy.incrementOrder();
-
-            adjustGlobalOrdersForFileMove(INT_MAX, fileCopy.getOrder());    // has to adjust orders to insert new item
-
-            
-            
-            // create treeItem
-            addFileToTree(&fileCopy, hTree, parentFolder ? parentFolder->hTreeItem : nullptr, isDarkMode, allFilesWithBufferID[0]->hTreeItem);
-
-            if (parentFolder) parentFolder->fileList.push_back(fileCopy);
-            else commonData.rootVFolder.fileList.push_back(fileCopy);
-            vFileOption = commonData.rootVFolder.findFileByBufferID(bufferID, currentView);
-			vFile = vFileOption.value();
-            writeJsonFile();
-        }
     }
     
     currentView = vFile->view;
