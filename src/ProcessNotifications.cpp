@@ -44,6 +44,14 @@ wchar_t* getPluginHomePath();
 int GetActiveViewForBuffer(UINT_PTR bufferID);
 void loadLocalization();
 
+namespace {
+void updateActiveFileState(UINT_PTR bufferID, int view) {
+    for (VFile* file : commonData.rootVFolder.getAllFiles()) {
+        file->isActive = file->bufferID == bufferID && file->view == view;
+    }
+}
+}
+
 
 void scnModified(const Scintilla::NotificationData* scnp) {
     using Scintilla::FlagSet;
@@ -91,7 +99,9 @@ void bufferActivated(const NMHDR* nmhdr) {
     npp(NPPM_GETCURRENTSCINTILLA, 0, (LPARAM)&whichScintilla);
     int view = (whichScintilla == 0) ? MAIN_VIEW : SUB_VIEW;
 
-    //GetActiveViewForBuffer(bufferID);
+    // isActive represents a single TreeView item, not every clone of a
+    // buffer. Keep it synchronized whenever Notepad++ activates a document.
+    updateActiveFileState(bufferID, view);
 
     updateVirtualPanel(bufferID, view);
 
@@ -182,7 +192,6 @@ void fileSaved(const NMHDR* nmhdr)
             vFileOpt.value()->isReadOnly = false; // After saving, the file is no longer read-only
             vFileOpt.value()->isEdited = false;   // After saving, the file is no longer edited
             vFileOpt.value()->backupFilePath = ""; // Clear backup path after saving
-            vFileOpt.value()->isActive = true; // Mark as active on save
             changeTreeItemIcon(bufferID, view);
         }
 	}

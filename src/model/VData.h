@@ -24,7 +24,7 @@ using ssize_t = std::make_signed_t<size_t>;
 
 class VBase {
 protected:
-	int order;
+	int order = -1;
 
 public:
 	string name;
@@ -54,8 +54,8 @@ public:
 
 	UINT_PTR bufferID = 0;
 	
-	int view;
-	int session;
+	int view = 0;
+	int session = 0;
 	string backupFilePath;
 	bool isActive = false;
 	bool isEdited = false;
@@ -155,4 +155,16 @@ inline void from_json(const json& j, VFolder& folder) {
 }
 
 // Function declarations for functions implemented in VData.cpp
-json loadVDataFromFile(const std::wstring& filePath);
+enum class VDataLoadStatus {
+	NotFound,
+	Loaded,
+	Invalid
+};
+
+struct VDataLoadResult {
+	VDataLoadStatus status = VDataLoadStatus::NotFound;
+	json data = json::object();
+	string error;
+};
+
+VDataLoadResult loadVDataFromFile(const std::wstring& filePath);

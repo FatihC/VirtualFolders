@@ -74,10 +74,22 @@ struct PluginData {
     // cmd calls menu commands with notifications bypassed and Scintilla pointers established
 
     void cmd(void (cmdFunction)()) { 
-        bypassNotifications = true;
+        struct ScopedBypassReset {
+            bool& flag;
+            bool previousValue;
+
+            explicit ScopedBypassReset(bool& value)
+                : flag(value), previousValue(value) {
+                flag = true;
+            }
+
+            ~ScopedBypassReset() {
+                flag = previousValue;
+            }
+        } guard(bypassNotifications);
+
         getScintillaPointers();
         (cmdFunction)();
-        bypassNotifications = false;
     }
 
 };

@@ -606,10 +606,10 @@ void decodeErrorMail(string encoded_compressed) {
 
 void toggleVirtualPanelWithList() {
     
-    string oldRoot = "";
-    string newRoot = "";
-    //decodeErrorMail(oldRoot);
-    //decodeErrorMail(newRoot);
+    /*string oldRoot = "ClHlwBgAVgJaAAAAAAAAAFoAAAAAAAAATQAAAENLq1ZKy8xJ9cksLlGyio7VUUrLz0lJLULwM4tdKwoS81JSU5Ss0hJzilN1lPISc1OVrJQqKioUDJR0lPKLgBqUrAx0lAoSSzLgErUA";
+    string newRoot = "ClHlwBgAwAJLBQAAAAAAAEsFAAAAAAAA/AAAAENLrdRNi8IwEAbgvyJzjrD2u7l50JOg7FU8ZM0Ug7UtTXQr4n/fKqvJHNwl1Ft4Q2YeGDIXKFSJC6UN8PUFvsR2f2zmfbQSZgccuq4bTYCB0tOtUScEXohS4y2YSWVQOsEnCrmsyvMzqsQBnRp1K7EFPmHQ0OIatVZ1BfyDwUnhd3+4sheY4G+MaY//WgJrCYgl8LSEwy2htYTEEnpaouGWyFoiYok8LfFwS2wtMbHEnpZkuCWxloRYEk9L+oaPlFpMSjCpJyZ7AyazmIxgMk9MTjCPoXhZcmvJiSV/YdkwKOqyf/C7/Tb3ll0jKuk0dTqMnSU2plusv7r+AA==";
+    decodeErrorMail(oldRoot);
+    decodeErrorMail(newRoot);*/
 
     if (!virtualPanelWnd) {
         virtualPanelWnd = CreateDialog(plugin.dllInstance, MAKEINTRESOURCE(IDD_FILEVIEW), plugin.nppData._nppHandle, fileViewDialogProc);
@@ -638,10 +638,53 @@ void toggleVirtualPanelWithList() {
             jsonFilePath = virtualFolderPluginFolder.wstring() + L"\\VFolders-storage.json";
 
 
-            // read JSON
-            json rootVFolderJson = loadVDataFromFile(jsonFilePath);
-            
-            commonData.rootVFolder = rootVFolderJson.get<VFolder>();
+            // Read the persistent tree. An existing invalid file must never be
+            // treated as an empty tree, because doing so would overwrite the
+            // user's recoverable data on the next write.
+            VDataLoadResult loadResult = loadVDataFromFile(jsonFilePath);
+            if (loadResult.status == VDataLoadStatus::Invalid) {
+                const std::wstring details = toWstring(loadResult.error);
+                const std::wstring message =
+                    L"Virtual Folders could not load its storage file and left it unchanged.\n\n" +
+                    details + L"\n\nStorage: " + jsonFilePath +
+                    L"\nBackup: " + jsonFilePath + L".bak";
+                MessageBoxW(plugin.nppData._nppHandle, message.c_str(),
+                    L"Virtual Folders - Storage Error", MB_OK | MB_ICONERROR);
+                DestroyWindow(virtualPanelWnd);
+                virtualPanelWnd = nullptr;
+                commonData.hTree = nullptr;
+                return;
+            }
+
+            json rootVFolderJson;
+            if (loadResult.status == VDataLoadStatus::Loaded) {
+                try {
+                    commonData.rootVFolder = loadResult.data.get<VFolder>();
+                    rootVFolderJson = loadResult.data;
+                }
+                catch (const std::exception& e) {
+                    const std::wstring message =
+                        L"Virtual Folders found unsupported or invalid data in its storage file "
+                        L"and left the file unchanged.\n\n" + toWstring(e.what()) +
+                        L"\n\nStorage: " + jsonFilePath +
+                        L"\nBackup: " + jsonFilePath + L".bak";
+                    MessageBoxW(plugin.nppData._nppHandle, message.c_str(),
+                        L"Virtual Folders - Storage Error", MB_OK | MB_ICONERROR);
+                    DestroyWindow(virtualPanelWnd);
+                    virtualPanelWnd = nullptr;
+                    commonData.hTree = nullptr;
+                    return;
+                }
+            }
+            else {
+                commonData.rootVFolder = VFolder{};
+                rootVFolderJson = commonData.rootVFolder;
+            }
+
+            // The synthetic root is never part of the global item ordering.
+            // Set this before synchronizing open files so a newly-created tree
+            // cannot derive its first order from an uninitialized/default root.
+            commonData.rootVFolder.setOrder(-1);
 
             commonData.openFiles = listOpenFiles();
         
@@ -649,9 +692,6 @@ void toggleVirtualPanelWithList() {
             syncVDataWithOpenFiles(commonData.openFiles);
 
             commonData.rootVFolder.vFolderSort();
-            commonData.rootVFolder.setOrder(-1);
-
-            
             BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
             if (checkRootVFolderJSON()) {
                 checkRootVFolderJSON();
@@ -698,9 +738,28 @@ void toggleVirtualPanelWithList() {
 
             npp(NPPM_DMMREGASDCKDLG, 0, &dock);
         }
-        catch (int x) 
-        {
-            LOG("We caught an int exception with value: [{}]", x);
+        catch (const std::exception& e) {
+            const std::wstring message =
+                L"Virtual Folders could not initialize its panel.\n\n" + toWstring(e.what());
+            MessageBoxW(plugin.nppData._nppHandle, message.c_str(),
+                L"Virtual Folders - Initialization Error", MB_OK | MB_ICONERROR);
+            if (virtualPanelWnd) {
+                DestroyWindow(virtualPanelWnd);
+            }
+            virtualPanelWnd = nullptr;
+            commonData.hTree = nullptr;
+            return;
+        }
+        catch (...) {
+            MessageBoxW(plugin.nppData._nppHandle,
+                L"Virtual Folders could not initialize its panel because of an unknown error.",
+                L"Virtual Folders - Initialization Error", MB_OK | MB_ICONERROR);
+            if (virtualPanelWnd) {
+                DestroyWindow(virtualPanelWnd);
+            }
+            virtualPanelWnd = nullptr;
+            commonData.hTree = nullptr;
+            return;
         }
 
 
@@ -729,6 +788,7 @@ void toggleVirtualPanelWithList() {
 
 void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
     vector<VFile*> allJsonVFiles = commonData.rootVFolder.getAllFiles();
+    vector<int> staleOrders;
     for (VFile* vFile : allJsonVFiles)
     {
         if (vFile->path != vFile->name) {
@@ -748,18 +808,30 @@ void syncVDataWithOpenFiles(vector<VFile>& openFiles) {
             }
         }
         if (!found) {
-            // File no longer open, remove it from rootVFolder
-            VFile fileCopy = *vFile;
-            VFolder* parentFolder = commonData.rootVFolder.findParentFolder(fileCopy.getOrder());
-            if (parentFolder) {
-                parentFolder->removeFile(fileCopy.getOrder());
-            }
-            else {
-                commonData.rootVFolder.removeFile(fileCopy.getOrder());
-			}
-			adjustGlobalOrdersForFileMove(fileCopy.getOrder(), INT_MAX);
+            // Do not erase while iterating pointers returned by getAllFiles().
+            // vector::erase would invalidate pointers to later siblings.
+            staleOrders.push_back(vFile->getOrder());
         }
 
+    }
+
+    // Removing from highest to lowest keeps the remaining collected orders
+    // stable while each deletion closes the global order gap.
+    std::sort(staleOrders.begin(), staleOrders.end(), std::greater<int>());
+    for (int staleOrder : staleOrders) {
+        optional<VFile*> staleFileOpt = commonData.rootVFolder.findFileByOrder(staleOrder);
+        if (!staleFileOpt) {
+            continue;
+        }
+
+        VFolder* parentFolder = commonData.rootVFolder.findParentFolder(staleOrder);
+        if (parentFolder) {
+            parentFolder->removeFile(staleOrder);
+        }
+        else {
+            commonData.rootVFolder.removeFile(staleOrder);
+        }
+        adjustGlobalOrdersForFileMove(staleOrder, INT_MAX);
     }
 
 

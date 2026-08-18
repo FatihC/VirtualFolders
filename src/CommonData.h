@@ -22,6 +22,7 @@
 #include "model/VData.h"
 #include <CommCtrl.h>
 #include <format>
+#include <filesystem>
 #include "Translator.h"
 
 #include <type_traits>
@@ -80,9 +81,76 @@ inline struct CommonData {
 inline std::wstring jsonFilePath;
 
 inline void writeJsonFile() {
+    if (jsonFilePath.empty()) {
+        return;
+    }
+
     commonData.rootVFolder.vFolderSort();
     json vDataJson = commonData.rootVFolder;
-    std::ofstream(jsonFilePath) << vDataJson.dump(4); // Write JSON to file
+    const std::string serialized = vDataJson.dump(4);
+
+    const std::filesystem::path target(jsonFilePath);
+    const std::wstring processSuffix = L"." + std::to_wstring(GetCurrentProcessId());
+    const std::filesystem::path temporary(jsonFilePath + L".tmp" + processSuffix);
+    const std::filesystem::path backup(jsonFilePath + L".bak");
+    const std::filesystem::path backupTemporary(jsonFilePath + L".bak.tmp" + processSuffix);
+
+    auto reportFailure = [](const std::wstring& message) {
+        const std::wstring logMessage = L"VirtualFolders storage write failed: " + message + L"\n";
+        OutputDebugStringW(logMessage.c_str());
+    };
+
+    std::error_code ec;
+    std::filesystem::create_directories(target.parent_path(), ec);
+    if (ec) {
+        reportFailure(L"could not create the storage directory.");
+        return;
+    }
+
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            reportFailure(L"could not open the temporary file.");
+            return;
+        }
+        output.write(serialized.data(), static_cast<std::streamsize>(serialized.size()));
+        output.flush();
+        if (!output) {
+            output.close();
+            std::filesystem::remove(temporary, ec);
+            reportFailure(L"could not write the complete temporary file.");
+            return;
+        }
+    }
+
+    {
+        std::ifstream input(temporary, std::ios::binary);
+        json verification = json::parse(input, nullptr, false);
+        if (verification.is_discarded() || verification != vDataJson) {
+            input.close();
+            std::filesystem::remove(temporary, ec);
+            reportFailure(L"temporary file verification failed.");
+            return;
+        }
+    }
+
+    if (std::filesystem::exists(target, ec) && !ec) {
+        std::filesystem::copy_file(target, backupTemporary,
+            std::filesystem::copy_options::overwrite_existing, ec);
+        if (!ec) {
+            if (!MoveFileExW(backupTemporary.c_str(), backup.c_str(),
+                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+                std::filesystem::remove(backupTemporary, ec);
+            }
+        }
+    }
+
+    if (!MoveFileExW(temporary.c_str(), target.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        const DWORD error = GetLastError();
+        std::filesystem::remove(temporary, ec);
+        reportFailure(L"atomic replace failed with Windows error " + std::to_wstring(error) + L".");
+    }
 }
 
 inline string folderToMinJson(VFolder folder) 

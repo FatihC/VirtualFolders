@@ -121,12 +121,12 @@ LRESULT CALLBACK TreeView_SubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         case IDM_VIEW_TAB_PREV:
             // Ctrl+PgUp : your own behavior
             LOG("Keyboard Shortcut: [{}]", IDM_VIEW_TAB_PREV);
-            return 0; // swallow so NPP doesn’t process it
+            return 0; // swallow so NPP doesnâ€™t process it
 
         case IDM_VIEW_TAB_NEXT:
             // Ctrl+PgDn : your own behavior
             LOG("Keyboard Shortcut: [{}]", IDM_VIEW_TAB_NEXT);
-            return 0; // swallow so NPP doesn’t process it
+            return 0; // swallow so NPP doesnâ€™t process it
         }
     }
     }
@@ -143,9 +143,45 @@ void writeJsonFile();
 LRESULT nppMenuCall(HTREEITEM selectedTreeItem, int MENU_ID);
 void treeItemSelected(HTREEITEM selectedTreeItem);
 void moveFileIntoFolder(int dragOrder, int targetOrder);
-void moveFolderIntoFolder(int dragOrder, int targetOrder);
+bool moveFolderIntoFolder(int dragOrder, int targetOrder);
 void unwrapFolder(HTREEITEM selectedTreeItem);
 void wrapFileInFolder(HTREEITEM selectedTreeItem);
+
+
+namespace {
+class ScopedSelectionChangeIgnore final {
+public:
+    explicit ScopedSelectionChangeIgnore(bool& flag)
+        : flag_(flag), previousValue_(flag) {
+        flag_ = true;
+    }
+
+    ~ScopedSelectionChangeIgnore() {
+        flag_ = previousValue_;
+    }
+
+    ScopedSelectionChangeIgnore(const ScopedSelectionChangeIgnore&) = delete;
+    ScopedSelectionChangeIgnore& operator=(const ScopedSelectionChangeIgnore&) = delete;
+
+private:
+    bool& flag_;
+    bool previousValue_;
+};
+
+bool isInvalidFolderMoveTarget(VFolder* movedFolder, int targetOrder) {
+    return movedFolder &&
+        (movedFolder->getOrder() == targetOrder ||
+            movedFolder->getChildByOrder(targetOrder).has_value());
+}
+
+void showInvalidFolderMoveMessage(HWND owner) {
+    MessageBoxW(
+        owner,
+        L"A folder cannot be moved into itself or one of its subfolders.",
+        L"Virtual Folders",
+        MB_OK | MB_ICONWARNING);
+}
+}
 
 
 
@@ -327,7 +363,7 @@ INT_PTR CALLBACK fileViewDialogProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
         MessageBoxW(hwnd,
             L"Virtual Folders hit a fatal error (access violation) and was disabled.\n\n"
             L"Please restart Notepad++.",
-            L"Virtual Folders – Fatal Error",
+            L"Virtual Folders â€“ Fatal Error",
             MB_OK | MB_ICONERROR);
         return FALSE;
     }
@@ -356,7 +392,7 @@ static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, L
             oldTreeProc = (WNDPROC)SetWindowLongPtr(hTree, GWLP_WNDPROC, (LONG_PTR)TreeView_SubclassProc);
             SetWindowTheme(hTree, L"", L"");
 
-            // initial color – match the current tree-view background
+            // initial color â€“ match the current tree-view background
             //COLORREF bgColor = TreeView_GetBkColor(hTree);
             //hBgBrush = CreateSolidBrush(bgColor);
 
@@ -428,7 +464,6 @@ static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, L
                         return TRUE;  // Skip processing if Notepad++ isn't ready yet
                     }
                     else if (ignoreSelectionChange) {
-                        ignoreSelectionChange = false;  // Reset the flag
                         return TRUE;  // Skip processing if we are ignoring this change
                     }
 
@@ -1029,8 +1064,10 @@ static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, L
                         }
                         else if (draggedFolderOpt && targetFolderOpt)
                         {
-                            moveFolderIntoFolder(dragOrder, targetOrder);
-                            writeJsonFile();
+                            bool success = moveFolderIntoFolder(dragOrder, targetOrder);
+                            if (success) {
+                                writeJsonFile();
+                            }
                         }
                     }
                     // else if (dropItem.iImage == idxFile) { /* ignore file-to-file drops */ }
@@ -1053,10 +1090,16 @@ static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, L
                             writeJsonFile();
                         }
                         else if (draggedFolderOpt) {
-                            // Similar logic for folders
-                            newOrder = calculateNewOrder(targetOrder, lastMark);
-                            reorderFolders(dragOrder, newOrder);
-                            writeJsonFile();
+                            VFolder* draggedFolder = draggedFolderOpt.value();
+                            if (isInvalidFolderMoveTarget(draggedFolder, targetOrder)) {
+                                showInvalidFolderMoveMessage(virtualPanelWnd);
+                            }
+                            else {
+                                // Similar logic for folders
+                                newOrder = calculateNewOrder(targetOrder, lastMark);
+                                reorderFolders(dragOrder, newOrder);
+                                writeJsonFile();
+                            }
                         }
                     }
                     commonData.rootVFolder.vFolderSort();
@@ -1110,11 +1153,11 @@ static INT_PTR fileViewDialogProc_impl(HWND hwndDlg, UINT uMsg, WPARAM wParam, L
 
     }
     catch (const std::exception& e) {
-        MessageBoxA(hwndDlg, e.what(), "Virtual Folders – Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(hwndDlg, e.what(), "Virtual Folders â€“ Error", MB_OK | MB_ICONERROR);
     }
     catch (...) {
         MessageBoxW(hwndDlg, L"Virtual Folders encountered an internal error.",
-            L"Virtual Folders – Error", MB_OK | MB_ICONERROR);
+            L"Virtual Folders â€“ Error", MB_OK | MB_ICONERROR);
 
         
 		// Disable the plugin and close Notepad++
@@ -1157,7 +1200,8 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
 	VFolder folderCopy = *vFolder;
     HTREEITEM folderItemToDelete = folderCopy.hTreeItem;
     VFolder* parentFolder = commonData.rootVFolder.findParentFolder(vFolder->getOrder());
-	int parentFolderOrder = parentFolder ? parentFolder->getOrder() : -1;
+	int folderOrder = folderCopy.getOrder();
+	int lastOrder = commonData.rootVFolder.getLastOrder();
 
     ssize_t pos = folderCopy.getOrder();
     HTREEITEM fileTreeItem = nullptr;
@@ -1170,7 +1214,18 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
     }
 
     TreeView_DeleteItem(hTree, folderItemToDelete);
-    adjustGlobalOrdersForFileMove(folderCopy.getOrder(), commonData.rootVFolder.getLastOrder() + 1);
+
+    // Detach the folder before shifting later items. Otherwise, a following
+    // sibling folder temporarily receives the same order and removeFolder()
+    // removes both folders.
+    if (parentFolder && parentFolder->getOrder() != -1) {
+        parentFolder->removeFolder(folderOrder);
+    }
+    else {
+        commonData.rootVFolder.removeFolder(folderOrder);
+    }
+
+    adjustGlobalOrdersForFileMove(folderOrder, lastOrder + 1);
 
 
     BOOL isDarkMode = npp(NPPM_ISDARKMODEENABLED, 0, 0);
@@ -1187,18 +1242,12 @@ void unwrapFolder(HTREEITEM selectedTreeItem)
         }
     }
 
-    
-    // DONT FORGET:   tree operations first. vData organisations later.
+    // Add the unwrapped folder's children to its former parent.
     if (parentFolder && parentFolder->getOrder() != -1) {
-        parentFolder->removeFolder(vFolder->getOrder());
-		parentFolder = commonData.rootVFolder.findFolderByOrder(parentFolderOrder).value();
-        auto children = folderCopy.getAllChildren();
-        parentFolder->addChildren(children);
+        parentFolder->addChildren(allChildren);
     }
     else {
-        commonData.rootVFolder.removeFolder(vFolder->getOrder());
-        auto children = folderCopy.getAllDirectChildren();
-        commonData.rootVFolder.addChildren(children);
+        commonData.rootVFolder.addChildren(allChildren);
 	}
     
     writeJsonFile();
@@ -1392,17 +1441,29 @@ void moveFileIntoFolder(int dragOrder, int targetOrder) {
     LOG("[{}] moved into folder [{}]'s end", file->name, folder->name);
 }
 
-void moveFolderIntoFolder(int dragOrder, int targetOrder) {
+bool moveFolderIntoFolder(int dragOrder, int targetOrder) {
     auto draggedFolderOpt = commonData.rootVFolder.findFolderByOrder(dragOrder);
     auto targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder);
 
     VFolder* movedFolder = draggedFolderOpt.value();
     VFolder* targetFolder = targetFolderOpt.value();
 
-    int step = targetFolder->getLastOrder() - dragOrder + 1;
-    if (dragOrder < targetOrder) {
-        step = step - movedFolder->countItemsInFolder();
+    // A folder cannot be moved into itself or one of its descendants.
+    const bool targetIsInvalid = isInvalidFolderMoveTarget(movedFolder, targetOrder);
+
+    if (targetIsInvalid) {
+        showInvalidFolderMoveMessage(virtualPanelWnd);
+        return false;
     }
+
+
+    int folderItemCount = movedFolder->countItemsInFolder();
+    int insertionOrder = targetFolder->getLastOrder() + 1;
+    int destinationOrder = insertionOrder;
+    if (dragOrder < insertionOrder) {
+        destinationOrder -= folderItemCount;
+    }
+    int step = destinationOrder - dragOrder;
     VFolder movedFolderCopy = *movedFolder;
 	
     
@@ -1416,33 +1477,35 @@ void moveFolderIntoFolder(int dragOrder, int targetOrder) {
     targetFolderOpt = commonData.rootVFolder.findFolderByOrder(targetOrder); // removeChild operation somehow effected targetFolder
     targetFolder = targetFolderOpt.value();
 
-    ssize_t pos = targetFolder->getLastOrder();
-	adjustGlobalOrdersForFolderMove(movedFolderCopy.getOrder(), pos + 1, movedFolderCopy.countItemsInFolder());
+    adjustGlobalOrdersForFolderMove(movedFolderCopy.getOrder(), insertionOrder, folderItemCount);
     movedFolderCopy.move(step);
     targetFolder->folderList.push_back(movedFolderCopy);
     movedFolder = commonData.rootVFolder.findFolderByOrder(movedFolderCopy.getOrder()).value();
     
-	pos = movedFolder->getOrder();
+    ssize_t pos = movedFolder->getOrder();
     HWND hTree = GetDlgItem(virtualPanelWnd, IDC_TREE1);
-    
-    HTREEITEM folderTreeItem = addFolderToTree(movedFolder, hTree, targetFolder->hTreeItem, pos, TVI_LAST);
 
-	TreeView_DeleteItem(hTree, hDragItem);
+    {
+        ScopedSelectionChangeIgnore guard(ignoreSelectionChange);
+        addFolderToTree(movedFolder, hTree, targetFolder->hTreeItem, pos, TVI_LAST);
+        TreeView_DeleteItem(hTree, hDragItem);
+    }
+
+    return true;
 }
 
 HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMode, HTREEITEM hPrevItem) {
-    wchar_t buffer[100];
-
     if (vFile->name.find("\\") != std::string::npos) {
 		LOG("Invalid file name: [{}]", vFile->name);
     }
+
+    std::wstring displayName = toWstring(vFile->name);
 
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = hPrevItem;
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM | TVIF_STATE;
-    wcscpy_s(buffer, 100, toWchar(vFile->name));
-    tvis.item.pszText = buffer;
+    tvis.item.pszText = displayName.data();
 
     
     
@@ -1487,14 +1550,14 @@ HTREEITEM addFileToTree(VFile* vFile, HWND hTree, HTREEITEM hParent, bool darkMo
 }
 
 HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize_t& pos, HTREEITEM prevItem) {
-    wchar_t buffer[100];
+    const bool shouldExpand = vFolder->isExpanded;
+    std::wstring displayName = toWstring(vFolder->name);
 
     TVINSERTSTRUCT tvis = { 0 };
     tvis.hParent = hParent;
     tvis.hInsertAfter = prevItem;
     tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
-    wcscpy_s(buffer, 100, toWchar(vFolder->name));
-    tvis.item.pszText = buffer;
+    tvis.item.pszText = displayName.data();
     tvis.item.iImage = iconIndex[ICON_FOLDER]; // or idxFile
     tvis.item.iSelectedImage = iconIndex[ICON_FOLDER]; // or idxFile
     tvis.item.lParam = vFolder->getOrder(); // Store the order/index directly in lparam
@@ -1506,12 +1569,6 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize
     }
 
     HTREEITEM hFolder = TreeView_InsertItem(hTree, &tvis);
-    if (vFolder->isExpanded) {
-        TreeView_Expand(hTree, hFolder, TVE_EXPAND);
-    }
-    else {
-        TreeView_Expand(hTree, hFolder, TVE_COLLAPSE);
-    }
 
     vFolder->hTreeItem = hFolder; // Store the HTREEITEM in the VFolder for later reference
 
@@ -1541,6 +1598,10 @@ HTREEITEM addFolderToTree(VFolder* vFolder, HWND hTree, HTREEITEM hParent, ssize
             }
         }
     }
+
+    // Apply the saved state after inserting the children. Expanding an empty
+    // TreeView item has no effect, which made moved folders appear collapsed.
+    TreeView_Expand(hTree, hFolder, shouldExpand ? TVE_EXPAND : TVE_COLLAPSE);
 
     
     return vFolder->hTreeItem;
@@ -1947,8 +2008,8 @@ void changeTreeItemIcon(UINT_PTR bufferID, int view)
     item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE;
     item.hItem = vFileOpt.value()->hTreeItem;
 
-    wchar_t* name = toWchar(vFileOpt.value()->name);
-    item.pszText = name;
+    std::wstring displayName = toWstring(vFileOpt.value()->name);
+    item.pszText = displayName.data();
 
 
     VFile* vFile = vFileOpt.value();
@@ -2052,7 +2113,7 @@ extern void setFontSize() {
     LOGFONTW lf = {};
     SystemParametersInfoW(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0);
 
-    // adjust font size (lfHeight is in *logical units* — negative means character height in pixels)
+    // adjust font size (lfHeight is in *logical units* â€” negative means character height in pixels)
     //lf.lfHeight = -commonData.fontSize;  // e.g. -14 for 14px font
     lf.lfHeight = -MulDiv(commonData.fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72);
     wcscpy_s(lf.lfFaceName, LF_FACESIZE, commonData.fontFamily.value.c_str());

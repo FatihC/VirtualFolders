@@ -95,6 +95,7 @@
     <ClCompile Include="src\ProcessNotifications.cpp" />
     <ClCompile Include="src\Util.cpp" />
     <ClCompile Include="src\VirtualPanel.cpp" />
+    <None Include="REGRESSION_TEST_CHECKLIST.md" />
     <None Include="src\Host\ScintillaCall.cxx" />
     <None Include="TaskList.md">
       <SubType>
@@ -323,6 +324,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>..\..\Notepad++\npp.8.8.6.portable.x64\plugins\VirtualFolders</OutDir>
     <IntDir>.vs\int\$(Platform)\$(Configuration)\</IntDir>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Portable|ARM64'">
     <IntDir>.vs\int\$(Platform)\$(Configuration)\</IntDir>

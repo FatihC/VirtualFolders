@@ -1,4 +1,12 @@
-﻿# Version 1.0.3
+﻿# Version 1.0.4
+- [x] Deletion an empty folder in the middle of the list corrupts the json. Unwraps two folders at once if they are consecutive
+- [x] When user move child folder to parent folder it corrupts the json
+- [x] Remove GitHub issue creation
+- [x] Fix moving a folder to a sub folder
+- [x] Write Json storage file in a secure way
+
+
+# Version 1.0.3
 - [x] When dropped a file into a folder new selection not working
 - [x] Put localization folder into project but not in dll
 - [x] When there is a buffer in second view, on resart it created a copy buffer of the last selected file in main view

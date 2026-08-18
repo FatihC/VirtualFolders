@@ -79,6 +79,27 @@ extern void loadMenus();
 
 NPP::ShortcutKey SKNextTab;
 
+namespace {
+class ScopedNotificationBypass final {
+public:
+    explicit ScopedNotificationBypass(bool& flag)
+        : flag_(flag), previousValue_(flag) {
+        flag_ = true;
+    }
+
+    ~ScopedNotificationBypass() {
+        flag_ = previousValue_;
+    }
+
+    ScopedNotificationBypass(const ScopedNotificationBypass&) = delete;
+    ScopedNotificationBypass& operator=(const ScopedNotificationBypass&) = delete;
+
+private:
+    bool& flag_;
+    bool previousValue_;
+};
+}
+
 
 int menuItem_ToggleVirtualPanel = 0;
 int menuItem_Settings = 1;
@@ -160,8 +181,10 @@ extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
 extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
     if (plugin.bypassNotifications) return;
-    plugin.bypassNotifications = true;
-    auto*& nmhdr = reinterpret_cast<NMHDR*&>(np);
+    ScopedNotificationBypass bypassGuard(plugin.bypassNotifications);
+
+    try {
+        auto*& nmhdr = reinterpret_cast<NMHDR*&>(np);
 
     // Example Notepad++ notifications; you can add others as needed.
     // Note that most of the notifications listed below have some connection to plugin framework code;
@@ -293,7 +316,14 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
     }
 
-    plugin.bypassNotifications = false;
+    }
+    catch (const std::exception& e) {
+        const std::string message = std::string("VirtualFolders notification error: ") + e.what() + "\n";
+        OutputDebugStringA(message.c_str());
+    }
+    catch (...) {
+        OutputDebugStringA("VirtualFolders notification error: unknown exception\n");
+    }
 
 }
 

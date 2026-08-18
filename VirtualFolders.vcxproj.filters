@@ -168,6 +168,9 @@
     <None Include="TaskList.md">
       <Filter>Documentation</Filter>
     </None>
+    <None Include="REGRESSION_TEST_CHECKLIST.md">
+      <Filter>Documentation</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\file_light.ico">

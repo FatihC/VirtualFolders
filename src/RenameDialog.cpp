@@ -30,11 +30,8 @@ namespace {
 
             // Set the old name in the read-only field
             if (itemToRename) {
-                // Convert regular string to wide string for display
-                int len = MultiByteToWideChar(CP_UTF8, 0, itemToRename->name.c_str(), -1, nullptr, 0);
-                if (len > 0) {
-                    std::wstring oldName(len - 1, L'\0');
-                    MultiByteToWideChar(CP_UTF8, 0, itemToRename->name.c_str(), -1, &oldName[0], len);
+                const std::wstring oldName = toWstring(itemToRename->name);
+                if (!oldName.empty()) {
                     SetDlgItemText(hwndDlg, IDC_RENAME_OLDNAME, oldName.c_str());
                     
                     // Set the current name as the default value in the edit field
@@ -63,13 +60,7 @@ namespace {
                 wchar_t newNameBuffer[256];
                 GetDlgItemText(hwndDlg, IDC_RENAME_NEWNAME, newNameBuffer, sizeof(newNameBuffer) / sizeof(wchar_t));
                 
-                // Convert wide string to regular string
-                std::string newName;
-                int len = WideCharToMultiByte(CP_UTF8, 0, newNameBuffer, -1, nullptr, 0, nullptr, nullptr);
-                if (len > 0) {
-                    newName.resize(len - 1);
-                    WideCharToMultiByte(CP_UTF8, 0, newNameBuffer, -1, &newName[0], len, nullptr, nullptr);
-                }
+                std::string newName = fromWchar(newNameBuffer);
                 
                 // Trim whitespace
                 newName.erase(0, newName.find_first_not_of(" \t\r\n"));

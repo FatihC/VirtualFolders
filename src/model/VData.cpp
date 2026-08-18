@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <memory>  // for std::construct_at
+#include <filesystem>
 
 
 using std::vector;
@@ -421,28 +422,50 @@ void VFolder::adjustOrders(int beginOrder, int endOrder, int step) {
 	}
 }
 
-json loadVDataFromFile(const std::wstring& filePath) {
-    std::ifstream file(filePath);
-    
+VDataLoadResult loadVDataFromFile(const std::wstring& filePath) {
+    VDataLoadResult result;
+    const std::filesystem::path path(filePath);
+    std::error_code ec;
+
+    if (!std::filesystem::exists(path, ec)) {
+        if (ec) {
+            result.status = VDataLoadStatus::Invalid;
+            result.error = "Could not inspect the storage file: " + ec.message();
+        }
+        return result;
+    }
+
+    std::ifstream file(path, std::ios::binary);
     if (!file.is_open()) {
-        return json::object();
+        result.status = VDataLoadStatus::Invalid;
+        result.error = "The storage file could not be opened.";
+        return result;
     }
-    
-    // Check if file is empty
+
     file.seekg(0, std::ios::end);
-    if (file.tellg() == 0) {
-        return json::object();
+    if (file.tellg() <= 0) {
+        result.status = VDataLoadStatus::Invalid;
+        result.error = "The storage file is empty.";
+        return result;
     }
-    
-    // Reset file pointer and try to parse
+
     file.seekg(0, std::ios::beg);
     try {
-        json vDataJson;
-        file >> vDataJson;
-        return vDataJson;
-    } catch (const json::parse_error& e) {
-        return json::object();
+        file >> result.data;
+        if (!result.data.is_object()) {
+            result.status = VDataLoadStatus::Invalid;
+            result.error = "The storage root is not a JSON object.";
+            return result;
+        }
+        result.status = VDataLoadStatus::Loaded;
     }
+    catch (const std::exception& e) {
+        result.status = VDataLoadStatus::Invalid;
+        result.data = json::object();
+        result.error = e.what();
+    }
+
+    return result;
 }
 
 void VFolder::resetOrders(ssize_t& pos)
